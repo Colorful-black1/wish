@@ -1,0 +1,71 @@
+﻿/* ============================================================
+   PHOTOS — official character visuals (local data URIs)
+   ============================================================ */
+
+/* hero stage */
+.hero-stage::before{content:"";position:absolute;inset:-1% -2%;z-index:0;pointer-events:none;
+  background:radial-gradient(58% 46% at 56% 40%,rgba(80,140,230,.16),transparent 72%),
+    linear-gradient(180deg,rgba(9,16,30,.55),rgba(4,8,16,.08) 58%,rgba(4,8,16,.55));
+  border:1px solid rgba(160,195,255,.09);
+  box-shadow:inset 0 0 90px rgba(2,6,14,.55);
+  clip-path:polygon(0 0,calc(100% - 26px) 0,100% 26px,100% 100%,26px 100%,0 calc(100% - 26px))}
+.stage-name{background:rgba(4,9,18,.72);border:1px solid rgba(160,195,255,.16);border-left:2px solid var(--gold);padding:8px 13px 7px;backdrop-filter:blur(8px)}
+.hero-stage::after{content:"";position:absolute;left:-2%;top:-1%;width:34px;height:34px;z-index:5;pointer-events:none;
+  border-left:1px solid rgba(240,199,117,.55);border-top:1px solid rgba(240,199,117,.55)}
+.stage-photo{position:relative;z-index:1;height:var(--stage-h);max-height:none;align-self:end;object-position:center bottom;width:auto;max-width:100%;object-fit:contain;}
+.stage-art::after{content:"";position:absolute;left:-4%;right:-4%;bottom:-1px;height:24%;z-index:4;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(3,6,13,.55) 48%,rgba(3,6,13,.96) 100%)}
+.stage-art .art-layer{display:grid;place-items:center}
+.stage-art .art-layer.on{position:relative;height:100%}
+
+/* hero cards */
+.hcard-art::before{content:"";position:absolute;inset:8% 14% 22%;border-radius:50%;z-index:0;
+  background:radial-gradient(circle,rgba(120,170,255,.28),rgba(60,100,180,.04) 55%,transparent 70%)}
+.hcard-photo{position:absolute;left:50%;bottom:2%;transform:translateX(-50%);height:96%;width:auto;max-width:none;z-index:1;
+  object-fit:contain;filter:drop-shadow(0 16px 26px rgba(0,0,0,.75));transition:transform 1.2s var(--ease-out),filter .6s}
+.hcard:hover .hcard-photo{transform:translateX(-50%) scale(1.045);filter:drop-shadow(0 16px 30px rgba(0,0,0,.8)) brightness(1.06)}
+.hcard-art .hcard-info{z-index:3}
+
+/* work cards */
+.wcard-media .wcard-photo{position:absolute;right:0;bottom:0;height:100%;width:auto;max-width:none;z-index:1;
+  object-fit:contain;filter:drop-shadow(0 16px 26px rgba(0,0,0,.75));transition:transform 1.2s var(--ease-out)}
+.wcard:hover .wcard-photo{transform:translateY(-2%) scale(1.03)}
+.wcard-media .p-year{position:absolute;left:12px;bottom:2px;z-index:1;font-family:var(--font-display);font-size:58px;line-height:1;
+  font-weight:700;color:transparent;-webkit-text-stroke:1px rgba(190,215,255,.24);letter-spacing:-.04em;pointer-events:none}
+.wcard-media .p-rings{position:absolute;left:-14%;top:8%;width:78%;aspect-ratio:1;border-radius:50%;z-index:0;
+  border:1px solid rgba(160,195,255,.13);box-shadow:inset 0 0 60px rgba(60,120,210,.12)}
+.wcard-media .p-rings::before{content:"";position:absolute;inset:14%;border-radius:50%;border:1px dashed rgba(160,195,255,.12)}
+.wcard-media .p-glow{position:absolute;inset:0;z-index:0;background:radial-gradient(60% 70% at 74% 52%,rgba(90,150,240,.28),transparent 68%)}
+
+/* battle art with photo */
+.bcard-art .bcard-photo{position:absolute;left:50%;bottom:0;transform:translateX(-50%);height:100%;width:auto;max-width:none;z-index:1;
+  object-fit:contain;filter:drop-shadow(0 20px 34px rgba(0,0,0,.8)) saturate(1.05)}
+.bcard-art .b-vs{position:absolute;left:16px;top:50%;translate:0 -50%;z-index:3;font-family:var(--font-display);font-size:96px;line-height:1;font-weight:700;
+  color:rgba(240,199,117,.06);-webkit-text-stroke:1px rgba(240,199,117,.45);letter-spacing:-.04em;pointer-events:none}
+.bcard-art .b-enemy{position:absolute;right:16px;top:52px;z-index:3;font-family:var(--font-mono);font-size:8px;letter-spacing:.22em;
+  color:rgba(255,140,140,.8);text-transform:uppercase;max-width:42%;text-align:right;pointer-events:none}
+
+/* modal photo banner */
+.mdl-hero.photo .art{background:radial-gradient(58% 90% at 76% 60%,rgba(70,130,220,.3),transparent 68%),
+  linear-gradient(160deg,#0a1322,#060c16)}
+.mdl-hero .mh-photo{position:absolute;right:3%;bottom:1%;height:96%;width:auto;max-width:none;z-index:1;
+  object-fit:contain;filter:drop-shadow(0 24px 46px rgba(0,0,0,.8))}
+.mdl-hero .mh-year{position:absolute;left:20px;top:6px;z-index:1;font-family:var(--font-display);font-size:clamp(90px,13vw,190px);line-height:1;
+  font-weight:700;color:transparent;-webkit-text-stroke:1px rgba(180,210,255,.16);letter-spacing:-.05em;pointer-events:none}
+.mdl-hero.photo::after{background:linear-gradient(90deg,rgba(8,14,26,.94) 0%,rgba(8,14,26,.72) 34%,rgba(8,14,26,.05) 62%,rgba(8,14,26,.55) 100%),
+  linear-gradient(180deg,rgba(6,11,20,.05) 40%,#080e1a 100%)}
+.mdl-hero.photo .ttl{text-shadow:0 6px 30px rgba(0,0,0,.85)}
+
+/* hero modal portrait */
+.mdl-portrait{overflow:hidden}
+.mdl-portrait img{height:300px;width:auto;max-width:100%;object-fit:contain;position:relative;z-index:1;
+  filter:drop-shadow(0 18px 30px rgba(0,0,0,.7))}
+
+/* relation / drawer thumbs with photo */
+.thumb img,.d-item .th img{width:100%;height:100%;object-fit:cover;object-position:center 18%}
+.rel-head .thumb{background:radial-gradient(circle at 50% 40%,rgba(60,120,210,.22),#050a13)}
+.rel-head .thumb img{object-fit:contain;object-position:center bottom}
+
+/* faction banner keeps emblem art */
+```
+

@@ -1,0 +1,91 @@
+{
+  "title": "奥特曼宇宙编年史 · ULTRAMAN UNIVERSE ARCHIVE",
+  "scrollHeight": 27783,
+  "counts": {
+    "works": 54,
+    "phaseBlocks": 7,
+    "visibleWorks": 54,
+    "heroCards": 38,
+    "eventRows": 6,
+    "factionCards": 16,
+    "battleCards": 18,
+    "relItems": 54,
+    "worldChips": 29,
+    "sections": 14,
+    "svgs": 95
+  },
+  "statsText": "1966 | 60年 | 54部 | 31条 | 38位 | 34项",
+  "metrics": {
+    "w": 1440,
+    "h": 900,
+    "scrollW": 1440
+  },
+  "hasHorizontalOverflow": false,
+  "filterTest": {
+    "count": 4,
+    "label": "4",
+    "titles": [
+      "迪迦奥特曼",
+      "迪迦·戴拿&盖亚 超时空大决战",
+      "迪迦奥特曼 最终圣战",
+      "大决战！超奥特8兄弟"
+    ]
+  },
+  "resetTest": {
+    "visible": 54
+  },
+  "yearJump": {
+    "exists": true,
+    "rectTop": 994
+  },
+  "chronicleSwitch": {
+    "rows": 6,
+    "panel": "\n        \n          第四纪元 · 多元宇宙与跨宇宙事件\n          平行世界交汇\n     "
+  },
+  "heroFilter": {
+    "visible": 9,
+    "count": "9"
+  },
+  "modalWork": {
+    "open": true,
+    "title": "迪迦奥特曼",
+    "sections": 9,
+    "bodyLocked": true,
+    "h": 820
+  },
+  "modalJump": {
+    "ok": true,
+    "title": "超古代地球的光之巨人",
+    "back": true
+  },
+  "back": {
+    "ok": true,
+    "title": "迪迦奥特曼"
+  },
+  "fav": {
+    "ok": true,
+    "badge": "1",
+    "saved": true,
+    "ls": "[{\"type\":\"work\",\"id\":\"tiga\"}]"
+  },
+  "close": {
+    "open": false,
+    "locked": false
+  },
+  "palette": {
+    "open": true,
+    "results": 9
+  },
+  "drawer": {
+    "open": true,
+    "items": 1,
+    "stat": "1 ITEMS"
+  },
+  "mobile": {
+    "scrollW": 390,
+    "w": 390,
+    "navHidden": "none"
+  },
+  "consoleErrors": [],
+  "failedRequests": []
+}
