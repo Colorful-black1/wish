@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>许愿 · WISH — 把一句话许成能打开的世界</title>
+    <meta
+      name="description"
+      content="一个自然语言许愿实验场：每个目录都是一次许愿，都留下能跑的成品、完整源码与验收记录。成品全部离线可用。"
+    />
+    <meta name="color-scheme" content="dark" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307080B'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='none' stroke='%23C9A96A' stroke-width='1.6'/%3E%3Ccircle cx='16' cy='16' r='1.8' fill='%23C9A96A'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        --bg: #07080b;
+        --ink: #ece7db;
+        --muted: #8e939c;
+        --faint: #5d626c;
+        --line: rgba(236, 231, 219, 0.11);
+        --line-strong: rgba(236, 231, 219, 0.2);
+        --gold: #c9a96a;
+        --gold-soft: rgba(201, 169, 106, 0.14);
+        --card: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012));
+        --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", "STSong", serif;
+        --sans: "Inter Tight", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+        --mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        --wrap: 1180px;
+        --pad: clamp(20px, 5vw, 56px);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 16px;
+        line-height: 1.7;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      .bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(52% 38% at 12% -6%, rgba(201, 169, 106, 0.16), transparent 72%),
+          radial-gradient(44% 34% at 96% 2%, rgba(86, 156, 176, 0.1), transparent 74%),
+          radial-gradient(70% 60% at 50% 108%, rgba(201, 169, 106, 0.05), transparent 70%);
+      }
+
+      .bg::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(to right, rgba(236, 231, 219, 0.045) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(236, 231, 219, 0.045) 1px, transparent 1px);
+        background-size: 96px 96px;
+        mask-image: radial-gradient(80% 60% at 50% 0%, #000 0%, transparent 78%);
+      }
+
+      .wrap {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: var(--wrap);
+        margin: 0 auto;
+        padding: 0 var(--pad);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--gold);
+        outline-offset: 4px;
+        border-radius: 4px;
+      }
+
+      .skip {
+        position: absolute;
+        left: 12px;
+        top: -60px;
+        z-index: 20;
+        padding: 10px 16px;
+        background: var(--ink);
+        color: #0a0b0e;
+        font-size: 14px;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: top 0.18s ease;
+      }
+
+      .skip:focus-visible {
+        top: 12px;
+      }
+
+      /* ---------------------------------------------------------------- 顶栏 */
+
+      .bar {
+        position: relative;
+        z-index: 2;
+        border-bottom: 1px solid var(--line);
+        backdrop-filter: blur(6px);
+      }
+
+      .bar__in {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        height: 68px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        letter-spacing: 0.02em;
+      }
+
+      .brand svg {
+        display: block;
+      }
+
+      .brand__cn {
+        font-family: var(--serif);
+        font-size: 18px;
+        letter-spacing: 0.12em;
+      }
+
+      .brand__en {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.3em;
+        color: var(--faint);
+        padding-left: 10px;
+        border-left: 1px solid var(--line);
+      }
+
+      .nav {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .nav a {
+        color: var(--muted);
+        text-decoration: none;
+        padding: 6px 2px;
+        border-bottom: 1px solid transparent;
+        transition: color 0.18s ease, border-color 0.18s ease;
+      }
+
+      .nav a:hover {
+        color: var(--ink);
+        border-bottom-color: var(--gold);
+      }
+
+      /* ---------------------------------------------------------------- 首屏 */
+
+      .hero {
+        padding: clamp(44px, 7vh, 88px) 0 clamp(26px, 4vh, 44px);
+      }
+
+      .eyebrow {
+        margin: 0 0 22px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: var(--gold);
+      }
+
+      .hero h1 {
+        margin: 0;
+        max-width: 19ch;
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: clamp(34px, 5.2vw, 68px);
+        line-height: 1.16;
+        letter-spacing: 0.01em;
+      }
+
+      .hero h1 em {
+        font-style: normal;
+        color: var(--gold);
+      }
+
+      .lede {
+        margin: 22px 0 0;
+        max-width: 48ch;
+        color: var(--muted);
+        font-size: clamp(15px, 1.4vw, 17px);
+        line-height: 1.85;
+      }
+
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: clamp(28px, 6vw, 72px);
+        margin: 36px 0 0;
+        padding: 20px 0 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .stats div {
+        display: flex;
+        flex-direction: column-reverse;
+        gap: 4px;
+      }
+
+      .stats dt {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+
+      .stats dd {
+        margin: 0;
+        font-family: var(--serif);
+        font-size: clamp(28px, 3.4vw, 40px);
+        line-height: 1;
+        letter-spacing: 0.02em;
+      }
+
+      .stats dd span {
+        font-size: 0.55em;
+        color: var(--muted);
+        margin-left: 1px;
+      }
+
+      /* ---------------------------------------------------------------- 成品 */
+
+      .works {
+        padding: clamp(26px, 4vh, 48px) 0;
+      }
+
+      .works__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 8px 20px;
+        margin-bottom: 26px;
+      }
+
+      .works__head h2 {
+        margin: 0;
+        font-family: var(--serif);
+        font-size: clamp(22px, 2.4vw, 28px);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+      }
+
+      .works__head p {
+        margin: 0;
+        color: var(--faint);
+        font-size: 13px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: clamp(16px, 2vw, 24px);
+      }
+
+      .card {
+        display: flex;
+        flex-direction: column;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        overflow: hidden;
+        text-decoration: none;
+        transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1), border-color 0.28s ease,
+          box-shadow 0.28s ease;
+      }
+
+      .card:hover,
+      .card:focus-visible {
+        transform: translateY(-4px);
+        border-color: rgba(201, 169, 106, 0.5);
+        box-shadow: 0 24px 60px -30px rgba(201, 169, 106, 0.55);
+      }
+
+      .card__shot {
+        position: relative;
+        margin: 0;
+        aspect-ratio: 16 / 10;
+        overflow: hidden;
+        background: #0b0d12;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .card__shot img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transform: scale(1.001);
+        transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1), filter 0.4s ease;
+        filter: saturate(0.96) brightness(0.94);
+      }
+
+      .card:hover .card__shot img,
+      .card:focus-visible .card__shot img {
+        transform: scale(1.035);
+        filter: saturate(1.02) brightness(1);
+      }
+
+      .card__shot::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, transparent 55%, rgba(7, 8, 11, 0.55));
+        pointer-events: none;
+      }
+
+      .card__body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: clamp(20px, 2.4vw, 28px);
+      }
+
+      .card__meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+
+      .card__meta span:first-child {
+        color: var(--gold);
+      }
+
+      .card h3 {
+        margin: 0;
+        font-family: var(--serif);
+        font-size: clamp(21px, 2.2vw, 26px);
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14.5px;
+        line-height: 1.8;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 2px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .tags li {
+        padding: 4px 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        color: var(--faint);
+      }
+
+      .card__cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink);
+      }
+
+      .card__cta svg {
+        transition: transform 0.25s ease;
+      }
+
+      .card:hover .card__cta svg,
+      .card:focus-visible .card__cta svg {
+        transform: translateX(4px);
+      }
+
+      /* ---------------------------------------------------------------- 流程 */
+
+      .how {
+        padding: clamp(36px, 5vh, 64px) 0 clamp(48px, 8vh, 96px);
+      }
+
+      .how__grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        background: var(--line);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      .how__grid li {
+        background: #0a0b0f;
+        padding: 22px 20px 26px;
+      }
+
+      .how__grid b {
+        display: block;
+        margin-bottom: 8px;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        color: var(--gold);
+      }
+
+      .how__grid strong {
+        display: block;
+        margin-bottom: 6px;
+        font-family: var(--serif);
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+      }
+
+      .how__grid span {
+        color: var(--faint);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      /* ---------------------------------------------------------------- 页脚 */
+
+      .foot {
+        border-top: 1px solid var(--line);
+        padding: 26px 0 40px;
+      }
+
+      .foot__in {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px 28px;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--faint);
+        font-size: 12.5px;
+      }
+
+      .foot__links {
+        display: flex;
+        gap: 20px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .foot__links a {
+        color: var(--muted);
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+      }
+
+      .foot__links a:hover {
+        color: var(--ink);
+        border-bottom-color: var(--gold);
+      }
+
+      /* ---------------------------------------------------------------- 响应式 */
+
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .how__grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 560px) {
+        .bar__in {
+          height: 60px;
+          gap: 14px;
+        }
+
+        .brand__en {
+          display: none;
+        }
+
+        .nav {
+          gap: 14px;
+        }
+
+        .how__grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .hero h1 {
+          max-width: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          transition-duration: 0.001ms !important;
+          animation-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <a class="skip" href="#works">跳到成品</a>
+    <div class="bg" aria-hidden="true"></div>
+
+    <header class="bar">
+      <div class="wrap bar__in">
+        <a class="brand" href="./" aria-label="许愿 · WISH 首页">
+          <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="0.8" y="0.8" width="30.4" height="30.4" rx="8" fill="none" stroke="#c9a96a" stroke-opacity="0.5" />
+            <circle cx="16" cy="16" r="7" fill="none" stroke="#c9a96a" stroke-width="1.2" />
+            <circle cx="16" cy="16" r="2.2" fill="#c9a96a" />
+          </svg>
+          <span class="brand__cn">许愿</span>
+          <span class="brand__en">WISH</span>
+        </a>
+
+        <nav class="nav" aria-label="页面导航">
+          <a href="#works">成品</a>
+          <a href="#how">流程</a>
+          <a href="https://github.com/Colorful-black1/wish" rel="noopener">GitHub ↗</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="hero">
+        <p class="eyebrow">Natural-language wish lab · est. 2026</p>
+        <h1>把一句话，<br />许成<em>能打开</em>的世界。</h1>
+        <p class="lede">
+          这里是「许愿」式编程实验场。每个目录都是一次许愿：一句自然语言需求，一份能跑能看的成品，加上完整源码与验收记录。成品全部离线可用，双击即开。
+        </p>
+        <dl class="stats">
+          <div>
+            <dt>成品</dt>
+            <dd id="stat-works">02</dd>
+          </div>
+          <div>
+            <dt>外部请求</dt>
+            <dd>0</dd>
+          </div>
+          <div>
+            <dt>离线可用</dt>
+            <dd>100<span>%</span></dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="works" id="works" aria-labelledby="works-title">
+        <div class="works__head">
+          <h2 id="works-title">许愿清单</h2>
+          <p>两种口味：一座深空档案，一台检索控制台。</p>
+        </div>
+
+        <div class="grid">
+          <a class="card" href="奥特曼发展史/index.html">
+            <figure class="card__shot">
+              <img
+                src="assets/ultraman.webp"
+                alt="奥特曼宇宙编年史首页：深蓝星云背景上，初代奥特曼的银色与红色身影立在光之国圆环前"
+                width="1280"
+                height="727"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+            <div class="card__body">
+              <div class="card__meta"><span>01 / archive</span><span>单文件网站</span></div>
+              <h3>奥特曼宇宙编年史</h3>
+              <p>
+                以「数字博物馆」的口气重述奥特曼宇宙：54 部作品、38 位战士、31 条宇宙事件，还把缺失的角色视觉用原创 SVG 补上。
+              </p>
+              <ul class="tags">
+                <li>单文件 2.1 MB</li>
+                <li>零依赖</li>
+                <li>角色 SVG 原创</li>
+              </ul>
+              <span class="card__cta">
+                打开成品
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </div>
+          </a>
+
+          <a class="card" href="rag-viz/index.html">
+            <figure class="card__shot">
+              <img
+                src="assets/rag-viz.webp"
+                alt="RAG 全链路交互式拆解页面：左侧九站流程，中间三维语义空间与召回结果"
+                width="1280"
+                height="800"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+            <div class="card__body">
+              <div class="card__meta"><span>02 / console</span><span>纯静态单页</span></div>
+              <h3>RAG 全链路 · 交互式拆解</h3>
+              <p>
+                从解析到引用校验共 9 站。分块、BM25、HNSW、RRF 与重排全是页面里真算的，参数一拖，数字和排名跟着变。
+              </p>
+              <ul class="tags">
+                <li>9 站全链路</li>
+                <li>无构建步骤</li>
+                <li>真算不画</li>
+              </ul>
+              <span class="card__cta">
+                打开成品
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section class="how" id="how" aria-labelledby="how-title">
+        <div class="works__head">
+          <h2 id="how-title">一个许愿怎么落地</h2>
+          <p>能交付、能追溯、能重建。</p>
+        </div>
+        <ol class="how__grid">
+          <li>
+            <b>01</b>
+            <strong>许愿</strong>
+            <span>新建目录，写一份提示词，讲清目标、结构、视觉与验收标准。</span>
+          </li>
+          <li>
+            <b>02</b>
+            <strong>兑现</strong>
+            <span>从空壳跑通，再逐块填内容；源码、素材、脚本都留在目录里。</span>
+          </li>
+          <li>
+            <b>03</b>
+            <strong>验收</strong>
+            <span>跑构建与回归测试，记录错误日志、宽度与截图作为证据。</span>
+          </li>
+          <li>
+            <b>04</b>
+            <strong>存档</strong>
+            <span>写清说明与数据口径，记进清单，然后提交。</span>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="wrap foot__in">
+        <p style="margin: 0">© 2026 许愿实验场 · 由 GitHub Pages 发布，无统计、无 CDN、无外部字体</p>
+        <div class="foot__links">
+          <a href="https://github.com/Colorful-black1/wish#readme" rel="noopener">README ↗</a>
+          <a href="https://github.com/Colorful-black1/wish" rel="noopener">源码仓库 ↗</a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // 统计数字由页面里的卡片数量算出来，不写死。
+      (function () {
+        const cards = document.querySelectorAll(".grid .card");
+        const el = document.getElementById("stat-works");
+        if (el && cards.length) el.textContent = String(cards.length).padStart(2, "0");
+      })();
+    </script>
+  </body>
+</html>
