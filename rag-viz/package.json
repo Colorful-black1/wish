@@ -1,0 +1,9 @@
+﻿{
+  "name": "rag-viz",
+  "private": true,
+  "version": "1.0.0",
+  "description": "RAG 全链路交互式讲解：零依赖静态页面 + 两个 Node 自测脚本",
+  "scripts": {
+    "selftest": "node selftest-engine.js && node selftest-ui.js"
+  }
+}
