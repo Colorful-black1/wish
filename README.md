@@ -12,6 +12,7 @@
 | --- | --- | --- |
 | [奥特曼发展史](奥特曼发展史/) | [index.html](奥特曼发展史/index.html) | 以「奥特曼宇宙数字博物馆」为主题的单文件交互式网站，收录 54 部作品、38 位奥特战士、31 条宇宙事件、16 个文明势力与 18 场经典战役，并原创 SVG 生成缺失的角色视觉 |
 | [rag-viz](rag-viz/) | [index.html](rag-viz/index.html) | 「RAG 全链路」交互式拆解：从解析到引用校验共 9 站，分块、BM25、HNSW、RRF、重排与校验都是页面里真算的；零依赖、无构建步骤、可离线打开 |
+| [LLM执行流程](LLM执行流程/) | [index.html](LLM执行流程/index.html) | 「LLM 推理实验室」：13 站 3D 推理流水线、Transformer 八层拆解、可交互的 Q/K/V 注意力网络、采样沙盒与推理基础设施岛；Three.js 全内联、零外部请求、无 API |
 
 ---
 
@@ -28,6 +29,7 @@
 
 - `奥特曼发展史/index.html` —— 单文件自包含，离线可用，样式、脚本、角色图片全部内联。
 - `rag-viz/index.html` —— 纯静态页面，无构建步骤，外链同目录 `assets/` 下的样式与脚本，离线可用。
+- `LLM执行流程/index.html` —— 单文件自包含的 3D 推理实验室，Three.js / GSAP / 样式全部内联，离线可用。
 
 ### 重新构建 / 回归测试
 
@@ -35,6 +37,10 @@
 cd 奥特曼发展史
 node tools/build.mjs   # dev.html + src/* → index.html
 node tools/qa.mjs      # 无头 Chrome 冒烟测试 + 截图 + qa/report.json
+
+cd ..\LLM执行流程
+node tools/build.mjs   # 内联 Three.js / GSAP / src/* → index.html
+node tools/qa.mjs      # 13 站遍历 + 交互 + 移动端 + 截图
 ```
 
 环境要求：Node.js 18+（构建与 QA 用到 `fetch` / `WebSocket`），本机装有 Chrome 或 Edge；处理角色图片另需 Python 3 + Pillow + numpy（可选，仅在重新生成图片时需要）。

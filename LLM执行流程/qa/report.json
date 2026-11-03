@@ -1,0 +1,282 @@
+{
+  "title": "LLM 推理实验室 · 从一句话到 AI 回答的 3D 全流程",
+  "url": "file:///E:/Codeing/ai-workspace/wish/LLM%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B/index.html",
+  "boot": {
+    "ready": true,
+    "stage": 1,
+    "mode": "flow",
+    "webgl": true,
+    "renderer": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "drawCalls": 1,
+    "triangles": 1,
+    "bloom": true
+  },
+  "counts": {
+    "stages": 13,
+    "labels": 32,
+    "knowledge": 62,
+    "knowledgeGroups": 10,
+    "stations": 13,
+    "tokens": 7,
+    "stageTitle": "用户输入 User Input",
+    "panelSections": 4,
+    "notes": 1,
+    "canvas": {
+      "w": 1440,
+      "h": 900
+    }
+  },
+  "metrics": {
+    "w": 1440,
+    "h": 900,
+    "scrollW": 1440,
+    "scrollH": 900
+  },
+  "hasHorizontalOverflow": false,
+  "tokenStats": {
+    "tokens": 7,
+    "chars": 15,
+    "avg": 2.142857142857143
+  },
+  "stageSweep": [
+    {
+      "n": 1,
+      "title": "用户输入 User Input",
+      "dyn": false,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 2,
+      "title": "分词 Tokenization",
+      "dyn": true,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 3,
+      "title": "词向量嵌入 Embedding",
+      "dyn": false,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 4,
+      "title": "位置编码 Positional Encoding",
+      "dyn": false,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 5,
+      "title": "Transformer 主体 Transformer Block",
+      "dyn": false,
+      "labelsVisible": 9,
+      "stationVisible": false,
+      "towerVisible": true,
+      "mode": "flow"
+    },
+    {
+      "n": 6,
+      "title": "自注意力 Self-Attention",
+      "dyn": true,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 7,
+      "title": "多头注意力 Multi-Head Attention",
+      "dyn": false,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 8,
+      "title": "深层堆叠 Layer Stacking",
+      "dyn": false,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 9,
+      "title": "LM Head 与 Logits LM Head & Logits",
+      "dyn": true,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 10,
+      "title": "概率与采样 Softmax & Sampling",
+      "dyn": true,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 11,
+      "title": "自回归生成 Autoregressive Generation",
+      "dyn": false,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 12,
+      "title": "反分词 Detokenization",
+      "dyn": true,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    },
+    {
+      "n": 13,
+      "title": "停止与返回 Stop & Response",
+      "dyn": true,
+      "labelsVisible": 0,
+      "stationVisible": true,
+      "towerVisible": false,
+      "mode": "flow"
+    }
+  ],
+  "playback": {
+    "started": true,
+    "stage": 2,
+    "progress": 0.13333333333333333,
+    "now": "02 · 分词"
+  },
+  "stage1": {
+    "stage": 1,
+    "camera": [
+      -27.81,
+      12.2,
+      18.4
+    ],
+    "panelTitle": "用户输入 User Input",
+    "contextChips": 3,
+    "stationVisible": true,
+    "otherStationsVisible": 1
+  },
+  "attention": {
+    "rows": 7,
+    "cols": 7,
+    "rowSum": 1,
+    "active": 3,
+    "topPair": {
+      "from": 0,
+      "to": 0,
+      "weight": 1
+    },
+    "matrixCells": 49,
+    "queryChips": 7,
+    "panelTitle": "自注意力 Self-Attention"
+  },
+  "sampling": {
+    "temperature": 1.4,
+    "topK": 3,
+    "topP": 0.8,
+    "kept": 3,
+    "sum": 1,
+    "probsSum": 1,
+    "pick": "它",
+    "sampleToken": 1,
+    "slider": "1.4"
+  },
+  "transformer": {
+    "exploded": true,
+    "layers": 8,
+    "labelsVisible": 9,
+    "camera": [
+      8.8,
+      16.4,
+      21
+    ],
+    "activeLayer": 6
+  },
+  "knowledge": {
+    "items": 62,
+    "filtered": 14,
+    "detailTitle": "位置编码",
+    "detailSections": 5,
+    "panelTab": "concepts"
+  },
+  "infra": {
+    "mode": "infra",
+    "nodes": 10,
+    "panel": "推理基础设施",
+    "camera": [
+      6,
+      11,
+      -2
+    ],
+    "labelsVisible": 10,
+    "pipelineHidden": true,
+    "detailTitle": "GPU 与 CUDA",
+    "active": "gpu-cuda",
+    "activeLabel": "01GPU / "
+  },
+  "custom": {
+    "stage": 2,
+    "playing": true,
+    "tokens": 9,
+    "tokenTexts": [
+      "为什么",
+      "注意力",
+      "需要",
+      "Q",
+      "、",
+      "K",
+      "、",
+      "V"
+    ],
+    "question": "为什么注意力需要 Q、K、V？",
+    "attentionRows": 8,
+    "answerStart": "注意力把每个 token 投影成 Query、K",
+    "otherStationsVisible": 1,
+    "barVisible": false
+  },
+  "finish": {
+    "finished": true,
+    "message": 1,
+    "aiText": "注意力把每个 token 投影成 Query、Key、Val",
+    "padOpen": true
+  },
+  "externalResources": [],
+  "mobile": {
+    "scrollW": 390,
+    "scrollH": 844,
+    "innerW": 390,
+    "innerH": 844,
+    "hasHorizontalOverflow": false,
+    "railVisible": "flex",
+    "panelClosed": true,
+    "stage": 1,
+    "webgl": true
+  },
+  "mobilePanel": {
+    "open": true,
+    "h": 490,
+    "overflow": false
+  },
+  "consoleErrors": [],
+  "failedRequests": [],
+  "pageErrors": []
+}
