@@ -7,6 +7,8 @@
 **/qa/*.png
 # QA 用的临时 Chrome 配置目录
 .chrome-qa/
+.chrome-shot/
+**/.chrome-*/
 
 # 依赖与构建缓存
 node_modules/
