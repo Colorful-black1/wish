@@ -1,0 +1,271 @@
+/* ==========================================================================
+   base.css — 令牌、重置、排版、加载页、降级页
+   视觉方向：天文台仪器。近黑底、米白字、细线、小号等宽数字、大量留白。
+   ========================================================================== */
+
+:root {
+  --bg: #05070a;
+  --bg-lift: #080b10;
+  --ink: #ede6d6;
+  --ink-dim: rgba(237, 230, 214, 0.62);
+  --ink-faint: rgba(237, 230, 214, 0.34);
+  --ink-ghost: rgba(237, 230, 214, 0.16);
+  --line: rgba(237, 230, 214, 0.13);
+  --line-strong: rgba(237, 230, 214, 0.26);
+  --gold: #e8b04b;
+  --gold-dim: rgba(232, 176, 75, 0.55);
+  --teal: #6fa8b8;
+  --teal-dim: rgba(111, 168, 184, 0.5);
+  --rust: #d9603b;
+
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti SC", "Source Han Serif SC",
+    "Noto Serif CJK SC", "SimSun", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans CJK SC", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Cascadia Mono",
+    "Noto Sans Mono CJK SC", "Microsoft YaHei", monospace;
+
+  --pad: 26px;
+  --pad-sm: 16px;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  background: var(--bg);
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body.is-locked {
+  overflow: hidden;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 400;
+}
+
+p {
+  margin: 0;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.85em;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  text-align: center;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.94em;
+  color: var(--teal);
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.muted {
+  color: var(--ink-faint);
+}
+
+/* -------------------------------------------------------------- 舞台与画布 */
+
+#stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+#gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+  background: #030507;
+}
+
+#gl.is-dragging {
+  cursor: grabbing;
+}
+
+#gl.is-hot {
+  cursor: pointer;
+}
+
+#gl.is-hidden {
+  opacity: 0;
+}
+
+/* ------------------------------------------------------------------ 加载页 */
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 14px;
+  background: var(--bg);
+  transition: opacity 620ms var(--ease), visibility 620ms;
+}
+
+.loader.is-done {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.loader-mark {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.62em;
+  color: var(--ink-faint);
+  text-indent: 0.62em;
+}
+
+.loader-line {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+}
+
+.loader-bar {
+  width: 128px;
+  height: 1px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.loader-bar span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--gold);
+  animation: loader-sweep 1.4s var(--ease) infinite;
+}
+
+@keyframes loader-sweep {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+/* ------------------------------------------------------------------ 降级页 */
+
+.fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  width: min(560px, calc(100% - 48px));
+  margin: 0 auto;
+  color: var(--ink);
+}
+
+.fallback[hidden] {
+  display: none;
+}
+
+.fallback h2 {
+  font-family: var(--serif);
+  font-size: 22px;
+  letter-spacing: 0.01em;
+}
+
+.fallback p {
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+.fallback ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.fallback li {
+  margin: 3px 0;
+}
+
+.fallback-foot {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-faint) !important;
+  font-size: 12px !important;
+}
+
+/* ------------------------------------------------------------ reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-bar span {
+    animation: none;
+    width: 100%;
+  }
+  * {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}

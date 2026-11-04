@@ -5,6 +5,8 @@
 *.zip
 # 无头浏览器验收截图（约 65 MB，跑 tools/qa.mjs 可重出）
 **/qa/*.png
+# 抓取用的原始数据缓存（solar-system/research/_raw 里的 HYG 星表 tgz 约 13.6 MB，跑 fetch-stars.mjs 可重下）
+**/research/_raw/
 # QA 用的临时 Chrome 配置目录
 .chrome-qa/
 .chrome-shot/

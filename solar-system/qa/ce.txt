@@ -1,0 +1,2 @@
+[1104/121604.892:ERROR:third_party\crashpad\crashpad\client\crashpad_client_win.cc:431] OpenProcess: 拒绝访问。 (0x5)
+[1104/121604.940:ERROR:third_party\crashpad\crashpad\client\crashpad_client_win.cc:145] crash server failed to launch, self-terminating

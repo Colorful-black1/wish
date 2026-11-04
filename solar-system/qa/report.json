@@ -1,0 +1,237 @@
+{
+  "title": "HELIOS / 太阳系观测台",
+  "generatedAt": "2026-11-04T07:17:43.787Z",
+  "url": "file:///E:/Codeing/ai-workspace/wish/solar-system/index.html",
+  "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "checks": [
+    {
+      "name": "页面启动",
+      "pass": true,
+      "detail": "ready"
+    },
+    {
+      "name": "WebGL2 上下文可用",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "九颗天体 + 八颗卫星已装载",
+      "pass": true,
+      "detail": 9
+    },
+    {
+      "name": "星表已内联（>8000 颗）",
+      "pass": true,
+      "detail": 8920
+    },
+    {
+      "name": "1440px 无横向滚动",
+      "pass": true,
+      "detail": {
+        "w": 1440,
+        "h": 900,
+        "scrollW": 1440
+      }
+    },
+    {
+      "name": "点击命中九颗天体（屏幕坐标 → 特写 → hash）",
+      "pass": true,
+      "detail": {
+        "clickHits": 9,
+        "clickTested": 9
+      }
+    },
+    {
+      "name": "Esc 从特写返回全景",
+      "pass": true,
+      "detail": {
+        "focus": -1,
+        "hidden": true
+      }
+    },
+    {
+      "name": "键盘 1–9 直达九颗天体",
+      "pass": true,
+      "detail": "0,1,2,3,4,5,6,7,8"
+    },
+    {
+      "name": "← → 在九颗天体间切换",
+      "pass": true,
+      "detail": {
+        "arrowFwd": 1,
+        "arrowBack": 0
+      }
+    },
+    {
+      "name": "? 打开帮助、Esc 关闭并把焦点还给触发元素",
+      "pass": true,
+      "detail": {
+        "helpOpen": true,
+        "helpClosed": true
+      }
+    },
+    {
+      "name": "三种尺度模式画面互不相同",
+      "pass": true,
+      "detail": {
+        "overview": "8abbe240d09fbba4",
+        "scale-orrery": "8c8e72db9b839355",
+        "scale-distance": "49fbb60b29eceecc",
+        "scale-true": "28d7dd2a0789ee00",
+        "closeup-sun": "81a3fd1fe5688c2f",
+        "closeup-mercury": "ec90816a506c11f9",
+        "closeup-venus": "216addf555a5e5f0",
+        "closeup-earth": "590f6323ac4ffe31",
+        "closeup-mars": "161b33e897ef0d40",
+        "closeup-jupiter": "c9270904b61c8bb5",
+        "closeup-saturn": "d35a764ca6a03bee",
+        "closeup-uranus": "ba75d7b2056be6b1",
+        "closeup-neptune": "8186884912dded8b",
+        "mobile": "ee6b33c612d0501d",
+        "mobileCloseup": "329b292c3d4c6374",
+        "uiOn": "b3bc3dbf62b261f7"
+      }
+    },
+    {
+      "name": "尺度模式都有失真标注",
+      "pass": true,
+      "detail": {
+        "orrery": {
+          "hash": "#date=2026-11-04&scale=orrery",
+          "note": "距离 r^0.55 压缩 ×0.25 · 半径 ×36 · 最小 3.2 px"
+        },
+        "distance": {
+          "hash": "#date=2026-11-04&scale=distance",
+          "note": "距离线性 ×1.00 · 半径 ×30 · 最小 2.6 px"
+        },
+        "true": {
+          "hash": "#date=2026-11-04&scale=true",
+          "note": "距离与半径均为线性真实值 · 无最小像素保护"
+        }
+      }
+    },
+    {
+      "name": "改日期后八颗行星位置全部变化",
+      "pass": true,
+      "detail": {
+        "moved": 8
+      }
+    },
+    {
+      "name": "九颗特写：同一 shot URL 两次截图 sha256 一致",
+      "pass": true,
+      "detail": {
+        "detOk": 9
+      }
+    },
+    {
+      "name": "九张特写互不相同（不是同一个球换颜色）",
+      "pass": true,
+      "detail": 9
+    },
+    {
+      "name": "不同日期全景截图不同",
+      "pass": true,
+      "detail": {
+        "hDateA": "ac4b3a653366cd99",
+        "hDateB": "058b91b2c8459883"
+      }
+    },
+    {
+      "name": "关闭背景后画面变化但天体仍在",
+      "pass": true,
+      "detail": {
+        "hBgOn": "e68dda3aaa84a9ba",
+        "hBgOff": "c33f9bd2cc7842e4"
+      }
+    },
+    {
+      "name": "URL hash 还原焦点 / 日期 / 尺度",
+      "pass": true,
+      "detail": {
+        "focus": 6,
+        "scale": "distance",
+        "date": "2031-05-06",
+        "panel": true
+      }
+    },
+    {
+      "name": "390px 宽无横向滚动",
+      "pass": true,
+      "detail": {
+        "w": 390,
+        "scrollW": 390,
+        "bodyScrollW": 390,
+        "roster": 9
+      }
+    },
+    {
+      "name": "移动端信息面板变底部抽屉",
+      "pass": true,
+      "detail": {
+        "open": true,
+        "w": 390,
+        "h": 473,
+        "gap": 0,
+        "inLowerHalf": true,
+        "scrollW": 390
+      }
+    },
+    {
+      "name": "末次加载无 console.error",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "末次加载无失败请求",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "末次加载无未捕获异常",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "consoleErrors": [],
+  "failedRequests": [],
+  "pageErrors": [],
+  "hasHorizontalOverflow": false,
+  "shots": {
+    "overview": "8abbe240d09fbba4",
+    "scale-orrery": "8c8e72db9b839355",
+    "scale-distance": "49fbb60b29eceecc",
+    "scale-true": "28d7dd2a0789ee00",
+    "closeup-sun": "81a3fd1fe5688c2f",
+    "closeup-mercury": "ec90816a506c11f9",
+    "closeup-venus": "216addf555a5e5f0",
+    "closeup-earth": "590f6323ac4ffe31",
+    "closeup-mars": "161b33e897ef0d40",
+    "closeup-jupiter": "c9270904b61c8bb5",
+    "closeup-saturn": "d35a764ca6a03bee",
+    "closeup-uranus": "ba75d7b2056be6b1",
+    "closeup-neptune": "8186884912dded8b",
+    "mobile": "ee6b33c612d0501d",
+    "mobileCloseup": "329b292c3d4c6374",
+    "uiOn": "b3bc3dbf62b261f7"
+  },
+  "boot": {
+    "webgl2": true,
+    "floatTargets": true,
+    "stars": 8920,
+    "bodies": 9,
+    "roster": 9,
+    "scale": "orrery",
+    "date": "2026-11-04",
+    "hash": ""
+  },
+  "media": {
+    "w": 1440,
+    "h": 900,
+    "scrollW": 1440
+  },
+  "clickHits": 9,
+  "clickTested": 9,
+  "passed": 23,
+  "failed": 0
+}
