@@ -1,0 +1,383 @@
+/* ==========================================================================
+   canvas.css — 图形框、Canvas 提示、时间线
+   ========================================================================== */
+.figure {
+  margin: 16px 0 0;
+  border: 1px solid var(--line);
+  background: #fff;
+  min-width: 0;
+}
+
+.figure__cap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 8px 11px;
+  border-bottom: 1px solid var(--line);
+  background: var(--card-2);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.figure__plot {
+  position: relative;
+  padding: 6px;
+  background-image: linear-gradient(rgba(31, 111, 178, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 111, 178, 0.055) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.figure__canvas {
+  width: 100%;
+  background: rgba(248, 250, 251, 0.72);
+  cursor: crosshair;
+}
+
+.figure__hint {
+  padding: 7px 11px;
+  border-top: 1px dashed var(--line);
+  color: var(--ink-3);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+.figure__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  padding: 7px 11px;
+  border-top: 1px dashed var(--line);
+}
+
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-3);
+  font-size: 10px;
+}
+
+.lg i {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.lg__line {
+  width: 14px !important;
+  height: 0 !important;
+  border-top: 2px solid var(--milvus);
+  border-radius: 0 !important;
+}
+
+.lg__diamond {
+  width: 9px !important;
+  height: 9px !important;
+  border: 1px solid var(--ink);
+  border-radius: 0 !important;
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+.figure__tip {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 240px;
+  padding: 6px 8px;
+  border: 1px solid var(--ink);
+  background: #fff;
+  box-shadow: 3px 3px 0 rgba(27, 36, 44, 0.12);
+  color: var(--ink-2);
+  font-size: 10px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+.figure__tip b {
+  font-family: var(--mono);
+  color: var(--app-deep);
+}
+
+.figure__tip span {
+  color: var(--ink-3);
+}
+
+.figure__data {
+  padding: 0 11px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.figure__data summary {
+  padding: 7px 0;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+.figure__data .tablewrap {
+  margin-top: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+/* ---------- 时间线 ---------- */
+.tl {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.tl__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 12px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.tl__title {
+  font-size: 12.5px;
+}
+
+.tl__sub {
+  margin-top: 1px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.tl__live {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tl__readout {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.btn--play .btn__glyph {
+  font-size: 10px;
+}
+
+.btn--play.is-playing {
+  border-color: var(--milvus);
+  background: var(--milvus-soft);
+  color: var(--milvus-deep);
+}
+
+.tl__scale {
+  padding: 34px 18px 6px;
+}
+
+.tl__track {
+  position: relative;
+  height: 7px;
+  border: 1px solid var(--line-2);
+  background: var(--paper-2);
+}
+
+.tl__fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--app) 0%, var(--milvus) 100%);
+}
+
+.tl__marker {
+  position: absolute;
+  top: -22px;
+  left: 0;
+  transform: translateX(-50%);
+  transition: left 0.05s linear;
+}
+
+.tl__marker span {
+  display: block;
+  padding: 1px 4px;
+  background: var(--ink);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.tl__marker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 15px;
+  width: 1px;
+  height: 14px;
+  background: var(--ink);
+}
+
+.tl__ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ink-3);
+}
+
+.tl__marks {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px 14px 10px;
+}
+
+.tl__mark {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.tl__dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  margin-top: 4px;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  background: var(--card);
+}
+
+.tl__label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tl__label b {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 9.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tl__label i {
+  font-family: var(--mono);
+  font-size: 8px;
+  font-style: normal;
+  color: var(--ink-3);
+}
+
+.tl__mark.is-done .tl__dot {
+  border-color: var(--milvus);
+  background: var(--milvus);
+}
+
+.tl__mark.is-done .tl__label b {
+  color: var(--ink-2);
+}
+
+.tl__mark.is-current .tl__dot {
+  border-color: var(--app);
+  background: var(--app);
+  box-shadow: 0 0 0 3px var(--app-soft);
+}
+
+.tl__mark.is-current .tl__label b {
+  color: var(--app-deep);
+  font-weight: 600;
+}
+
+.tl__list {
+  border-top: 1px solid var(--line);
+}
+
+.tl__item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.tl__item:last-child {
+  border-bottom: 0;
+}
+
+.tl__idx {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--line-2);
+}
+
+.tl__name {
+  color: var(--ink-2);
+}
+
+.tl__time {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.tl__item.is-done .tl__idx {
+  color: var(--milvus);
+}
+
+.tl__item.is-done .tl__name {
+  color: var(--ink);
+}
+
+.tl__item.is-current {
+  background: var(--app-soft);
+}
+
+.tl__item.is-current .tl__name {
+  color: var(--app-deep);
+  font-weight: 600;
+}
+
+/* ---------- 走向按钮 ---------- */
+.btn--walk .btn__glyph {
+  font-family: var(--mono);
+}
+
+@media (max-width: 700px) {
+  .tl__marks {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 6px;
+  }
+
+  .tl__scale {
+    padding: 30px 12px 4px;
+  }
+
+  .tl__head {
+    align-items: flex-start;
+  }
+
+  .tl__live {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

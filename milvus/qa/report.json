@@ -1,0 +1,319 @@
+{
+  "title": "一条查询，穿过 Milvus 的十站 · Milvus × RAG 执行链路",
+  "url": "file:///E:/Codeing/ai-workspace/wish/milvus/index.html",
+  "boot": {
+    "ready": true,
+    "stage": 1,
+    "chunks": 32,
+    "docs": 5,
+    "stations": 10,
+    "heroStats": [
+      "虚构文档5篇",
+      "当前块数32块",
+      "向量维度1024维",
+      "追踪站点10站"
+    ],
+    "track": 10,
+    "rail": 10,
+    "hash": "#chunk?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+  },
+  "media": {
+    "w": 1440,
+    "h": 900,
+    "scrollW": 1440
+  },
+  "hasHorizontalOverflow": false,
+  "stages": [
+    {
+      "n": 1,
+      "slug": "chunk",
+      "title": "切分 ChunkCHUNK",
+      "blocks": 4,
+      "lanes": 9,
+      "activeLanes": 1,
+      "canvases": 0,
+      "tables": 0,
+      "controls": 3,
+      "snippet": true,
+      "error": "",
+      "sourceLinks": 1,
+      "hash": "#chunk?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+    },
+    {
+      "n": 2,
+      "slug": "embed",
+      "title": "向量化 EmbedEMBED",
+      "blocks": 4,
+      "lanes": 9,
+      "activeLanes": 1,
+      "canvases": 1,
+      "tables": 2,
+      "controls": 2,
+      "snippet": true,
+      "error": "",
+      "sourceLinks": 2,
+      "hash": "#embed?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+    },
+    {
+      "n": 3,
+      "slug": "schema",
+      "title": "建模 SchemaSCHEMA",
+      "blocks": 4,
+      "lanes": 9,
+      "activeLanes": 4,
+      "canvases": 0,
+      "tables": 1,
+      "controls": 3,
+      "snippet": true,
+      "error": "",
+      "sourceLinks": 2,
+      "hash": "#schema?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+    },
+    {
+      "n": 4,
+      "slug": "index",
+      "title": "建索引 IndexINDEX",
+      "blocks": 4,
+      "lanes": 9,
+      "activeLanes": 6,
+      "canvases": 1,
+      "tables": 2,
+      "controls": 5,
+      "snippet": true,
+      "error": "",
+      "sourceLinks": 2,
+      "hash": "#index?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+    },
+    {
+      "n": 5,
+      "slug": "write",
+      "title": "写入与可见性WRITE",
+      "blocks": 4,
+      "lanes": 9,
+      "activeLanes": 7,
+      "canvases": 0,
+      "tables": 1,
+      "controls": 4,
+      "snippet": true,
+      "error": "",
+      "sourceLinks": 3,
+      "hash": "#write?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+    },
+    {
+      "n": 6,
+      "slug": "query",
+      "title": "查询向量化QUERY",
+      "blocks": 4,
+      "lanes": 9,
+      "activeLanes": 5,
+      "canvases": 0,
+      "tables": 1,
+      "controls": 5,
+      "snippet": true,
+      "error": "",
+      "sourceLinks": 2,
+      "hash": "#query?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+    },
+    {
+      "n": 7,
+      "slug": "route",
+      "title": "检索路由ROUTE",
+      "blocks": 4,
+      "lanes": 9,
+      "activeLanes": 5,
+      "canvases": 0,
+      "tables": 2,
+      "controls": 4,
+      "snippet": true,
+      "error": "",
+      "sourceLinks": 2,
+      "hash": "#route?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+    },
+    {
+      "n": 8,
+      "slug": "filter",
+      "title": "过滤与分区FILTER",
+      "blocks": 4,
+      "lanes": 9,
+      "activeLanes": 4,
+      "canvases": 0,
+      "tables": 3,
+      "controls": 6,
+      "snippet": true,
+      "error": "",
+      "sourceLinks": 2,
+      "hash": "#filter?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+    },
+    {
+      "n": 9,
+      "slug": "hybrid",
+      "title": "混合检索HYBRID",
+      "blocks": 4,
+      "lanes": 9,
+      "activeLanes": 4,
+      "canvases": 0,
+      "tables": 3,
+      "controls": 6,
+      "snippet": true,
+      "error": "",
+      "sourceLinks": 2,
+      "hash": "#hybrid?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+    },
+    {
+      "n": 10,
+      "slug": "answer",
+      "title": "重排与生成ANSWER",
+      "blocks": 4,
+      "lanes": 9,
+      "activeLanes": 1,
+      "canvases": 0,
+      "tables": 1,
+      "controls": 4,
+      "snippet": true,
+      "error": "",
+      "sourceLinks": 2,
+      "hash": "#answer?q=q1&size=120&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=8&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+    }
+  ],
+  "chunkParam": {
+    "before": 32,
+    "after": 26,
+    "overlapAt300": 0
+  },
+  "efParam": {
+    "visitedLow": 21,
+    "visitedHigh": 34,
+    "recallLow": 0.4,
+    "recallHigh": 1
+  },
+  "ivf": {
+    "recallNprobe1": 0.4,
+    "recallNprobe8": 1,
+    "buckets": 8,
+    "legend": "菱形 = 聚类中心；颜色 = 簇"
+  },
+  "filter": {
+    "expression": "acl == \"finance\"",
+    "allowed": 5,
+    "pre": 1,
+    "post": 0,
+    "preHit": 1,
+    "postHit": 0
+  },
+  "hybrid": {
+    "topDenseHeavy": "C32",
+    "topSparseHeavy": "C28"
+  },
+  "route": {
+    "recallCand1": 0.4,
+    "recallCand5": 1,
+    "naive": [
+      "C27",
+      "C32"
+    ]
+  },
+  "answer": {
+    "defaultRefused": true,
+    "best": 0.408,
+    "lowThresholdRefused": false,
+    "hard": true,
+    "weakLines": 5,
+    "refusedCard": false
+  },
+  "timeline": {
+    "phases": 6,
+    "boundedLag": 0.91,
+    "eventualLag": 3.23,
+    "tableRows": 8,
+    "total": 10.17,
+    "undefinedCells": 0,
+    "visibleCells": 27
+  },
+  "insertPlay": {
+    "clicked": true,
+    "markerLeft": "16.59%",
+    "playing": true
+  },
+  "normalize": {
+    "normSame": true,
+    "unnormSame": false,
+    "cos2": [
+      "C20",
+      "C24",
+      "C18",
+      "C13",
+      "C08"
+    ],
+    "ip2": [
+      "C20",
+      "C24",
+      "C18",
+      "C13",
+      "C19"
+    ]
+  },
+  "bm25Off": {
+    "sparse": 0,
+    "rows": 5,
+    "notice": "BM25 字段未启用（站 3 关闭），这一站只能展示 dense 一路。"
+  },
+  "mismatch": {
+    "hasCard": true,
+    "title": "检索被拒绝：维度不匹配",
+    "code": "dimension mismatch: expected 1024, got 768"
+  },
+  "budget": {
+    "usedLow": 199,
+    "truncLow": true,
+    "usedHigh": 458,
+    "truncHigh": false,
+    "bar": true
+  },
+  "citation": {
+    "hasButton": true,
+    "id": "C24",
+    "stage": 1,
+    "highlighted": true,
+    "docHit": true
+  },
+  "keyboard": {
+    "stage": 4
+  },
+  "autoplay": {
+    "on": true,
+    "off": true
+  },
+  "hashSet": "#index?M=24&size=160",
+  "hashRestore": {
+    "stage": 4,
+    "M": 24,
+    "size": 160,
+    "hash": "#index?q=q1&size=160&ov=40&head=1&norm=1&dim=1024&bm=1&dyn=0&pk=int64&it=HNSW&M=24&efc=200&nl=8&metric=COSINE&cl=Bounded&batch=500&t=1&limit=5&ef=64&np=3&grow=20&nodes=3&shards=2&cand=5&fm=pre&fl=1&dept=all&from=&acl=all&rk=weighted&wd=0.8&ws=1&k1=1.2&b=0.75&rerank=1&topn=5&budget=700&th=0.45&mm=0"
+  },
+  "modal": {
+    "opened": true,
+    "locked": true,
+    "focused": "icon-btn modal__close",
+    "closed": true,
+    "restored": true
+  },
+  "externalResources": [],
+  "mobile": {
+    "scrollW": 390,
+    "innerW": 390,
+    "overflow": false,
+    "stage": 4,
+    "railScroll": true,
+    "heroTitle": "一条查询，穿过 Milvus 的十站"
+  },
+  "mobileStage": {
+    "overflow": false,
+    "scrollW": 390,
+    "innerW": 390,
+    "blocks": 4,
+    "tables": 3
+  },
+  "consoleErrors": [],
+  "failedRequests": [],
+  "pageErrors": []
+}

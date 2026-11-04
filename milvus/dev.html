@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>一条查询，穿过 Milvus 的十站 · Milvus × RAG 执行链路</title>
+    <meta
+      name="description"
+      content="交互式拆解 RAG 里的 Milvus：从切分、向量化、Schema、索引，到写入可见性、检索路由、过滤、混合检索与重排生成。十站、两泳道、参数一改数字就变；零外部请求，可离线打开。"
+    />
+    <meta name="color-scheme" content="light" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2f4f6'/%3E%3Cpath d='M5 10h22M5 16h22M5 22h22' stroke='%231f6fb2' stroke-width='1.4'/%3E%3Ccircle cx='10' cy='10' r='3' fill='%230e7f86'/%3E%3Ccircle cx='21' cy='16' r='3' fill='%231f6fb2'/%3E%3Ccircle cx='13' cy='22' r='3' fill='%230e7f86'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="src/css/base.css" />
+    <link rel="stylesheet" href="src/css/layout.css" />
+    <link rel="stylesheet" href="src/css/sections.css" />
+    <link rel="stylesheet" href="src/css/canvas.css" />
+  </head>
+
+  <body>
+    <a class="skip" href="#workspace">跳到十站追踪</a>
+
+    <header class="topbar">
+      <a class="brand" href="../index.html" aria-label="返回许愿清单">
+        <span class="brand__glyph" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </span>
+        <span class="brand__text">
+          <span class="brand__cn" id="brandCn">Milvus × RAG</span>
+          <span class="brand__en" id="brandEn">EXECUTION TRACE · 10 STATIONS</span>
+        </span>
+      </a>
+
+      <p class="topbar__status" id="heroStatus">本地模拟 · 零外部请求</p>
+
+      <div class="topbar__tools">
+        <span class="topbar__ver">MILVUS 3.0.x · 2026-11-03 抓取</span>
+        <button type="button" class="btn btn--ghost btn--mini" id="btnAbout">关于与口径</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top" aria-labelledby="heroTitle">
+        <div class="hero__grid">
+          <div class="hero__lead">
+            <p class="eyebrow" id="heroEyebrow">MILVUS × RAG · EXECUTION TRACE</p>
+            <h1 class="hero__title" id="heroTitle"></h1>
+            <p class="hero__sub" id="heroSub"></p>
+            <div class="hero__actions">
+              <button type="button" class="btn btn--solid" id="btnStart">开始追踪</button>
+              <button type="button" class="btn btn--ghost" id="btnConclusion">直接看结论</button>
+            </div>
+            <p class="hero__hint" id="heroHint"></p>
+          </div>
+
+          <div class="hero__map" aria-hidden="true">
+            <div class="blueprint">
+              <div class="blueprint__cap"><span>FIG. 01</span><span>两条泳道 · 十站</span></div>
+              <div class="blueprint__lane blueprint__lane--app">
+                <span class="blueprint__tag">应用侧</span>
+                <i class="bp-node" style="--x: 8%">切分</i>
+                <i class="bp-node" style="--x: 24%">embed</i>
+                <i class="bp-node" style="--x: 58%">查询向量</i>
+                <i class="bp-node" style="--x: 86%">重排 / 生成</i>
+              </div>
+              <div class="blueprint__lane blueprint__lane--milvus">
+                <span class="blueprint__tag">Milvus 侧</span>
+                <i class="bp-node" style="--x: 34%">Proxy</i>
+                <i class="bp-node" style="--x: 46%">Streaming</i>
+                <i class="bp-node" style="--x: 58%">Query</i>
+                <i class="bp-node" style="--x: 70%">Data</i>
+                <i class="bp-node" style="--x: 82%">对象存储</i>
+              </div>
+              <div class="blueprint__ticks">
+                <span><b>01</b>切分</span><span><b>02</b>向量</span><span><b>03</b>Schema</span>
+                <span><b>04</b>索引</span><span><b>05</b>写入</span><span><b>06</b>查询向量</span>
+                <span><b>07</b>路由</span><span><b>08</b>过滤</span><span><b>09</b>混合</span><span><b>10</b>生成</span>
+              </div>
+              <p class="blueprint__note">
+                写入：Client → Proxy → Streaming → WAL → growing / sealed → Data Node<br />
+                查询：SDK → Proxy → Streaming + Query Node → 三级归并 → Client
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero__stats" id="heroStats"></div>
+
+        <section class="conclusion" id="conclusion" aria-label="结论"></section>
+      </section>
+
+      <section class="workspace" id="workspace" aria-label="十站追踪">
+        <div class="trackbar">
+          <div class="trackbar__head">
+            <div class="trackbar__title">
+              <span class="eyebrow">TRACK · 十站</span>
+              <b>写入链路 → 查询链路</b>
+              <span class="trackbar__hint">← → 换站 · 1–9 / 0 直达 · 空格 自动演示</span>
+            </div>
+            <div class="trackbar__tools">
+              <button type="button" class="autoBtn" id="btnAuto" aria-pressed="false">
+                <span id="btnAutoLabel">自动演示</span>
+                <b>SPACE</b>
+              </button>
+            </div>
+          </div>
+          <nav class="track" id="track" aria-label="十站进度轨道"></nav>
+        </div>
+
+        <div class="workbench">
+          <aside class="rail" id="rail" aria-label="站点列表"></aside>
+          <section class="stage" id="stage" aria-label="第 1 站" aria-live="polite">
+            <header class="stage__head" id="stageHead"></header>
+            <div class="stage__body" id="stageBody"></div>
+            <footer class="stagefoot">
+              <button type="button" class="btn btn--ghost" id="btnPrev">← 上一站</button>
+              <span class="stagefoot__now" id="nowLabel">01 / 10</span>
+              <button type="button" class="btn btn--ghost" id="btnNext">下一站 →</button>
+            </footer>
+          </section>
+        </div>
+      </section>
+
+      <section class="appendix" id="appendix" aria-label="口径汇总"></section>
+    </main>
+
+    <footer class="sitefoot">
+      <div class="sitefoot__inner">
+        <p>
+          <b>Milvus × RAG 执行链路</b> · 单文件离线页 · 所有“运行”都在浏览器内模拟，不连接真实 Milvus。
+        </p>
+        <p>
+          语料为虚构的《VectorOps 向量库产品知识库》；Milvus 与 Zilliz 是各自权利人的商标，本页为非官方学习演示。
+        </p>
+        <p class="sitefoot__meta">Milvus 3.0.x · 2026-11-03 抓取 · 零外部请求</p>
+      </div>
+    </footer>
+
+    <div class="modal" id="about" role="dialog" aria-modal="true" aria-labelledby="aboutTitle" aria-hidden="true">
+      <div class="modal__box"></div>
+    </div>
+
+    <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <noscript>
+      <div class="noscript">这一页依赖 JavaScript 在本地计算；请允许脚本后重新打开。</div>
+    </noscript>
+
+    <script src="src/js/data.corpus.js"></script>
+    <script src="src/js/data.questions.js"></script>
+    <script src="src/js/data.milvus.js"></script>
+    <script src="src/js/engine.text.js"></script>
+    <script src="src/js/engine.embed.js"></script>
+    <script src="src/js/engine.bm25.js"></script>
+    <script src="src/js/engine.hnsw.js"></script>
+    <script src="src/js/engine.fuse.js"></script>
+    <script src="src/js/engine.pipeline.js"></script>
+    <script src="src/js/ui.cards.js"></script>
+    <script src="src/js/ui.stage.js"></script>
+    <script src="src/js/ui.timeline.js"></script>
+    <script src="src/js/stages.chunk.js"></script>
+    <script src="src/js/stages.embed.js"></script>
+    <script src="src/js/stages.schema.js"></script>
+    <script src="src/js/stages.index.js"></script>
+    <script src="src/js/stages.write.js"></script>
+    <script src="src/js/stages.query.js"></script>
+    <script src="src/js/stages.route.js"></script>
+    <script src="src/js/stages.filter.js"></script>
+    <script src="src/js/stages.hybrid.js"></script>
+    <script src="src/js/stages.answer.js"></script>
+    <script src="src/js/app.js"></script>
+  </body>
+</html>
