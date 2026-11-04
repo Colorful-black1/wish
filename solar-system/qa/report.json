@@ -1,6 +1,6 @@
 {
   "title": "HELIOS / 太阳系观测台",
-  "generatedAt": "2026-11-04T07:17:43.787Z",
+  "generatedAt": "2026-11-04T16:08:42.911Z",
   "url": "file:///E:/Codeing/ai-workspace/wish/solar-system/index.html",
   "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
   "checks": [
@@ -74,22 +74,22 @@
       "name": "三种尺度模式画面互不相同",
       "pass": true,
       "detail": {
-        "overview": "8abbe240d09fbba4",
-        "scale-orrery": "8c8e72db9b839355",
-        "scale-distance": "49fbb60b29eceecc",
-        "scale-true": "28d7dd2a0789ee00",
-        "closeup-sun": "81a3fd1fe5688c2f",
-        "closeup-mercury": "ec90816a506c11f9",
-        "closeup-venus": "216addf555a5e5f0",
-        "closeup-earth": "590f6323ac4ffe31",
-        "closeup-mars": "161b33e897ef0d40",
-        "closeup-jupiter": "c9270904b61c8bb5",
-        "closeup-saturn": "d35a764ca6a03bee",
-        "closeup-uranus": "ba75d7b2056be6b1",
-        "closeup-neptune": "8186884912dded8b",
-        "mobile": "ee6b33c612d0501d",
-        "mobileCloseup": "329b292c3d4c6374",
-        "uiOn": "b3bc3dbf62b261f7"
+        "overview": "dc3ead4c1e55c381",
+        "scale-orrery": "c602da4e860d9cbc",
+        "scale-distance": "64f161b107ef7dc6",
+        "scale-true": "7907a3d5d5d78be2",
+        "closeup-sun": "df697344c877c0fc",
+        "closeup-mercury": "1266c8d8a485656e",
+        "closeup-venus": "752b7c632489134e",
+        "closeup-earth": "155294d95ce2d6c2",
+        "closeup-mars": "97fc275b5420239d",
+        "closeup-jupiter": "decea047e5623432",
+        "closeup-saturn": "b27a43a0778b4002",
+        "closeup-uranus": "7402d1d7cd509973",
+        "closeup-neptune": "2cc7369be63443be",
+        "mobile": "16f4caa9ffb25a27",
+        "mobileCloseup": "275afaacca6ead50",
+        "uiOn": "5c6961f761e274c2"
       }
     },
     {
@@ -133,16 +133,17 @@
       "name": "不同日期全景截图不同",
       "pass": true,
       "detail": {
-        "hDateA": "ac4b3a653366cd99",
-        "hDateB": "058b91b2c8459883"
+        "hDateA": "a3d5f08728ffaa1a",
+        "hDateB": "14d310c028134cd5"
       }
     },
     {
       "name": "关闭背景后画面变化但天体仍在",
       "pass": true,
       "detail": {
-        "hBgOn": "e68dda3aaa84a9ba",
-        "hBgOff": "c33f9bd2cc7842e4"
+        "hBgOn": "990c70d6898fc34f",
+        "hBgOff": "e97e3436acad5696",
+        "bgApplied": false
       }
     },
     {
@@ -153,6 +154,114 @@
         "scale": "distance",
         "date": "2031-05-06",
         "panel": true
+      }
+    },
+    {
+      "name": "四个运动读数与 research/motion-sources.md 一致",
+      "pass": true,
+      "detail": {
+        "pec": 19.4,
+        "apexRa": 277,
+        "apexDec": 30,
+        "gal": 220,
+        "periodYr": 240000000,
+        "kpc": 8.3,
+        "ly": 27000,
+        "cmb": 369.82,
+        "cmbErr": 0.11,
+        "steps": 6
+      }
+    },
+    {
+      "name": "时间倍率是六档",
+      "pass": true,
+      "detail": 6
+    },
+    {
+      "name": "F 键循环三种参考系",
+      "pass": true,
+      "detail": [
+        "sun",
+        "galactic",
+        "cmb"
+      ]
+    },
+    {
+      "name": "银河参考系下轨迹是随太阳漂移的螺旋",
+      "pass": true,
+      "detail": {
+        "planets": 8,
+        "samples": 96,
+        "span": 3,
+        "drift": 4.001586266544761,
+        "sunFrameOffset": 0,
+        "glOn": 8
+      }
+    },
+    {
+      "name": "三种参考系画面互不相同",
+      "pass": true,
+      "detail": {
+        "sun": "61c8b89dcf778d7a",
+        "galactic": "1c61d6b0507ef403",
+        "cmb": "d2f7b6907f5fefc5"
+      }
+    },
+    {
+      "name": "1 亿年/秒下银弧与时刻都在推进",
+      "pass": true,
+      "detail": {
+        "beforeArc": 0.00005178693028749397,
+        "afterArc": 603.1200517951812,
+        "before": "2034-07-11",
+        "after": "公元 4.02 亿年"
+      }
+    },
+    {
+      "name": "2050 之后行星继续运行（不再冻结、不弹提示）",
+      "pass": true,
+      "detail": {
+        "moved": 8,
+        "total": 8,
+        "lockEl": false
+      }
+    },
+    {
+      "name": "LOD 四档连续缩放都有画面（无黑屏）",
+      "pass": true,
+      "detail": {
+        "lodBytes": [
+          1005729,
+          980952,
+          980683,
+          1211206
+        ]
+      }
+    },
+    {
+      "name": "LOD 四档画面互不相同",
+      "pass": true,
+      "detail": {
+        "1": "c678ed42d87d5c32",
+        "12": "783bb51b8101f9e9",
+        "400": "3668054980b49cb8",
+        "3000": "02c07b6bdf0ea512"
+      }
+    },
+    {
+      "name": "渲染器是真 GPU（不是 SwiftShader / llvmpipe）",
+      "pass": true,
+      "detail": {
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      }
+    },
+    {
+      "name": "1080p 下标准档 ≥ 55 fps（真机 GPU）",
+      "pass": true,
+      "detail": {
+        "standard": 183.5,
+        "high": 182.1,
+        "cinematic": 186.2
       }
     },
     {
@@ -198,22 +307,60 @@
   "pageErrors": [],
   "hasHorizontalOverflow": false,
   "shots": {
-    "overview": "8abbe240d09fbba4",
-    "scale-orrery": "8c8e72db9b839355",
-    "scale-distance": "49fbb60b29eceecc",
-    "scale-true": "28d7dd2a0789ee00",
-    "closeup-sun": "81a3fd1fe5688c2f",
-    "closeup-mercury": "ec90816a506c11f9",
-    "closeup-venus": "216addf555a5e5f0",
-    "closeup-earth": "590f6323ac4ffe31",
-    "closeup-mars": "161b33e897ef0d40",
-    "closeup-jupiter": "c9270904b61c8bb5",
-    "closeup-saturn": "d35a764ca6a03bee",
-    "closeup-uranus": "ba75d7b2056be6b1",
-    "closeup-neptune": "8186884912dded8b",
-    "mobile": "ee6b33c612d0501d",
-    "mobileCloseup": "329b292c3d4c6374",
-    "uiOn": "b3bc3dbf62b261f7"
+    "overview": "dc3ead4c1e55c381",
+    "scale-orrery": "c602da4e860d9cbc",
+    "scale-distance": "64f161b107ef7dc6",
+    "scale-true": "7907a3d5d5d78be2",
+    "closeup-sun": "df697344c877c0fc",
+    "closeup-mercury": "1266c8d8a485656e",
+    "closeup-venus": "752b7c632489134e",
+    "closeup-earth": "155294d95ce2d6c2",
+    "closeup-mars": "97fc275b5420239d",
+    "closeup-jupiter": "decea047e5623432",
+    "closeup-saturn": "b27a43a0778b4002",
+    "closeup-uranus": "7402d1d7cd509973",
+    "closeup-neptune": "2cc7369be63443be",
+    "mobile": "16f4caa9ffb25a27",
+    "mobileCloseup": "275afaacca6ead50",
+    "uiOn": "5c6961f761e274c2"
+  },
+  "shotBytes": {
+    "01-overview.png": 992596,
+    "scale-orrery.png": 847727,
+    "scale-distance.png": 837900,
+    "scale-true.png": 836257,
+    "closeup-sun.png": 1307191,
+    "closeup-sun-again.png": 1307191,
+    "closeup-mercury.png": 1096490,
+    "closeup-mercury-again.png": 1096490,
+    "closeup-venus.png": 1095086,
+    "closeup-venus-again.png": 1095086,
+    "closeup-earth.png": 1182525,
+    "closeup-earth-again.png": 1182525,
+    "closeup-mars.png": 993972,
+    "closeup-mars-again.png": 993972,
+    "closeup-jupiter.png": 1113644,
+    "closeup-jupiter-again.png": 1113644,
+    "closeup-saturn.png": 707154,
+    "closeup-saturn-again.png": 707154,
+    "closeup-uranus.png": 1135889,
+    "closeup-uranus-again.png": 1135889,
+    "closeup-neptune.png": 1140833,
+    "closeup-neptune-again.png": 1140833,
+    "date-2026-01-15.png": 1005041,
+    "date-2026-07-15.png": 1005224,
+    "bg-on.png": 1018253,
+    "bg-off.png": 549751,
+    "frame-sun.png": 992743,
+    "frame-galactic.png": 1015489,
+    "frame-cmb.png": 991505,
+    "lod-1.png": 1005729,
+    "lod-12.png": 980952,
+    "lod-400.png": 980683,
+    "lod-3000.png": 1211206,
+    "mobile-390.png": 275568,
+    "mobile-closeup.png": 177644,
+    "05-ui-on.png": 1026252
   },
   "boot": {
     "webgl2": true,
@@ -225,6 +372,7 @@
     "date": "2026-11-04",
     "hash": ""
   },
+  "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)",
   "media": {
     "w": 1440,
     "h": 900,
@@ -232,6 +380,25 @@
   },
   "clickHits": 9,
   "clickTested": 9,
-  "passed": 23,
+  "motion": {
+    "pec": 19.4,
+    "apexRa": 277,
+    "apexDec": 30,
+    "gal": 220,
+    "periodYr": 240000000,
+    "kpc": 8.3,
+    "ly": 27000,
+    "cmb": 369.82,
+    "cmbErr": 0.11,
+    "steps": 6
+  },
+  "frameTimeMs": 5.1,
+  "frameTimeNote": "真机 GPU（ANGLE/D3D11）实测，1080p 级画面",
+  "perf1080": {
+    "standard": 5.45,
+    "high": 5.49,
+    "cinematic": 5.37
+  },
+  "passed": 34,
   "failed": 0
 }

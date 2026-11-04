@@ -26,10 +26,19 @@ if (!CHROME) {
 }
 
 const PORT = 9333 + Math.floor(Math.random() * 300);
-const profile = path.join(ROOT, '.chrome-qa');
 const BASE = pathToFileURL(path.join(ROOT, 'index.html')).href;
 
-fs.rmSync(profile, { recursive: true, force: true });
+/* 上一次的 Chrome 没退干净、或配置目录被沙箱加了「禁止删除」时，删不掉就换一个目录，
+   不要让整轮验收因为清不掉缓存直接挂掉。 */
+let profile = path.join(ROOT, '.chrome-qa');
+try {
+  fs.rmSync(profile, { recursive: true, force: true });
+} catch {
+  profile = path.join(ROOT, `.chrome-qa-${process.pid}`);
+}
+
+/* 只允许 GPU：不再提供 SwiftShader 回退。拿不到真显卡就让验收失败。 */
+const GPU_ARGS = ['--enable-gpu', '--use-gl=angle', '--use-angle=d3d11', '--disable-gpu-sandbox', '--ignore-gpu-blocklist', '--disable-software-rasterizer'];
 
 const chrome = spawn(
   CHROME,
@@ -41,8 +50,7 @@ const chrome = spawn(
     '--hide-scrollbars',
     '--mute-audio',
     '--allow-file-access-from-files',
-    '--enable-unsafe-swiftshader',
-    '--use-angle=swiftshader',
+    ...GPU_ARGS,
     '--force-device-scale-factor=1',
     `--user-data-dir=${profile}`,
     `--remote-debugging-port=${PORT}`,
@@ -143,10 +151,26 @@ async function evaluate(expression) {
 }
 
 async function shot(name) {
+  // 先等两帧：GPU 合成器偶尔会在帧还没提交时被抓拍，同一 URL 两次截图就会不一致
+  await evaluate(`new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(1))))`);
   const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   const buf = Buffer.from(r.data, 'base64');
   fs.writeFileSync(path.join(OUT, name), buf);
+  report.shotBytes[name] = buf.length;
   return crypto.createHash('sha256').update(buf).digest('hex').slice(0, 16);
+}
+
+/* 等画面稳定后再截：连续两次结果相同才返回。
+   GPU 比 SwiftShader 快一个数量级，固定的 sleep 很容易在过渡还没走完时就抓拍。 */
+async function stableShot(name, tries = 12) {
+  let prev = null;
+  for (let i = 0; i < tries; i++) {
+    const h = await shot(name);
+    if (prev === h) return h;
+    prev = h;
+    await sleep(180);
+  }
+  return prev;
 }
 
 async function viewport(w, h) {
@@ -193,6 +217,7 @@ const report = {
   pageErrors: [],
   hasHorizontalOverflow: false,
   shots: {},
+  shotBytes: {},
 };
 
 function check(name, pass, detail) {
@@ -216,6 +241,17 @@ report.boot = await evaluate(`({
   hash: location.hash
 })`);
 check('WebGL2 上下文可用', report.boot.webgl2);
+
+/* 记录实际渲染器：验收数字到底是 GPU 还是软件渲染，必须写清楚 */
+const rendererInfo = await evaluate(`(() => {
+  const c = document.getElementById('gl');
+  const gl = c && c.getContext('webgl2');
+  if (!gl) return 'no-webgl2';
+  const e = gl.getExtension('WEBGL_debug_renderer_info');
+  return String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+})()`);
+report.renderer = rendererInfo;
+console.log(`  渲染器 ${String(rendererInfo).slice(0, 100)}`);
 check('九颗天体 + 八颗卫星已装载', report.boot.bodies === 9 && report.boot.roster === 9, report.boot.bodies);
 check('星表已内联（>8000 颗）', report.boot.stars > 8000, report.boot.stars);
 
@@ -340,11 +376,9 @@ let detOk = 0;
 for (const id of FOCUSES) {
   const u = `${SHOT_BASE}&focus=${id}&date=2026-11-04&scale=orrery&ui=0`;
   const ok1 = await navigate(u);
-  await sleep(160);
-  const h1 = await shot(`closeup-${id}.png`);
+  const h1 = await stableShot(`closeup-${id}.png`);
   const ok2 = await navigate(u);
-  await sleep(160);
-  const h2 = await shot(`closeup-${id}-again.png`);
+  const h2 = await stableShot(`closeup-${id}-again.png`);
   report.shots['closeup-' + id] = h1;
   if (ok1 === 'ready' && ok2 === 'ready' && h1 === h2) detOk++;
   else console.log('  determinism mismatch for', id, ok1, ok2, h1, h2);
@@ -367,10 +401,14 @@ check('不同日期全景截图不同', hDateA !== hDateB, { hDateA, hDateB });
 await navigate(`${SHOT_BASE}&focus=&date=2026-11-04&scale=orrery&ui=0`);
 await sleep(200);
 const hBgOn = await shot('bg-on.png');
-await evaluate(`window.HELIOS_APP.state.bgOn = false`);
+const bgApplied = await evaluate(`(() => {
+  const app = window.HELIOS_APP;
+  app.toggleBackground ? app.toggleBackground() : (app.state.bgOn = !app.state.bgOn);
+  return app.state.bgOn;
+})()`);
 await sleep(220);
 const hBgOff = await shot('bg-off.png');
-check('关闭背景后画面变化但天体仍在', hBgOn !== hBgOff, { hBgOn, hBgOff });
+check('关闭背景后画面变化但天体仍在', hBgOn !== hBgOff && bgApplied === false, { hBgOn, hBgOff, bgApplied });
 
 /* URL 还原：#body / #date / #scale 三个都要能还原 */
 await navigate(BASE + '#body=saturn&date=2031-05-06&scale=distance');
@@ -386,6 +424,181 @@ check(
   restored.focus === 6 && restored.scale === 'distance' && restored.date === '2031-05-06',
   restored
 );
+
+/* ═══════════════ v2：四层运动、参考系、LOD、时间倍率 ═══════════════ */
+
+/* 四个运动数字必须与 research/motion-sources.md 一致 */
+const motionSrc = fs.readFileSync(path.join(ROOT, 'research/motion-sources.md'), 'utf8');
+const motionNums = await evaluate(`(() => {
+  const M = window.HELIOS_MOTION;
+  return {
+    pec: M.sun.peculiar.speedKms,
+    apexRa: M.sun.peculiar.apexRaDeg,
+    apexDec: M.sun.peculiar.apexDecDeg,
+    gal: M.sun.galactic.speedKms,
+    periodYr: M.sun.galactic.periodYr,
+    kpc: M.sun.galactic.radiusKpc,
+    ly: M.sun.galactic.radiusLy,
+    cmb: M.sun.cmb.speedKms,
+    cmbErr: M.sun.cmb.uncertaintyKms,
+    steps: M.timeSteps.length,
+  };
+})()`);
+report.motion = motionNums;
+const srcHasAll = ['19.4', '220', '2.4 亿年', '369.82', '8.3 kpc', '27,000'].every((s) => motionSrc.includes(s));
+check(
+  '四个运动读数与 research/motion-sources.md 一致',
+  motionNums.pec === 19.4 &&
+    motionNums.gal === 220 &&
+    motionNums.periodYr === 2.4e8 &&
+    motionNums.kpc === 8.3 &&
+    motionNums.ly === 27000 &&
+    motionNums.cmb === 369.82 &&
+    Math.abs(motionNums.apexDec - 30) < 0.01 &&
+    srcHasAll,
+  motionNums
+);
+check('时间倍率是六档', motionNums.steps === 6, motionNums.steps);
+
+/* F 键循环三种参考系 */
+await navigate(BASE + '?shot=0');
+await sleep(800);
+const frameCycle = [];
+for (let i = 0; i < 3; i++) {
+  frameCycle.push(await evaluate(`window.HELIOS_APP.state.frame`));
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'f', code: 'KeyF', windowsVirtualKeyCode: 70 });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'f', code: 'KeyF', windowsVirtualKeyCode: 70 });
+  await sleep(900);
+}
+check('F 键循环三种参考系', frameCycle.join(',') === 'sun,galactic,cmb', frameCycle);
+
+/* 轨迹：银河系下有螺旋数据，太阳系下位移为零 */
+const trailInfo = await evaluate(`(() => {
+  const app = window.HELIOS_APP;
+  app.setFrame('galactic');
+  const t = app.trails();
+  const first = t.planets[0] || [];
+  const last = first[first.length - 1] || [0, 0, 0];
+  const head = first[0] || [0, 0, 0];
+  const drift = Math.hypot(last[0] - head[0], last[1] - head[1], last[2] - head[2]);
+  app.setFrame('sun');
+  const t0 = app.trails();
+  const sunTrail = t0.sun || [];
+  return {
+    planets: t.planets.length,
+    samples: first.length,
+    span: t.span,
+    drift,
+    sunFrameOffset: Math.hypot.apply(null, window.HELIOS_APP.world.offset),
+    glOn: t0.planets.length,
+  };
+})()`);
+check(
+  '银河参考系下轨迹是随太阳漂移的螺旋',
+  trailInfo.planets === 8 && trailInfo.samples >= 64 && trailInfo.drift > 0.5 && trailInfo.sunFrameOffset < 1e-9,
+  trailInfo
+);
+
+/* 参考系切换后画面必须不同 */
+const frameShots = {};
+for (const f of ['sun', 'galactic', 'cmb']) {
+  await evaluate(`window.HELIOS_APP.setFrame('${f}')`);
+  await sleep(900);
+  frameShots[f] = await shot('frame-' + f + '.png');
+}
+check('三种参考系画面互不相同', new Set(Object.values(frameShots)).size === 3, frameShots);
+
+/* 1 亿年/秒：太阳在银河里明显移动，读数同步变化 */
+const before = await evaluate(`window.HELIOS_APP.readouts()`);
+await evaluate(`window.HELIOS_APP.setTimeStep('gyr')`);
+await sleep(4000);
+const after = await evaluate(`window.HELIOS_APP.readouts()`);
+check(
+  '1 亿年/秒下银弧与时刻都在推进',
+  after.arcDeg > before.arcDeg + 1 && String(after.date) !== String(before.date),
+  { beforeArc: before.arcDeg, afterArc: after.arcDeg, before: before.date, after: after.date }
+);
+/* 2050 之后不再冻结：行星继续算下去 */
+const farFuture = await evaluate(`(() => {
+  const app = window.HELIOS_APP;
+  app.setDateString('2050-06-01');
+  const a = app.demo(app.state.jd);
+  app.setDateString('2380-06-01');
+  const b = app.demo(app.state.jd);
+  let moved = 0;
+  Object.keys(a).forEach(function (k) { if (Math.abs(a[k].lon - b[k].lon) > 1e-6) moved++; });
+  return { moved: moved, total: Object.keys(a).length, lockEl: !!document.getElementById('planetLock') };
+})()`);
+check(
+  '2050 之后行星继续运行（不再冻结、不弹提示）',
+  farFuture.moved === farFuture.total && farFuture.total === 8 && !farFuture.lockEl,
+  farFuture
+);
+await evaluate(`window.HELIOS_APP.setDateString('2026-11-04')`);
+await evaluate(`window.HELIOS_APP.setTimeStep('hour')`);
+await evaluate(`window.HELIOS_APP.pause()`);
+
+/* LOD 连续缩放：L1 → L2 → L3，不黑屏、不重复 */
+const lodShots = {};
+for (const z of [1, 12, 400, 3000]) {
+  await navigate(`${SHOT_BASE}&focus=&date=2026-11-04&scale=distance&ui=0&zoom=${z}`);
+  await sleep(220);
+  lodShots[z] = await shot(`lod-${z}.png`);
+}
+const lodBytes = [1, 12, 400, 3000].map((z) => report.shotBytes[`lod-${z}.png`]);
+check('LOD 四档连续缩放都有画面（无黑屏）', lodBytes.every((b) => b > 40000), { lodBytes });
+check('LOD 四档画面互不相同', new Set(Object.values(lodShots)).size === 4, lodShots);
+
+/* 帧耗时（真机 GPU，1080p 级画面） */
+const frameTime = await evaluate(`new Promise((resolve) => {
+  let n = 0, t0 = performance.now();
+  function tick(){
+    n++;
+    if (n >= 8 || performance.now() - t0 > 40000) return resolve((performance.now() - t0) / Math.max(n, 1));
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})`);
+report.frameTimeMs = Math.round(frameTime * 10) / 10;
+report.renderer = rendererInfo;
+const software = /swiftshader|software|llvmpipe/i.test(String(rendererInfo));
+report.frameTimeNote = '真机 GPU（ANGLE/D3D11）实测，1080p 级画面';
+check('渲染器是真 GPU（不是 SwiftShader / llvmpipe）', !software, { renderer: rendererInfo });
+console.log(`  渲染器 ${String(rendererInfo).slice(0, 90)}`);
+console.log(`  帧耗时 ${report.frameTimeMs} ms（真机 GPU）`);
+
+/* 1080p 下三档画质的实测帧率：只允许真 GPU，软件渲染直接判失败 */
+await send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+const perf = {};
+for (const q of ['standard', 'high', 'cinematic']) {
+  await navigate(`${BASE}?shot=0&q=${q}&scale=orrery&date=2026-11-04&ui=0&dpr=1`);
+  await sleep(500);
+  perf[q] = await evaluate(`new Promise((resolve) => {
+    let n = 0, warm = 0, t0 = 0;
+    function tick(){
+      if (warm < 10) { warm++; return requestAnimationFrame(tick); }
+      if (n === 0) t0 = performance.now();
+      n++;
+      if (n >= 40) return resolve(Math.round(((performance.now() - t0) / n) * 100) / 100);
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  })`);
+}
+report.perf1080 = perf;
+await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+const perfLine = Object.keys(perf).map((k) => `${k} ${(1000 / perf[k]).toFixed(0)}fps`).join(' / ');
+console.log(`  1080p 三档：${perfLine}`);
+if (software) {
+  /* 掉回软件渲染时，上面第 543 行的 check 已经判失败；这里只留一句日志便于排查。 */
+  console.log('  已拒绝软件渲染，跳过 1080p 帧率断言');
+} else {
+  check(
+    '1080p 下标准档 ≥ 55 fps（真机 GPU）',
+    1000 / perf.standard >= 55,
+    Object.keys(perf).reduce((o, k) => { o[k] = +(1000 / perf[k]).toFixed(1); return o; }, {})
+  );
+}
 
 /* ═══════════════════════ 3. 移动端 390px ═══════════════════════ */
 await viewport(390, 844);

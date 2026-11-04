@@ -47,6 +47,14 @@ html {
   color-scheme: dark;
 }
 
+/* 截图模式：任何过渡/动画都会让同一 URL 的两次截图出现差异，全部关掉 */
+html.shot-mode *,
+html.shot-mode *::before,
+html.shot-mode *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
 body {
   background: var(--bg);
   color: var(--ink);

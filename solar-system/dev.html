@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <title>太阳系观测台 · HELIOS</title>
-<meta name="description" content="HELIOS 太阳系观测台：按 JPL 轨道根数实时解算的太阳系，太阳与八大行星都能点进去。零外部请求，可离线打开。">
+<meta name="description" content="HELIOS 太阳系观测台：按 JPL 轨道根数实时解算的太阳系，太阳与八大行星都能点进去。望远镜视角，零外部请求，可离线打开。">
 <link rel="stylesheet" href="src/css/base.css">
 <link rel="stylesheet" href="src/css/hud.css">
 <link rel="stylesheet" href="src/css/panels.css">
@@ -14,31 +14,49 @@
 
 <div id="stage">
   <canvas id="gl" tabindex="0" role="img"
-    aria-label="太阳系三维视图。太阳位于中心，八颗行星按 JPL 轨道根数运行。可用 1 到 9 键选中天体，方向键切换，回车进入特写，Esc 返回全景。"></canvas>
+    aria-label="太阳系三维视图。太阳位于中心，八颗行星按 JPL 轨道根数运行，太阳同时在银河系里运动。可用 1 到 9 键选中天体，方向键切换，F 切换参考系，回车进入特写，Esc 返回全景。"></canvas>
 
   <div id="hud">
     <header class="masthead" id="masthead">
       <p class="eyebrow">HELIOS · SOLAR SYSTEM OBSERVATORY</p>
       <h1 class="title">太阳系观测台</h1>
-      <p class="subtitle">八颗行星按真实轨道运行，太阳在中心燃烧。<br>点开任何一颗，走进去看。</p>
+      <p class="subtitle">八颗行星按真实轨道运行，太阳在中心燃烧，<br>而整座太阳系正以每秒 220 公里穿过银河。</p>
     </header>
 
-    <section class="console" id="console" aria-label="时间与尺度控制">
+    <section class="console" id="console" aria-label="时间、参考系与尺度控制">
       <div class="console-block">
-        <label class="field-label" for="dateInput">UTC 日期</label>
-        <input type="date" id="dateInput" class="date-input" min="1800-01-01" max="2050-12-31" value="2026-11-04">
+        <span class="field-label" id="dateLabel">UTC 日期</span>
+        <input type="date" id="dateInput" class="date-input" min="1800-01-01" max="2400-12-31" value="2026-11-04">
         <p class="field-note" id="jdNote">JD —</p>
       </div>
 
       <div class="console-block">
-        <span class="field-label" id="speedLabel">时间流速</span>
-        <div class="segmented" id="speedGroup" role="group" aria-labelledby="speedLabel"></div>
+        <span class="field-label" id="timeLabel">时间倍率</span>
+        <div class="segmented segmented--grid" id="timeGroup" role="group" aria-labelledby="timeLabel"></div>
+        <button type="button" class="text-btn" id="btnToday">回到今天</button>
+      </div>
+
+      <div class="console-block">
+        <span class="field-label" id="frameLabel">参考系</span>
+        <div class="segmented" id="frameGroup" role="group" aria-labelledby="frameLabel"></div>
+        <p class="field-note" id="frameNote">—</p>
       </div>
 
       <div class="console-block">
         <span class="field-label" id="scaleLabel">尺度模式</span>
         <div class="segmented" id="scaleGroup" role="group" aria-labelledby="scaleLabel"></div>
         <p class="field-note" id="scaleNote">—</p>
+      </div>
+
+      <div class="console-block">
+        <span class="field-label" id="trailLabel">轨迹放大</span>
+        <div class="segmented" id="trailGainGroup" role="group" aria-labelledby="trailLabel"></div>
+        <figure class="trail-inset" id="trailInset">
+          <figcaption>真实螺距 vs 当前显示</figcaption>
+          <svg id="trailSvg" viewBox="0 0 210 96" role="img"
+            aria-label="两幅小图对比：真实比例下太阳一年走 46.4 AU，放大后螺距被拉长"></svg>
+          <p id="trailCaption">—</p>
+        </figure>
       </div>
 
       <div class="console-block console-block--slim">
@@ -48,16 +66,65 @@
       <div class="console-block settings-row" id="settingsRow" hidden>
         <span class="field-label">画质</span>
         <div class="segmented" id="qualityGroup" role="group" aria-label="画质"></div>
+
         <label class="slider-row" for="starBrightness">
           <span>星空亮度</span>
           <input type="range" id="starBrightness" min="0" max="100" value="55" step="1">
           <output id="starBrightnessOut">55</output>
         </label>
+        <label class="slider-row" for="exposure">
+          <span>曝光</span>
+          <input type="range" id="exposure" min="50" max="180" value="100" step="1">
+          <output id="exposureOut">100</output>
+        </label>
+        <label class="slider-row" for="bloom">
+          <span>辉光</span>
+          <input type="range" id="bloom" min="0" max="150" value="100" step="1">
+          <output id="bloomOut">100</output>
+        </label>
+        <label class="slider-row" for="grain">
+          <span>颗粒</span>
+          <input type="range" id="grain" min="0" max="200" value="100" step="1">
+          <output id="grainOut">100</output>
+        </label>
+        <label class="slider-row" for="aberration">
+          <span>色差</span>
+          <input type="range" id="aberration" min="0" max="300" value="100" step="1">
+          <output id="aberrationOut">100</output>
+        </label>
+
+        <span class="field-label">调试视图</span>
+        <div class="segmented" id="debugGroup" role="group" aria-label="调试视图"></div>
+
         <div class="toggle-row">
           <button type="button" class="chip" id="toggleBackground" aria-pressed="true">背景 <kbd>B</kbd></button>
           <button type="button" class="chip" id="toggleConstellations" aria-pressed="false">星座连线</button>
+          <button type="button" class="chip" id="btnSavePng">存图 PNG</button>
+          <button type="button" class="chip" id="btnResetParams">复位</button>
         </div>
       </div>
+    </section>
+
+    <dl class="telemetry" id="telemetry" aria-label="渲染遥测">
+      <div><dt>FPS</dt><dd id="tFps">—</dd></div>
+      <div><dt>帧</dt><dd id="tFrame">—</dd></div>
+      <div><dt>画质</dt><dd id="tQuality">—</dd></div>
+      <div><dt>渲染</dt><dd id="tRender">—</dd></div>
+      <div><dt>LOD</dt><dd id="tLod">—</dd></div>
+      <div><dt>DPR</dt><dd id="tDpr">—</dd></div>
+    </dl>
+
+    <section class="odometer" id="odometer" aria-label="运动读数">
+      <dl class="odo-grid">
+        <div><dt>模拟时刻</dt><dd id="odoDate">—</dd></div>
+        <div><dt>LOD</dt><dd id="odoLod">—</dd></div>
+        <div><dt>参考系</dt><dd id="odoFrame">—</dd></div>
+        <div><dt>轨迹放大</dt><dd id="odoGain">—</dd></div>
+        <div><dt>相对银心</dt><dd id="odoVgc">—</dd></div>
+        <div><dt>距银心</dt><dd id="odoRgc">—</dd></div>
+        <div><dt>相对 CMB</dt><dd id="odoVcmb">—</dd></div>
+        <div><dt>银弧</dt><dd id="odoArc">—</dd></div>
+      </dl>
     </section>
 
     <nav class="roster" id="roster" aria-label="天体列表">
@@ -66,7 +133,7 @@
 
     <p class="readout" id="readout" aria-live="off">—</p>
     <p class="true-warning" id="trueWarning" hidden>真实比例<b id="truePixels">—</b>这一档没有任何放大，行星本来就该缩到看不见。</p>
-    <p class="hint" id="hint">点击天体进入特写 · 拖拽旋转 · 滚轮缩放 · Esc 返回</p>
+    <p class="hint" id="hint">点击天体进入特写 · 拖拽旋转 · 滚轮缩放 · F 切换参考系 · Esc 返回</p>
 
     <button type="button" class="back-btn" id="btnBack" hidden>
       <span class="back-arrow" aria-hidden="true">←</span> 返回全景 <kbd>Esc</kbd>
@@ -118,7 +185,7 @@
         <h3>镜头</h3>
         <dl>
           <dt>拖拽</dt><dd>环绕相机（仰角限制 ±80°）</dd>
-          <dt>滚轮 / 双指</dt><dd>对数缩放，全景 → 特写连续过渡</dd>
+          <dt>滚轮 / 双指</dt><dd>对数缩放：L0 特写 → L1 太阳系 → L2 恒星邻域 → L3 银河</dd>
           <dt>单击天体</dt><dd>进入该天体特写</dd>
           <dt>双击天体</dt><dd>直接推到最近观察距离</dd>
           <dt>特写内拖拽</dt><dd>绕着这颗天体转，看背面</dd>
@@ -131,6 +198,7 @@
           <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>在九个天体间切换</dd>
           <dt><kbd>Enter</kbd></dt><dd>从列表项进入特写</dd>
           <dt><kbd>空格</kbd></dt><dd>播放 / 暂停时间</dd>
+          <dt><kbd>F</kbd></dt><dd>切换参考系：太阳静止 / 银河静止 / CMB 静止</dd>
           <dt><kbd>S</kbd></dt><dd>循环切换尺度模式</dd>
           <dt><kbd>B</kbd></dt><dd>开关背景（星空 / 银河 / 星系）</dd>
           <dt><kbd>H</kbd></dt><dd>显隐 HUD</dd>
@@ -139,19 +207,25 @@
         </dl>
       </div>
       <div class="help-col">
+        <h3>四层运动</h3>
+        <p><b>①行星绕太阳</b> 88 天 – 165 年，JPL 根数 + 开普勒方程。</p>
+        <p><b>②太阳本动</b> 19.4 km/s，指向武仙座（RA 18h28m / Dec +30°）。</p>
+        <p><b>③绕银心</b> 约 220 km/s，约 2.4 亿年一圈，距银心约 27,000 光年（8.3 kpc）。</p>
+        <p><b>④相对 CMB</b> 369.82 ± 0.11 km/s，朝巨爵座与狮子座边界。</p>
+        <p class="muted">③④ 是匀速圆轨道近似，只用于展示银河尺度运动；行星定位仍走 JPL 根数，拟合区间是 1800–2050，越界之后是外推但不会冻结。</p>
+        <p class="muted">「观测设置」里有画质、星空亮度、曝光、辉光、颗粒、色差六个滑杆，可以切调试视图看场景/辉光，也能把当前帧存成 PNG。</p>
+      </div>
+      <div class="help-col">
         <h3>看到的是什么</h3>
         <p>行星位置 = JPL 根数 + 开普勒方程解出的真实椭圆，任一日期都会重算。</p>
         <p>地球那一行是地月质心（EM Bary），不是地球质心，最大偏差约 4,700 km。</p>
-        <p>星空 = HYG v4.0 星表里 6.5 等以上的 8,920 颗恒星，按 J2000 赤经赤纬投影。</p>
+        <p>星空 = HYG v4.0 星表里 6.5 等以上的 8,920 颗恒星；L2 额外启用 25 pc 内 1,503 颗带距离的恒星。</p>
         <p>银河带贴着真实银道面；M31、M45、LMC 这些星系的位置与角径取自文献，形态是画出来的。</p>
-        <p class="muted">
-          河外星系的单颗恒星在本页不可分辨 —— 仙女座里最亮的单颗恒星也在 15 等以外，肉眼极限约 6.5 等。
-          屏幕上那团 M31 是星系整体，不是它的恒星。
-        </p>
+        <p class="muted">河外星系的单颗恒星在本页不可分辨 —— 仙女座里最亮的单颗恒星也在 15 等以外。屏幕上那团 M31 是星系整体。</p>
         <p class="muted">所有表面纹理、颜色、日冕、星芒、卫星位置都是程序化生成的示意，不是观测照片。</p>
       </div>
     </div>
-    <p class="overlay-foot">状态写在地址栏里：<code>#body=jupiter&amp;date=2026-11-04&amp;scale=orrery</code>，刷新可还原。</p>
+    <p class="overlay-foot">状态写在地址栏里：<code>#body=jupiter&amp;date=2026-11-04&amp;scale=orrery&amp;frame=galactic</code>，刷新可还原。</p>
   </div>
 </div>
 
@@ -160,11 +234,15 @@
 <script src="src/js/data.orbits.js"></script>
 <script src="src/js/data.bodies.js"></script>
 <script src="src/js/data.sky.js"></script>
+<script src="src/js/data.motion.js"></script>
 <script src="src/js/data.stars.js"></script>
+<script src="src/js/data.stars.near.js"></script>
 <script src="src/js/astro.js"></script>
+<script src="src/js/motion.js"></script>
 <script src="src/js/shaders/common.glsl.js"></script>
 <script src="src/js/shaders/surface.glsl.js"></script>
 <script src="src/js/shaders/sky.glsl.js"></script>
+<script src="src/js/shaders/galaxy.glsl.js"></script>
 <script src="src/js/shaders/scene.glsl.js"></script>
 <script src="src/js/shaders/stars.glsl.js"></script>
 <script src="src/js/shaders/post.glsl.js"></script>

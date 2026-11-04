@@ -14,7 +14,7 @@
 | [rag-viz](rag-viz/) | [index.html](rag-viz/index.html) | 「RAG 全链路」交互式拆解：从解析到引用校验共 9 站，分块、BM25、HNSW、RRF、重排与校验都是页面里真算的；零依赖、无构建步骤、可离线打开 |
 | [LLM执行流程](LLM执行流程/) | [index.html](LLM执行流程/index.html) | 「LLM 推理实验室」：13 站 3D 推理流水线、Transformer 八层拆解、可交互的 Q/K/V 注意力网络、采样沙盒与推理基础设施岛；Three.js 全内联、零外部请求、无 API |
 | [milvus](milvus/) | [index.html](milvus/index.html) | 「Milvus × RAG 执行链路」：写入五站 + 查询五站，每站四段式，HNSW/IVF、BM25、三级归并、pre/post 过滤与融合都在页面里真算；事实来自 7 篇官方文档，示意与真算分栏标注 |
-| [solar-system](solar-system/) | [index.html](solar-system/index.html) | 「HELIOS 太阳系观测台」：WebGL2 逐像素光线求解的太阳系，行星位置由 JPL 根数 + 开普勒方程实时算出，太阳与八大行星都能点进特写；星空来自 HYG 星表 8,920 颗真实恒星，银河贴着真实银道面，三种尺度模式并标注失真 |
+| [solar-system](solar-system/) | [index.html](solar-system/index.html) | 「HELIOS 太阳系观测台」：WebGL2 逐像素光线求解的太阳系，行星位置由 JPL 根数 + 开普勒方程实时算出，太阳与八大行星都能点进特写；星空来自 HYG 星表 8,920 颗真实恒星，银河贴着真实银道面，三种尺度模式并标注失真。v2 加了四层运动（本动 19.4 km/s / 绕银心 220 km/s / 相对 CMB 369.82 km/s）与三档参考系，按 F 看椭圆变螺旋；滚轮可从行星表面连续拉到银河，六档时间倍率与里程表同步 |
 
 ---
 

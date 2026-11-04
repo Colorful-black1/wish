@@ -80,9 +80,13 @@ void bodySurface(
     float ice = smoothstep(0.70, 0.86, abs(lat) + 0.055 * fbm(lp * 9.0, 3));
     base = mix(base, cC, ice);
 
-    float cloud = fbm(lp * 3.9 + vec3(0.0, 0.0, 1.7), min(oct + 2, 10));
-    cloud = smoothstep(0.50, 0.68, cloud) * (0.85 + 0.15 * fbm(lp * 12.0, 3));
-    base = mix(base, vec3(0.93, 0.95, 0.96), cloud * 0.86);
+    /* 两层云：低层积云走得慢，高层卷云走得快，两层用不同的域偏移 */
+    float cloudLow = fbm(lp * 3.9 + vec3(0.0, 0.0, 1.7), min(oct + 2, 10));
+    float cloudHigh = fbm(lp * 6.7 + vec3(11.0, 5.0, 21.0), min(oct + 1, 9));
+    float cloud = smoothstep(0.50, 0.68, cloudLow) * (0.85 + 0.15 * fbm(lp * 12.0, 3));
+    float cirrus = smoothstep(0.58, 0.78, cloudHigh) * 0.42;
+    base = mix(base, vec3(0.90, 0.92, 0.94), cloud * 0.70);
+    base = mix(base, vec3(0.86, 0.89, 0.93), cirrus);
 
     float cityNoise = fbm(lp * 52.0 + 21.0, 4) * smoothstep(0.30, 0.62, fbm(lp * 8.0 + 3.0, 3));
     float city = smoothstep(0.16, 0.30, cityNoise) * smoothstep(0.42, 0.72, fbm(lp * 150.0 + 7.0, 3));
@@ -144,6 +148,14 @@ void bodySurface(
     float swirl = fbm(vec3(lon * 7.0 + lat * 9.0, lat * 11.0, 2.0), 4);
     base = mix(base, mix(cC, cC * 0.62, swirl), grs * (0.70 + 0.30 * swirl));
     base = mix(base, cC * 1.06, smoothstep(1.05, 1.45, r2) * smoothstep(1.9, 1.45, r2) * 0.16);
+
+    /* 纬向风切变：赤道急流与中纬度带的交界处产生剪切湍流 */
+    float shear = cos(lat * 6.0) * 0.5 + 0.5;
+    base *= 0.88 + 0.20 * shear;
+    /* 极区气旋：南北极各有若干小涡旋，靠噪声环纹体现 */
+    float pole = smoothstep(0.60, 0.94, abs(lat));
+    float cyc = fbm(vec3(lon * 3.2, lat * 6.0, 9.0), 3);
+    base = mix(base, mix(cB * 0.72, cA * 1.12, sin(cyc * 26.0) * 0.5 + 0.5), pole * 0.45);
 
     albedo = base;
     specMask = 0.0;

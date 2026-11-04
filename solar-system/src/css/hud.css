@@ -80,7 +80,12 @@
   position: absolute;
   top: var(--pad);
   right: var(--pad);
+  transition: transform 320ms var(--ease), opacity 320ms var(--ease);
   width: 254px;
+  max-height: calc(100% - var(--pad) * 2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   display: grid;
   gap: 15px;
   padding: 16px 16px 14px;
@@ -88,6 +93,14 @@
   background: linear-gradient(180deg, rgba(8, 11, 16, 0.82), rgba(5, 7, 10, 0.62));
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
+}
+
+.console::-webkit-scrollbar {
+  width: 4px;
+}
+
+.console::-webkit-scrollbar-thumb {
+  background: rgba(237, 230, 214, 0.18);
 }
 
 .console::before {
@@ -152,6 +165,28 @@
 .field-note strong {
   color: var(--teal);
   font-weight: 400;
+}
+
+.field-note--warn {
+  color: rgba(217, 96, 59, 0.85);
+  line-height: 1.6;
+}
+
+.segmented--grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.segmented--grid button {
+  border-bottom: 1px solid var(--line);
+}
+
+.segmented--grid button:nth-child(n + 5) {
+  border-bottom: 0;
+}
+
+.segmented--grid button:nth-child(4n) {
+  border-right: 0;
 }
 
 /* 分段按钮 */
@@ -326,6 +361,156 @@
   border-left: 1px solid var(--line);
 }
 
+/* ---------------------------------------------------------------- 里程表 */
+
+.telemetry {
+  position: absolute;
+  top: var(--pad);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 18px;
+  margin: 0;
+  padding: 6px 14px;
+  border: 1px solid rgba(237, 230, 214, 0.07);
+  background: rgba(5, 7, 10, 0.42);
+  pointer-events: none;
+}
+
+.telemetry > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.telemetry dt {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--ink-ghost);
+  text-transform: uppercase;
+}
+
+.telemetry dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--teal);
+  white-space: nowrap;
+}
+
+.odometer {
+  position: absolute;
+  left: var(--pad);
+  bottom: calc(var(--pad) + 96px);
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+  pointer-events: none;
+}
+
+.odo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 3px 30px;
+  margin: 0;
+}
+
+.odo-grid > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.odo-grid dt {
+  width: 58px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  color: var(--ink-ghost);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.odo-grid dd {
+  margin: 0;
+  min-width: 86px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.odo-grid dd .u {
+  margin-left: 3px;
+  color: var(--ink-ghost);
+  font-size: 0.86em;
+}
+
+/* ------------------------------------------------------- 轨迹对照插图 */
+
+/* 插在图里、不浮在画面上：浮层叠浮层会让 backdrop-filter 在 Chrome 里渲染成黑块 */
+.trail-inset {
+  position: static;
+  width: auto;
+  margin: 10px 0 0;
+  padding: 9px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.trail-inset.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.trail-inset figcaption {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.trail-inset svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.trail-inset .ti-lbl {
+  font-family: var(--mono);
+  font-size: 8px;
+  fill: rgba(237, 230, 214, 0.55);
+  letter-spacing: 0.08em;
+}
+
+.trail-inset .ti-sub {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  fill: rgba(111, 168, 184, 0.75);
+}
+
+.trail-inset .ti-path {
+  fill: none;
+  stroke: rgba(111, 168, 184, 0.85);
+  stroke-width: 1;
+}
+
+.trail-inset p {
+  margin-top: 6px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
 .roster-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -385,7 +570,7 @@
 .readout {
   position: absolute;
   left: var(--pad);
-  bottom: calc(var(--pad) + 96px);
+  bottom: calc(var(--pad) + 182px);
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.08em;
@@ -494,6 +679,17 @@
 /* ------------------------------------------------------------------ 窄屏 */
 
 @media (max-width: 860px) {
+  /* 窄屏特写时把控制台让出来：手机上一屏就那么点地方，行星优先 */
+  body.is-focus .console {
+    transform: translateX(130%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .telemetry {
+    display: none;
+  }
+
   :root {
     --pad: 14px;
   }
@@ -552,7 +748,7 @@
   }
 
   .readout {
-    bottom: calc(var(--pad) + 104px);
+    bottom: calc(var(--pad) + 186px);
     font-size: 9px;
   }
 

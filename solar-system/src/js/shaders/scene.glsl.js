@@ -38,6 +38,7 @@ uniform vec4 uBodyColA[MAXB];  // rgb 主色，a 大气强度
 uniform vec4 uBodyColB[MAXB];  // rgb 次色，a 大气厚度（相对半径）
 uniform vec4 uBodyColC[MAXB];  // rgb 第三色，a 环槽（0 无 / 1 / 2）
 uniform vec4 uBodyColD[MAXB];  // rgb 大气色调
+uniform vec4 uBodyPar[MAXB];   // x Mie 前向散射强度，y 反照率系数
 
 uniform vec4 uRingGeom[MAXR];   // 内径, C 外缘, B 外缘, 卡西尼内缘
 uniform vec4 uRingGeom2[MAXR];  // 卡西尼外缘, A 外缘, F 环, 样式
@@ -54,6 +55,12 @@ uniform vec2  uSkyObjSize[8];
 uniform float uSkyObjPa[8];
 uniform float uSkyObjBright[8];
 uniform int   uSkyObjKind[8];
+
+uniform float uGalaxyMix;     // 0 = 太阳系，1 = 银河视图
+uniform vec3  uGalaxyCam;     // x=距银心 kpc，y=方位角，z=俯角
+uniform float uSunGalAngle;   // 太阳绕银心的相位
+uniform float uNearMix;       // L2 恒星邻域淡入
+uniform int   uOctaveCap;     // 画质档位对噪声层数的上限
 `,
 
   'sceneBody': /* glsl */ `
@@ -88,11 +95,28 @@ float ringAlpha(float rr, int slot) {
 
   float a;
   if (style == 1) {
-    /* 天王星的环又细又暗：整段用一个极低的底噪 + ε 环的亮边 */
-    a = 0.055;
-    a += exp(-pow((rr - aOuter) / 0.006, 2.0)) * 0.85;
-    a += exp(-pow((rr - (inner + (aOuter - inner) * 0.42)) / 0.004, 2.0)) * 0.42;
-    a += exp(-pow((rr - (inner + (aOuter - inner) * 0.66)) / 0.004, 2.0)) * 0.38;
+    /* 天王星的 13 条细环：半径按 25559 km 的行星半径归一化，逐条画 */
+    const float UR[13] = float[13](
+      1.6000, // ζ / 1986U2R
+      1.6368, // 6
+      1.6523, // 5
+      1.6655, // 4
+      1.7496, // α
+      1.7865, // β
+      1.8458, // η
+      1.8634, // γ
+      1.8897, // δ
+      1.9572, // λ
+      2.0013, // ε（最亮最宽）
+      2.5862, // ν
+      3.8226  // μ
+    );
+    float a = 0.0;
+    for (int i = 0; i < 13; i++) {
+      float w = (i == 10) ? 0.0038 : 0.0016;
+      float wgt = (i == 10) ? 0.95 : (i == 0 ? 0.10 : (i >= 11 ? 0.16 : 0.34));
+      a += exp(-pow((rr - UR[i]) / w, 2.0)) * wgt;
+    }
     a *= 0.55 + 0.45 * hairline(rr);
     return clamp(a, 0.0, 1.0);
   }
@@ -133,7 +157,7 @@ vec3 atmosphereGlow(vec3 ro, vec3 rd, float tLimit) {
     float d = sqrt(max(d2, 0.0));
     if (d < R) continue;                        // 盘面内部已经有大气的边缘项，别再叠一层
     float x = clamp((d - R) / max(shell - R, 1e-6), 0.0, 1.0);
-    float halo = pow(1.0 - x, 4.2) * 0.14;
+    float halo = pow(1.0 - x, 4.2) * 0.11;
     /* 只有被太阳照到的那一侧的大气才会亮 */
     vec3 limbDir = normalize(normalize(ro + rd * tClose - c) + vec3(1e-5));
     float lit = smoothstep(-0.45, 0.55, dot(limbDir, normalize(-c)));
@@ -160,24 +184,34 @@ vec3 shadeBody(int i, vec3 P, vec3 rd) {
   /* 太阳：自发光 */
   if (type == 0) {
     vec3 lp = worldToLocal(nW, 7.25, 0.9, spin);
-    int oct = 4 + int(uDetail * 4.0);
-    float supergran = fbm(lp * 22.0, 4);
-    float gran = ridged(lp * 86.0, oct);
+    /* 三个尺度的细胞：米粒 / 中尺度对流 / 超米粒 */
+    float g1 = ridged(lp * 96.0, 4);
+    float g2 = ridged(lp * 34.0, 4);
+    float g3 = fbm(lp * 11.0, 3);
+    float gran = g1 * 0.5 + g2 * 0.32 + g3 * 0.18;
+
+    /* 黑子：本影 + 半影，成对出现在活动带 */
     float belt = smoothstep(0.72, 0.28, abs(lp.z));
-    float spot = smoothstep(0.735, 0.775, fbm(lp * 12.0 + 17.0, 5)) * belt;
+    float spotField = fbm(lp * 12.0 + 17.0, 5);
+    float penumbra = smoothstep(0.700, 0.745, spotField) * belt;
+    float umbra = smoothstep(0.752, 0.790, spotField) * belt;
     float facula = smoothstep(0.58, 0.76, ridged(lp * 34.0 + 5.0, 3));
 
-    float heat = 0.24 + 0.44 * gran + 0.24 * supergran + 0.13 * facula;
+    /* 边缘耀斑：临边附近的细亮丝 */
+    float muS = clamp(dot(nW, normalize(uCamPos - P)), 0.0, 1.0);
+    float flare = smoothstep(0.42, 0.06, muS) * smoothstep(0.55, 0.85, ridged(lp * 46.0 + 31.0, 3));
+
+    float heat = 0.26 + 0.46 * gran + 0.16 * facula;
     vec3 hot = vec3(1.0, 0.96, 0.87);
     vec3 warm = vec3(1.0, 0.62, 0.26);
     vec3 col = mix(warm, hot, saturate(heat));
-    col *= 1.0 - spot * 0.80;             // 黑子：暗但不全黑
+    col *= 1.0 - penumbra * 0.35 - umbra * 0.55;
 
     /* 临边昏暗：边缘偏红偏暗 */
-    float muS = clamp(dot(nW, normalize(uCamPos - P)), 0.0, 1.0);
     float limb = 1.0 - 0.50 * (1.0 - muS) - 0.28 * pow(1.0 - muS, 3.0);
     col *= limb;
     col += vec3(1.0, 0.62, 0.30) * pow(1.0 - muS, 4.0) * 0.30;
+    col += vec3(1.0, 0.55, 0.26) * flare * 2.2;
     return col * 1.02;
   }
 
@@ -191,11 +225,35 @@ vec3 shadeBody(int i, vec3 P, vec3 rd) {
   float soft = mix(0.012, 0.16, atmo);
   float diff = smoothstep(-soft, soft, mu);
 
+  vec3 Vv = normalize(uCamPos - P);
+  /* Oren–Nayar 近似：粗糙表面在掠射角不会骤暗，岩石天体不再「塑料」 */
+  if (type == 1 || type == 4 || type == 9) {
+    float s = 0.6;
+    float A = 1.0 - 0.5 * s * s / (s * s + 0.33);
+    float B = 0.45 * s * s / (s * s + 0.09);
+    float ti = acos(clamp(mu, 0.0, 1.0));
+    float to = acos(clamp(dot(nW, Vv), 0.0, 1.0));
+    float al = max(ti, to);
+    float be = min(ti, to);
+    vec3 Li = normalize(L - nW * mu);
+    vec3 Vo = normalize(Vv - nW * dot(nW, Vv));
+    float gam = clamp(dot(Li, Vo), 0.0, 1.0);
+    float on = max(mu, 0.0) * (A + B * gam * sin(al) * tan(be));
+    diff = mix(diff, clamp(on, 0.0, 1.02), 0.55);
+  }
+
   /* 光照补偿：真实 1/r² 会让海王星只剩 0.1%，为了看得见做压缩，README 有说明 */
   float r = max(length(P), 0.05);
   float irr = clamp(1.15 / pow(r, 0.55), 0.55, 1.12);
+  float albedoGain = uBodyPar[i].y;
+  vec3 col = albedo * albedoGain * diff * irr * 0.95;
 
-  vec3 col = albedo * diff * irr * 0.95;
+  /* Mie 前向散射：太阳在身后时，大气边缘出现一圈亮环 */
+  if (atmo > 0.001) {
+    float g = clamp(-dot(Vv, L), 0.0, 1.0);
+    float rim = pow(1.0 - clamp(dot(nW, Vv), 0.0, 1.0), 3.0);
+    col += uBodyColD[i].rgb * pow(g, 5.0) * rim * atmo * uBodyPar[i].x * 1.6;
+  }
 
   /* 环在行星上的投影 */
   float slot = uBodyColC[i].a;
@@ -356,8 +414,10 @@ void main() {
     float ts;
     float shadow = 1.0;
     if (raySphere(ringP, L, c, R, ts)) shadow = 0.16;
-    /* 环自身的散射：不用物理相函数，只让背光侧稍暗 */
+    /* 环自身的散射：不用物理相函数，只让背光侧稍暗；太阳在环背后时按前向散射增亮 */
     vec3 ringCol = uRingColor[si] * (0.20 + 0.52 * max(dot(normalize(ringP - ro), L), 0.0)) * shadow;
+    float backlit = clamp(-dot(normalize(ringP - ro), L), 0.0, 1.0);
+    ringCol *= 1.0 + 0.85 * pow(backlit, 4.0);
     col = mix(col, ringCol, a);
     if (tRing < tOut) tOut = tRing;
   }
@@ -365,6 +425,12 @@ void main() {
   col += sunCorona(ro, rd, min(tBest, tRing));
   col += atmosphereGlow(ro, rd, min(tBest, tRing));
   col = hoverRing(col, uv, ro, rd);
+
+  /* L3：银河视图淡入。它是一个独立的 kpc 坐标系，用淡入淡出过渡，不假装连续。 */
+  if (uGalaxyMix > 0.001) {
+    vec3 gal = galaxyRadiance(uv);
+    col = mix(col, gal, uGalaxyMix);
+  }
 
   fragColor = vec4(col, 1.0);
   gl_FragDepth = (tOut > 1e17) ? 1.0 : clamp(1.0 - exp(-tOut * 0.9), 0.0, 0.999);

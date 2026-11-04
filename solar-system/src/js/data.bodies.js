@@ -30,9 +30,9 @@
     venus: { seed: 0.23, colorA: [0.80, 0.72, 0.50], colorB: [0.60, 0.50, 0.31], colorC: [0.90, 0.84, 0.66] },
     earth: {
       seed: 0.47,
-      colorA: [0.09, 0.22, 0.38],
-      colorB: [0.18, 0.33, 0.16],
-      colorC: [0.86, 0.9, 0.92],
+      colorA: [0.07, 0.17, 0.31],
+      colorB: [0.15, 0.25, 0.13],
+      colorC: [0.84, 0.87, 0.89],
     },
     mars: { seed: 0.19, colorA: [0.62, 0.31, 0.18], colorB: [0.44, 0.2, 0.12], colorC: [0.86, 0.82, 0.76] },
     jupiter: { seed: 0.37, colorA: [0.87, 0.76, 0.58], colorB: [0.40, 0.25, 0.16], colorC: [0.66, 0.26, 0.17] },
@@ -67,6 +67,21 @@
       earthNote: '地球位置取 JPL 「EM Bary」= 地月质心，不是地球质心，最大偏差约 4,700 km。',
       disclaimer:
         '表面纹理、颜色、云带与日冕形态均为程序化艺术化生成，不是观测数据；位置、半径比例、自转周期与轴倾角为真实值。',
+      /* 反照率用的显示系数：只用来体现「金星亮、水星暗」的相对关系，
+         不是几何反照率本身（真实几何反照率：水星 0.088、金星 0.76、地球 0.434、火星 0.15）。 */
+      albedo: {
+        mercury: 0.55,
+        venus: 1.35,
+        earth: 1.0,
+        mars: 0.88,
+        jupiter: 1.08,
+        saturn: 1.0,
+        uranus: 0.98,
+        neptune: 0.92,
+        sun: 1.0,
+        moon: 0.85,
+      },
+      albedoNote: '显示用反照率系数；真实几何反照率见 research/SOURCES.md',
     },
 
     bodies: [
@@ -420,16 +435,16 @@
         pole: { tilt: 82.2, node: 4.496661, nominal: 97.8, retrograde: true },
         atmosphere: { scale: 0.02, strength: 0.5, color: [0.66, 0.9, 0.94] },
         rings: {
-          inner: 41800 / 25559,
-          outer: 51149 / 25559,
+          inner: 40000 / 25559,
+          outer: 51600 / 25559,
           cOuter: 42700 / 25559,
           bOuter: 47700 / 25559,
           cassiniInner: 49000 / 25559,
           cassiniOuter: 49800 / 25559,
           aOuter: 51149 / 25559,
           fRing: 98000 / 25559,
-          opacity: 0.34,
-          color: [0.55, 0.62, 0.66],
+          opacity: 0.62,
+          color: [0.62, 0.68, 0.72],
           source: SRC.rings,
           note: '13 条细环，主环自 41,800 km 到 ε 环 51,149 km；外圈 μ 环约 98,000 km。极暗（反照率 ≤ 2%）。',
         },
@@ -471,7 +486,7 @@
           obliquityDeg: SRC.obliquity,
         },
         note:
-          '公转周期照抄 NASA 表的 59,800 天；由 JPL 根数的平均运动反推是 60,190 天（≈164.8 年）。两处口径不同，README 记录了差异，页面上以 NASA 表为准。',
+          '公转周期照抄 NASA 表的 59,800 天；由 JPL 根数的平均运动反推是 60,190 天（≈164.8 年）。两处口径不同，README 记录了差异，页面上以 NASA 表为准。大气里有太阳系已知最快的风：赤道附近风速约 2,100 km/h（≈580 m/s，超过该处声速），所以条文里的云带被拉成极细的横纹；画面里的暗斑与伴生白云是艺术化处理。',
         visual: V.neptune,
         pole: { tilt: 28.3, node: 5.567112, nominal: 28.3 },
         hero: { lon: -0.9, lat: -0.42 },

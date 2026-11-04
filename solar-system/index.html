@@ -6,7 +6,7 @@
   Planet positions: JPL "Approximate Positions of the Planets" Table 1 + Kepler solver.
   Star field: HYG Database v4.0, V ≤ 6.5, 8,920 stars (CC BY-SA 4.0), inlined here.
   All surfaces, the Sun, the Milky Way and the galaxies are generated procedurally in WebGL2.
-  Built 2026-11-04T07:32:43.471Z · 284.3 KB
+  Built 2026-11-04T16:08:42.187Z · 385.0 KB
 -->
 <html lang="zh-CN">
 <head>
@@ -14,7 +14,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <title>太阳系观测台 · HELIOS</title>
-<meta name="description" content="HELIOS 太阳系观测台：按 JPL 轨道根数实时解算的太阳系，太阳与八大行星都能点进去。零外部请求，可离线打开。">
+<meta name="description" content="HELIOS 太阳系观测台：按 JPL 轨道根数实时解算的太阳系，太阳与八大行星都能点进去。望远镜视角，零外部请求，可离线打开。">
 <style>
 /* ===== src/css/base.css ===== */
 /* ==========================================================================
@@ -64,6 +64,14 @@ body {
 html {
   background: var(--bg);
   color-scheme: dark;
+}
+
+/* 截图模式：任何过渡/动画都会让同一 URL 的两次截图出现差异，全部关掉 */
+html.shot-mode *,
+html.shot-mode *::before,
+html.shot-mode *::after {
+  transition: none !important;
+  animation: none !important;
 }
 
 body {
@@ -374,7 +382,12 @@ code {
   position: absolute;
   top: var(--pad);
   right: var(--pad);
+  transition: transform 320ms var(--ease), opacity 320ms var(--ease);
   width: 254px;
+  max-height: calc(100% - var(--pad) * 2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   display: grid;
   gap: 15px;
   padding: 16px 16px 14px;
@@ -382,6 +395,14 @@ code {
   background: linear-gradient(180deg, rgba(8, 11, 16, 0.82), rgba(5, 7, 10, 0.62));
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
+}
+
+.console::-webkit-scrollbar {
+  width: 4px;
+}
+
+.console::-webkit-scrollbar-thumb {
+  background: rgba(237, 230, 214, 0.18);
 }
 
 .console::before {
@@ -446,6 +467,28 @@ code {
 .field-note strong {
   color: var(--teal);
   font-weight: 400;
+}
+
+.field-note--warn {
+  color: rgba(217, 96, 59, 0.85);
+  line-height: 1.6;
+}
+
+.segmented--grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.segmented--grid button {
+  border-bottom: 1px solid var(--line);
+}
+
+.segmented--grid button:nth-child(n + 5) {
+  border-bottom: 0;
+}
+
+.segmented--grid button:nth-child(4n) {
+  border-right: 0;
 }
 
 /* 分段按钮 */
@@ -620,6 +663,156 @@ code {
   border-left: 1px solid var(--line);
 }
 
+/* ---------------------------------------------------------------- 里程表 */
+
+.telemetry {
+  position: absolute;
+  top: var(--pad);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 18px;
+  margin: 0;
+  padding: 6px 14px;
+  border: 1px solid rgba(237, 230, 214, 0.07);
+  background: rgba(5, 7, 10, 0.42);
+  pointer-events: none;
+}
+
+.telemetry > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.telemetry dt {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--ink-ghost);
+  text-transform: uppercase;
+}
+
+.telemetry dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--teal);
+  white-space: nowrap;
+}
+
+.odometer {
+  position: absolute;
+  left: var(--pad);
+  bottom: calc(var(--pad) + 96px);
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+  pointer-events: none;
+}
+
+.odo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 3px 30px;
+  margin: 0;
+}
+
+.odo-grid > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.odo-grid dt {
+  width: 58px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  color: var(--ink-ghost);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.odo-grid dd {
+  margin: 0;
+  min-width: 86px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.odo-grid dd .u {
+  margin-left: 3px;
+  color: var(--ink-ghost);
+  font-size: 0.86em;
+}
+
+/* ------------------------------------------------------- 轨迹对照插图 */
+
+/* 插在图里、不浮在画面上：浮层叠浮层会让 backdrop-filter 在 Chrome 里渲染成黑块 */
+.trail-inset {
+  position: static;
+  width: auto;
+  margin: 10px 0 0;
+  padding: 9px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.trail-inset.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.trail-inset figcaption {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.trail-inset svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.trail-inset .ti-lbl {
+  font-family: var(--mono);
+  font-size: 8px;
+  fill: rgba(237, 230, 214, 0.55);
+  letter-spacing: 0.08em;
+}
+
+.trail-inset .ti-sub {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  fill: rgba(111, 168, 184, 0.75);
+}
+
+.trail-inset .ti-path {
+  fill: none;
+  stroke: rgba(111, 168, 184, 0.85);
+  stroke-width: 1;
+}
+
+.trail-inset p {
+  margin-top: 6px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
 .roster-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -679,7 +872,7 @@ code {
 .readout {
   position: absolute;
   left: var(--pad);
-  bottom: calc(var(--pad) + 96px);
+  bottom: calc(var(--pad) + 182px);
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.08em;
@@ -788,6 +981,17 @@ code {
 /* ------------------------------------------------------------------ 窄屏 */
 
 @media (max-width: 860px) {
+  /* 窄屏特写时把控制台让出来：手机上一屏就那么点地方，行星优先 */
+  body.is-focus .console {
+    transform: translateX(130%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .telemetry {
+    display: none;
+  }
+
   :root {
     --pad: 14px;
   }
@@ -846,7 +1050,7 @@ code {
   }
 
   .readout {
-    bottom: calc(var(--pad) + 104px);
+    bottom: calc(var(--pad) + 186px);
     font-size: 9px;
   }
 
@@ -1270,31 +1474,49 @@ body.no-ui .overlay {
 
 <div id="stage">
   <canvas id="gl" tabindex="0" role="img"
-    aria-label="太阳系三维视图。太阳位于中心，八颗行星按 JPL 轨道根数运行。可用 1 到 9 键选中天体，方向键切换，回车进入特写，Esc 返回全景。"></canvas>
+    aria-label="太阳系三维视图。太阳位于中心，八颗行星按 JPL 轨道根数运行，太阳同时在银河系里运动。可用 1 到 9 键选中天体，方向键切换，F 切换参考系，回车进入特写，Esc 返回全景。"></canvas>
 
   <div id="hud">
     <header class="masthead" id="masthead">
       <p class="eyebrow">HELIOS · SOLAR SYSTEM OBSERVATORY</p>
       <h1 class="title">太阳系观测台</h1>
-      <p class="subtitle">八颗行星按真实轨道运行，太阳在中心燃烧。<br>点开任何一颗，走进去看。</p>
+      <p class="subtitle">八颗行星按真实轨道运行，太阳在中心燃烧，<br>而整座太阳系正以每秒 220 公里穿过银河。</p>
     </header>
 
-    <section class="console" id="console" aria-label="时间与尺度控制">
+    <section class="console" id="console" aria-label="时间、参考系与尺度控制">
       <div class="console-block">
-        <label class="field-label" for="dateInput">UTC 日期</label>
-        <input type="date" id="dateInput" class="date-input" min="1800-01-01" max="2050-12-31" value="2026-11-04">
+        <span class="field-label" id="dateLabel">UTC 日期</span>
+        <input type="date" id="dateInput" class="date-input" min="1800-01-01" max="2400-12-31" value="2026-11-04">
         <p class="field-note" id="jdNote">JD —</p>
       </div>
 
       <div class="console-block">
-        <span class="field-label" id="speedLabel">时间流速</span>
-        <div class="segmented" id="speedGroup" role="group" aria-labelledby="speedLabel"></div>
+        <span class="field-label" id="timeLabel">时间倍率</span>
+        <div class="segmented segmented--grid" id="timeGroup" role="group" aria-labelledby="timeLabel"></div>
+        <button type="button" class="text-btn" id="btnToday">回到今天</button>
+      </div>
+
+      <div class="console-block">
+        <span class="field-label" id="frameLabel">参考系</span>
+        <div class="segmented" id="frameGroup" role="group" aria-labelledby="frameLabel"></div>
+        <p class="field-note" id="frameNote">—</p>
       </div>
 
       <div class="console-block">
         <span class="field-label" id="scaleLabel">尺度模式</span>
         <div class="segmented" id="scaleGroup" role="group" aria-labelledby="scaleLabel"></div>
         <p class="field-note" id="scaleNote">—</p>
+      </div>
+
+      <div class="console-block">
+        <span class="field-label" id="trailLabel">轨迹放大</span>
+        <div class="segmented" id="trailGainGroup" role="group" aria-labelledby="trailLabel"></div>
+        <figure class="trail-inset" id="trailInset">
+          <figcaption>真实螺距 vs 当前显示</figcaption>
+          <svg id="trailSvg" viewBox="0 0 210 96" role="img"
+            aria-label="两幅小图对比：真实比例下太阳一年走 46.4 AU，放大后螺距被拉长"></svg>
+          <p id="trailCaption">—</p>
+        </figure>
       </div>
 
       <div class="console-block console-block--slim">
@@ -1304,16 +1526,65 @@ body.no-ui .overlay {
       <div class="console-block settings-row" id="settingsRow" hidden>
         <span class="field-label">画质</span>
         <div class="segmented" id="qualityGroup" role="group" aria-label="画质"></div>
+
         <label class="slider-row" for="starBrightness">
           <span>星空亮度</span>
           <input type="range" id="starBrightness" min="0" max="100" value="55" step="1">
           <output id="starBrightnessOut">55</output>
         </label>
+        <label class="slider-row" for="exposure">
+          <span>曝光</span>
+          <input type="range" id="exposure" min="50" max="180" value="100" step="1">
+          <output id="exposureOut">100</output>
+        </label>
+        <label class="slider-row" for="bloom">
+          <span>辉光</span>
+          <input type="range" id="bloom" min="0" max="150" value="100" step="1">
+          <output id="bloomOut">100</output>
+        </label>
+        <label class="slider-row" for="grain">
+          <span>颗粒</span>
+          <input type="range" id="grain" min="0" max="200" value="100" step="1">
+          <output id="grainOut">100</output>
+        </label>
+        <label class="slider-row" for="aberration">
+          <span>色差</span>
+          <input type="range" id="aberration" min="0" max="300" value="100" step="1">
+          <output id="aberrationOut">100</output>
+        </label>
+
+        <span class="field-label">调试视图</span>
+        <div class="segmented" id="debugGroup" role="group" aria-label="调试视图"></div>
+
         <div class="toggle-row">
           <button type="button" class="chip" id="toggleBackground" aria-pressed="true">背景 <kbd>B</kbd></button>
           <button type="button" class="chip" id="toggleConstellations" aria-pressed="false">星座连线</button>
+          <button type="button" class="chip" id="btnSavePng">存图 PNG</button>
+          <button type="button" class="chip" id="btnResetParams">复位</button>
         </div>
       </div>
+    </section>
+
+    <dl class="telemetry" id="telemetry" aria-label="渲染遥测">
+      <div><dt>FPS</dt><dd id="tFps">—</dd></div>
+      <div><dt>帧</dt><dd id="tFrame">—</dd></div>
+      <div><dt>画质</dt><dd id="tQuality">—</dd></div>
+      <div><dt>渲染</dt><dd id="tRender">—</dd></div>
+      <div><dt>LOD</dt><dd id="tLod">—</dd></div>
+      <div><dt>DPR</dt><dd id="tDpr">—</dd></div>
+    </dl>
+
+    <section class="odometer" id="odometer" aria-label="运动读数">
+      <dl class="odo-grid">
+        <div><dt>模拟时刻</dt><dd id="odoDate">—</dd></div>
+        <div><dt>LOD</dt><dd id="odoLod">—</dd></div>
+        <div><dt>参考系</dt><dd id="odoFrame">—</dd></div>
+        <div><dt>轨迹放大</dt><dd id="odoGain">—</dd></div>
+        <div><dt>相对银心</dt><dd id="odoVgc">—</dd></div>
+        <div><dt>距银心</dt><dd id="odoRgc">—</dd></div>
+        <div><dt>相对 CMB</dt><dd id="odoVcmb">—</dd></div>
+        <div><dt>银弧</dt><dd id="odoArc">—</dd></div>
+      </dl>
     </section>
 
     <nav class="roster" id="roster" aria-label="天体列表">
@@ -1322,7 +1593,7 @@ body.no-ui .overlay {
 
     <p class="readout" id="readout" aria-live="off">—</p>
     <p class="true-warning" id="trueWarning" hidden>真实比例<b id="truePixels">—</b>这一档没有任何放大，行星本来就该缩到看不见。</p>
-    <p class="hint" id="hint">点击天体进入特写 · 拖拽旋转 · 滚轮缩放 · Esc 返回</p>
+    <p class="hint" id="hint">点击天体进入特写 · 拖拽旋转 · 滚轮缩放 · F 切换参考系 · Esc 返回</p>
 
     <button type="button" class="back-btn" id="btnBack" hidden>
       <span class="back-arrow" aria-hidden="true">←</span> 返回全景 <kbd>Esc</kbd>
@@ -1374,7 +1645,7 @@ body.no-ui .overlay {
         <h3>镜头</h3>
         <dl>
           <dt>拖拽</dt><dd>环绕相机（仰角限制 ±80°）</dd>
-          <dt>滚轮 / 双指</dt><dd>对数缩放，全景 → 特写连续过渡</dd>
+          <dt>滚轮 / 双指</dt><dd>对数缩放：L0 特写 → L1 太阳系 → L2 恒星邻域 → L3 银河</dd>
           <dt>单击天体</dt><dd>进入该天体特写</dd>
           <dt>双击天体</dt><dd>直接推到最近观察距离</dd>
           <dt>特写内拖拽</dt><dd>绕着这颗天体转，看背面</dd>
@@ -1387,6 +1658,7 @@ body.no-ui .overlay {
           <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>在九个天体间切换</dd>
           <dt><kbd>Enter</kbd></dt><dd>从列表项进入特写</dd>
           <dt><kbd>空格</kbd></dt><dd>播放 / 暂停时间</dd>
+          <dt><kbd>F</kbd></dt><dd>切换参考系：太阳静止 / 银河静止 / CMB 静止</dd>
           <dt><kbd>S</kbd></dt><dd>循环切换尺度模式</dd>
           <dt><kbd>B</kbd></dt><dd>开关背景（星空 / 银河 / 星系）</dd>
           <dt><kbd>H</kbd></dt><dd>显隐 HUD</dd>
@@ -1395,19 +1667,25 @@ body.no-ui .overlay {
         </dl>
       </div>
       <div class="help-col">
+        <h3>四层运动</h3>
+        <p><b>①行星绕太阳</b> 88 天 – 165 年，JPL 根数 + 开普勒方程。</p>
+        <p><b>②太阳本动</b> 19.4 km/s，指向武仙座（RA 18h28m / Dec +30°）。</p>
+        <p><b>③绕银心</b> 约 220 km/s，约 2.4 亿年一圈，距银心约 27,000 光年（8.3 kpc）。</p>
+        <p><b>④相对 CMB</b> 369.82 ± 0.11 km/s，朝巨爵座与狮子座边界。</p>
+        <p class="muted">③④ 是匀速圆轨道近似，只用于展示银河尺度运动；行星定位仍走 JPL 根数，拟合区间是 1800–2050，越界之后是外推但不会冻结。</p>
+        <p class="muted">「观测设置」里有画质、星空亮度、曝光、辉光、颗粒、色差六个滑杆，可以切调试视图看场景/辉光，也能把当前帧存成 PNG。</p>
+      </div>
+      <div class="help-col">
         <h3>看到的是什么</h3>
         <p>行星位置 = JPL 根数 + 开普勒方程解出的真实椭圆，任一日期都会重算。</p>
         <p>地球那一行是地月质心（EM Bary），不是地球质心，最大偏差约 4,700 km。</p>
-        <p>星空 = HYG v4.0 星表里 6.5 等以上的 8,920 颗恒星，按 J2000 赤经赤纬投影。</p>
+        <p>星空 = HYG v4.0 星表里 6.5 等以上的 8,920 颗恒星；L2 额外启用 25 pc 内 1,503 颗带距离的恒星。</p>
         <p>银河带贴着真实银道面；M31、M45、LMC 这些星系的位置与角径取自文献，形态是画出来的。</p>
-        <p class="muted">
-          河外星系的单颗恒星在本页不可分辨 —— 仙女座里最亮的单颗恒星也在 15 等以外，肉眼极限约 6.5 等。
-          屏幕上那团 M31 是星系整体，不是它的恒星。
-        </p>
+        <p class="muted">河外星系的单颗恒星在本页不可分辨 —— 仙女座里最亮的单颗恒星也在 15 等以外。屏幕上那团 M31 是星系整体。</p>
         <p class="muted">所有表面纹理、颜色、日冕、星芒、卫星位置都是程序化生成的示意，不是观测照片。</p>
       </div>
     </div>
-    <p class="overlay-foot">状态写在地址栏里：<code>#body=jupiter&amp;date=2026-11-04&amp;scale=orrery</code>，刷新可还原。</p>
+    <p class="overlay-foot">状态写在地址栏里：<code>#body=jupiter&amp;date=2026-11-04&amp;scale=orrery&amp;frame=galactic</code>，刷新可还原。</p>
   </div>
 </div>
 
@@ -1554,9 +1832,9 @@ body.no-ui .overlay {
     venus: { seed: 0.23, colorA: [0.80, 0.72, 0.50], colorB: [0.60, 0.50, 0.31], colorC: [0.90, 0.84, 0.66] },
     earth: {
       seed: 0.47,
-      colorA: [0.09, 0.22, 0.38],
-      colorB: [0.18, 0.33, 0.16],
-      colorC: [0.86, 0.9, 0.92],
+      colorA: [0.07, 0.17, 0.31],
+      colorB: [0.15, 0.25, 0.13],
+      colorC: [0.84, 0.87, 0.89],
     },
     mars: { seed: 0.19, colorA: [0.62, 0.31, 0.18], colorB: [0.44, 0.2, 0.12], colorC: [0.86, 0.82, 0.76] },
     jupiter: { seed: 0.37, colorA: [0.87, 0.76, 0.58], colorB: [0.40, 0.25, 0.16], colorC: [0.66, 0.26, 0.17] },
@@ -1591,6 +1869,21 @@ body.no-ui .overlay {
       earthNote: '地球位置取 JPL 「EM Bary」= 地月质心，不是地球质心，最大偏差约 4,700 km。',
       disclaimer:
         '表面纹理、颜色、云带与日冕形态均为程序化艺术化生成，不是观测数据；位置、半径比例、自转周期与轴倾角为真实值。',
+      /* 反照率用的显示系数：只用来体现「金星亮、水星暗」的相对关系，
+         不是几何反照率本身（真实几何反照率：水星 0.088、金星 0.76、地球 0.434、火星 0.15）。 */
+      albedo: {
+        mercury: 0.55,
+        venus: 1.35,
+        earth: 1.0,
+        mars: 0.88,
+        jupiter: 1.08,
+        saturn: 1.0,
+        uranus: 0.98,
+        neptune: 0.92,
+        sun: 1.0,
+        moon: 0.85,
+      },
+      albedoNote: '显示用反照率系数；真实几何反照率见 research/SOURCES.md',
     },
 
     bodies: [
@@ -1944,16 +2237,16 @@ body.no-ui .overlay {
         pole: { tilt: 82.2, node: 4.496661, nominal: 97.8, retrograde: true },
         atmosphere: { scale: 0.02, strength: 0.5, color: [0.66, 0.9, 0.94] },
         rings: {
-          inner: 41800 / 25559,
-          outer: 51149 / 25559,
+          inner: 40000 / 25559,
+          outer: 51600 / 25559,
           cOuter: 42700 / 25559,
           bOuter: 47700 / 25559,
           cassiniInner: 49000 / 25559,
           cassiniOuter: 49800 / 25559,
           aOuter: 51149 / 25559,
           fRing: 98000 / 25559,
-          opacity: 0.34,
-          color: [0.55, 0.62, 0.66],
+          opacity: 0.62,
+          color: [0.62, 0.68, 0.72],
           source: SRC.rings,
           note: '13 条细环，主环自 41,800 km 到 ε 环 51,149 km；外圈 μ 环约 98,000 km。极暗（反照率 ≤ 2%）。',
         },
@@ -1995,7 +2288,7 @@ body.no-ui .overlay {
           obliquityDeg: SRC.obliquity,
         },
         note:
-          '公转周期照抄 NASA 表的 59,800 天；由 JPL 根数的平均运动反推是 60,190 天（≈164.8 年）。两处口径不同，README 记录了差异，页面上以 NASA 表为准。',
+          '公转周期照抄 NASA 表的 59,800 天；由 JPL 根数的平均运动反推是 60,190 天（≈164.8 年）。两处口径不同，README 记录了差异，页面上以 NASA 表为准。大气里有太阳系已知最快的风：赤道附近风速约 2,100 km/h（≈580 m/s，超过该处声速），所以条文里的云带被拉成极细的横纹；画面里的暗斑与伴生白云是艺术化处理。',
         visual: V.neptune,
         pole: { tilt: 28.3, node: 5.567112, nominal: 28.3 },
         hero: { lon: -0.9, lat: -0.42 },
@@ -2250,6 +2543,106 @@ body.no-ui .overlay {
 
 </script>
 <script>
+/* ===== src/js/data.motion.js ===== */
+/* ==========================================================================
+   data.motion.js — 四层运动与参考系
+   数据出处：research/motion-sources.md
+   1) 行星绕太阳   JPL 根数（data.orbits.js）
+   2) 太阳本动     19.4 km/s，向点 RA 18h28m / Dec +30°   — NASA Sun Fact Sheet + Wikipedia: Solar apex
+   3) 太阳绕银心   约 220 km/s，约 2.4 亿年，8.3 kpc（≈27,000 ly） — Wikipedia: Milky Way
+   4) 相对 CMB     369.82 ± 0.11 km/s，朝巨爵座 / 狮子座边界 — Planck 2018
+   --------------------------------------------------------------------------
+   所有运动都是「近似模型」：银河尺度用匀速圆轨道，行星用 1800–2050 的拟合根数。
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  var AU_PER_PC = 206264.806;
+  var AU_PER_KPC = AU_PER_PC * 1000;
+
+  window.HELIOS_MOTION = {
+    meta: {
+      retrieved: '2026-11-04',
+      sources: 'research/motion-sources.md',
+      note:
+        '银河尺度运动为圆轨道近似，只用于展示「太阳在动」；行星定位仍用 JPL 根数，且只在其有效的 1800–2050 区间内使用。',
+    },
+
+    units: {
+      auPerPc: AU_PER_PC,
+      auPerKpc: AU_PER_KPC,
+      // 1 km/s 持续 1 儒略年 = 0.210945 AU
+      auPerYearPerKms: 0.210945,
+    },
+
+    sun: {
+      /* 2) 相对邻近恒星的本动 —— 局部静止标准 LSR */
+      peculiar: {
+        speedKms: 19.4,
+        apexRaDeg: 277.0, // 18h28m00s
+        apexDecDeg: 30.0,
+        source: 'NASA Sun Fact Sheet — Speed relative to nearby stars = 19.4 km/s；向点 RA 18h28m / Dec +30°（Wikipedia: Solar apex）',
+        note: '武仙座方向，靠近织女星。',
+      },
+
+      /* 3) 绕银心 —— 匀速圆轨道近似 */
+      galactic: {
+        speedKms: 220,
+        periodYr: 2.4e8,
+        radiusKpc: 8.3,
+        radiusLy: 27000,
+        range: '银心距 7.9–8.6 kpc；速度 200–240 km/s；周期 212–240 Myr（不同文献）',
+        source: 'Wikipedia: Milky Way（inner edge of the Orion Arm, 27,000 ly / 8.3 kpc；≈220 km/s；≈240 Myr）',
+        note: '银河系内侧猎户臂上。真实轨道有径向振荡、会穿旋臂，本页不模拟。',
+      },
+
+      /* 4) 相对 CMB —— 总速度，已经包含上面两项，不再叠加 */
+      cmb: {
+        speedKms: 369.82,
+        uncertaintyKms: 0.11,
+        apexRaDeg: 168.0,
+        apexDecDeg: -7.2,
+        source: 'Planck 2018（Wikipedia: Cosmic microwave background）—— 朝巨爵座与狮子座边界',
+        note:
+          '369.82 km/s 是绕银心与本动合成的总速度，三者不在一条直线上，所以 CMB 参考系不再把 220 与 19.4 另加一次。' +
+          '方向取 RA 168.0° / Dec −7.2° 作为「巨爵座—狮子座边界」的代表值，只决定位移朝向。',
+      },
+    },
+
+    /* 三个参考系：键 F 循环 */
+    frames: [
+      { id: 'sun', label: '太阳静止', short: 'SUN', desc: '以太阳为原点：行星走闭合椭圆' },
+      { id: 'galactic', label: '银河静止', short: 'GAL', desc: '减去太阳绕银心的位移：行星走螺旋' },
+      { id: 'cmb', label: 'CMB 静止', short: 'CMB', desc: '减去太阳相对 CMB 的总位移：螺旋整体漂移' },
+    ],
+
+    /* 六档时间倍率：1 秒 = ? */
+    timeSteps: [
+      { id: 'hour', label: '1 小时', yearsPerSecond: 1 / (24 * 365.25), glyph: '1 h/s', lod: 0 },
+      { id: 'day', label: '1 天', yearsPerSecond: 1 / 365.25, glyph: '1 d/s', lod: 1 },
+      { id: 'year', label: '1 年', yearsPerSecond: 1, glyph: '1 yr/s', lod: 1 },
+      { id: 'kyr', label: '1000 年', yearsPerSecond: 1000, glyph: '1 kyr/s', lod: 2 },
+      { id: 'myr', label: '100 万年', yearsPerSecond: 1e6, glyph: '1 Myr/s', lod: 3 },
+      { id: 'gyr', label: '1 亿年', yearsPerSecond: 1e8, glyph: '100 Myr/s', lod: 3 },
+    ],
+
+    /* 轨迹放大因子：太阳漂移按 1/因子 显示，让「轨道直径 : 螺距」回到看得出螺旋的比例。
+       默认 20：真实 46.4 AU/年 → 显示 2.3 AU/年，与地球 2 AU 的轨道直径可比。 */
+    trailGains: [1, 20, 100, 1000],
+    trailGainDefault: 20,
+
+    /* LOD 四档 */
+    levels: [
+      { id: 0, key: 'L0', label: '天体特写', range: '表面细节' },
+      { id: 1, key: 'L1', label: '太阳系', range: '九颗天体 + 轨道' },
+      { id: 2, key: 'L2', label: '恒星邻域', range: '约 10 pc / 2×10⁶ AU' },
+      { id: 3, key: 'L3', label: '银河', range: '约 30 kpc' },
+    ],
+  };
+})();
+
+</script>
+<script>
 /* ===== src/js/data.stars.js ===== */
 /* GENERATED — do not edit by hand. Regenerate with: node tools/fetch-stars.mjs */
 // Source: HYG Database v4.0 (hygdata_v40.csv.gz) — https://github.com/astronexus/HYG-Database
@@ -2459,6 +2852,32 @@ window.HELIOS_STARS = {
     [8632, 'Markab'],
     [8819, 'Errai'],
   ],
+};
+
+</script>
+<script>
+/* ===== src/js/data.stars.near.js ===== */
+/* GENERATED — do not edit by hand. Regenerate with: node tools/fetch-near-stars.mjs */
+// Source: HYG Database v4.0 (hygdata_v40.csv.gz) — https://github.com/astronexus/HYG-Database
+// Licence: CC BY-SA 4.0
+// Subset: 0 < distance <= 25 pc AND V <= 11; 1503 stars, sorted by distance.
+// Fields per star (Float32 x5): ecliptic x, y, z in AU (J2000), V magnitude, B−V.
+// NO proper motions are encoded — the star positions are static; only the Sun moves.
+window.HELIOS_STARS_NEAR = {
+  meta: {
+    source: 'HYG Database v4',
+    version: '4.0',
+    license: 'CC BY-SA 4.0',
+    epoch: 'J2000',
+    maxPc: 25,
+    maxMag: 11,
+    count: 1503,
+    nearestPc: 1.325,
+    note: '不含自行：恒星位置是 J2000 静态值，位移全部来自太阳的运动。',
+  },
+  n: 1503,
+  b64: 'QH/Hx5U6KciknjTIzcysP2ZmZj94gcfHzT4pyBOaNMgK1yO8j8I1P5kVYMXY+aHIlDYtSNejGEHD9cg/+EnJyFoWVUjKC2xIFK7vQIlBwD+NJsfHDnvGSOhQqcjsUbi/vHQTPAAsx8d7e8ZIAlCpyD0KB0GPwvW8AgnsRzCYEsm9RhTGheslQa5HwT/8Pr9IwqfVSGKllsh7FG5AN4lhP43+AUluTIbIQ2aYyDMz60Dy0r0/R6KCR1bJnMdyFCxJMzMbQdnOxz8HYMdI4KMpyPMpCklmZqZA/tSIPwNGk8iebRhJnmRCyDMzK0EAAAAAURLISFk6Ksh5mgpJmpnBQFCNpz/O+5PIeSgZSe9YQ8jNzMw+Gy/dPrLwhkce56HHPcoxST0KD0ESg8A/2HoBSVHrbUiMFt5IpHABQRSuxz+DgK5I1MXSyK1M8ch7FJZAAiuHP6fWHkk0OExI1EuayClcX0CsHDo//fSNyChTKUk3m1nIpHAdQRBYyT+lP+lHGvyKSGL7NcmPwg1BBoHFP+qo6ki6JA7JqpSUyHsU1kDl0LI/djrGSI4d6Ues+ixJpHAZQcl2zj8H5aDIqLNFyXxJCEiamSFB30/NP+eqLUl5/0PIjZb2yMP1CEHRIrs/L38cyckaHklJuwHIcT0uQY/C1T/ENgrHMYHvRiS+Y0lmZhJB16PAP3dgqse0alDJMS+3yHsUFkG0yMY/MDRbST/Opsj4+dnHXI8iQX9qzD/vBizJbEjSSLerCUm4Hg1BF9m+PwHwDcm3+QxJKiAOSTMz00Beuqk/WldSybqP90ilUBdIZmYWQbgexT+CWQNJ4Gwkyd3wBclcjwpBIbDCPxuH20hkhz9JQ/HuyI/CjUCF61E/2PfdSD3dQUkv4/HI7FEYQY/C9Tz0QJLHqh1uyY0It8g9Ci9BCtfTP63DwkbwIWbJDeTfSMP1gED2KFw/fQfDRvVAZsmQ/d9IAADAQDMzkz8aLy9JaZmUR0xtPEnXoyRBuB7FPwY+7UgLfj/J8tn8SFyPQj/TTWI+9BRTyPtz10joUnFJzcwsQUw3yT8M8GrJkMyeyDDv3EgpXAdBFK63P5ljAsm1LcjI8fhfyXE98kCJQSA/69laSAu7Wkk9iydJuB4tQY/ClT8c5V7IIYWHSem9SkhxPR5BcT3KP5keXsh+DIjJMGFVyAAAFEFaZBs/6kINSF+Le0nQ+ADJPQr/QAisvD/k6p7IdVuGydOkjUhmZh5BAAAAAM16RscahEtJl9ZNyWZmAkEEVr4/7PwdSFKauEd4FI9JpHCVQEw3ST+61GXIIb6LSUUcUUj2KCBBw/XIPxUPBckbOEhJUOAmSeF69EDherQ/oHoUx/CNc8n/zyPJAAAsQeF61D+MvEPJdV9aydn0ssc9CrdAbxKDP8nswUiFb3TJaQAHSYXrEUFaZLs/vJpGyX+FXcnUdrXH9igAQZhuwj8a3wbJAeNyySfA2sjD9RRBbxLDPzTgTsjo2JLJkP6Tx1yPikBI4Vo/jgUcSUkDBElJSltJ7FHwQIXrsT/WBxxJTBEESUZHW0mkcF1AokUWP9RATMh23ZPJ3u2Rx1yPykCYbpI/BHsuyN9Tzsids4tJw/UUQXsUvj/ENZZJzBP/xpediUcUrg9BSOG6P4K2UMiRIZTJPU+Vx3E9okCamVk/BZMEST3egcnk1KPIcT2qQD81Xj+N9w5J2hOTSA8zgcnsUYhAGQQ2Px1OhEjcZlDJ/FxYyTMzY0CJQUA/vjmRSQafFUdtS99IzcwgQexRmD8whavIrgeRyRXpmEjsURBBtMjGP7G/8kjPO4DJewwCyT0K/0ACK7c/zOlHyWA/aslO5V5IuB4pQc3MzD/ckDjIZDrayMHBk0lmZiZBAAAAAIFeEsl3M1xJg403SWZm9kCPwrU/z5qZyFKlW8g1I51JexQiQeOlyz9PBi9JbPOZSHZEhklxPbJAAACAP6BYlcl4P/pIi0uvSOF6IEEzM8M/qL1pydEAG8kOhjtJPQrfQOF6lD9o7n5JdmULyfr4K0muRyVBKVzPP68tasl1ShvJy+E7Sa5HkUDsUTg/2vdIyEGPpsnJcI3IuB69QPp+ij9Y7J5JNgYvyG0G/EhI4QpBYOXAPxcBTcgK26nJFUiQyGZm5kAAAAAAM+dMyMzaqcneVZDICtcjQcP1yD+ajONIWCtjR7v2p0nNzAhB8tK9P70OpMnDbQBJA/NHyGZmGkFg5cA/i3KLSf6aYEmRfEjIrke5QAwCaz9gwrZJFjmrSG5yCkUUrrdACtdjP6yypEgFOgnJOuepyeF6NEA/NR4/XKeASQJAh0kvT3FIzcwoQQrXwz9YRK/JYrv3yA5zlMj2KAhByXb+PmhqoEnsc0FJbWRtSBSup0AZBFY/GwFRSfaMNkmuDYJJAAAwQQAAAAAIAFFJhq42SbMMgkmkcKVAWDk0P23/nEnh2SHJdXQUySlcz0AxCIw/qDOBSZNBRUmyJ03JKVwvQexR2D/KLa/JZQnTyAbg8kjNzBBBoBq/P6d8QUganzDJ1kiqSY/C9TxvEoO6XMNmyPfyrMmGiSVJrkfxQLbzrT9DaqJJsmkfyUrhC8mPwpU/4XoUPmqeC0fFC7fJZjMISYXrFUElBsE/RLRGSRCSNchIiqjJ7FG4QK5HYT/7RrDJ6P0ZSVf1vcj2KBRBBFa+PwhLzEiuAMFHYFvCSdejKEFCYMU/wgqQyJd6EEmA0LjJw/UsQXNo0T+qANvIO+fSyEQUvEnsUSRBzcy8P8WxMEdNXDBITZnJSTMzY0A1Xvo+jRfzSAE1uknJk9fI9ihMQNnO9z7htRTIdmeWyQL1h0mF6xlBCtfDP7f0TkmAGj3I/oWvyZqZuUD2KFw/kd4WSd9f18iyU7jJzcwcQTm0yD/Xq7hJ120ZySWG1Mj2KPxAEoOwPzsd+0jq1zxJfaWtSRSuH0HFIMA/9QCvx+3ugsnl2qJJSOFaQAAAQD9svgzJPHa9yf1h5cjD9ShBZmbGP0BYscdTWoTJy5ekSZqZJUFSuL4/QFixx1NahMnLl6RJzcwsQQAAAACFYoLJqsblyDhtnMmPwiVBCtfDP0PGnclYh4lIQiGKSRSuh0ArhxY/EzTnSFiKkcnkaJJJ7FEsQcP1yD8apcZIVrySSQJglMkAAChBAAAAAN0HS0nrB5BJ+5h3yVyPJkEAAAAAIKbAySm6M8mcNYvIFK6XQAaBNT9s9sdIr7qTSd5ilcnD9QRBPQq3P15ZsMlnsd9IgZ1fSfYoHEFWDr0/9uQ2SR0CDckiyLbJKVyHQLx0Ez9TXtFIvq9CyT6puslSuCZBexS+P2x0IEctvtlJHjDAx+F6jEBiEBg/SSnASVrYP8k/zanIw/UQQeOluz+lasXIdBe7SVppTcmkcCFBAADAP4rW3khCxLhJeiBQyT0Kx0CiRYY/qaXFyDtUu0k0i03JXI/SQIcWiT8CIu5IQJ2VySZ3lkn2KCxBw/XIPz4gWMjTIMnJRDcwyT0KC0HherQ/21BYyDh8ycnKhDDJPQqvQIGVQz9vdrvJItxqyMTIbMnD9RxBjZe+P8x8XkkU5sDJaCNcyClct0CcxGA/KP00ycgwQEkCqLVJw/UUQWq8tD/wpLZIz5fFyTnpQMnheiRBAAAAADUn4UelBJxJzjChyY/CZUCiRfY+Cq3iR1XWnEnP4KHJ9ijEQNejcD/mO4THLWqRyF0A4MmamSVBAAAAALDYqsmQ/iBJhpx8yVyPLkFMN8k/5x18SbnnmknXd1rJrkdhQHE9aj+e/rTJWzfzSNCQfEmkcM1AJQZBP3FUykmxr1DJ8lVISFyPJkHP98M/24SAyTissEnazw3JrkchQa5HwT/rRcHJmRXsx/wWd0kpXIdAmG4SP+IolEm7d6ZJObXlyEjhmkAEVi4/gYe7SaWOGUnubFrJPQojQcHKwT+GPLDJQdXJyLd3jsnhepxA5/spPzJgGEmfs4vJg3mqyVK4hkCR7fw+a2PFSFpzqUnq0pjJ4XokQVyPwj8GvxFJX3HdSeIs1cczMx9BqvHCPzngOsZFYXVJLJjJSRSuJ0HBysE/jEuaR4eZ1kkP9EbJexQWQY/CdT79ap9JcGtzSQQvfclmZiZBAAAAAI4ck8maqoFI2Lu4yR+FK0EhsMI/wmvCx4oeO8kOOdtJCtcnQYGVwz+s/sjJ3GN6yJKpgMlSuL5Asp1PP5x5x8nZjgpJXHhsSYXrqUCHFjk/YQ2pyX8AcskP3XtJj8IhQQAAwD/IL5TJmFZGydWZpslmZipB9ii8PzOIC8gOndzJfJVRyXsUIkEGgcU/3SiXyOtM8UmyKT/IexQaQaRwvT8tHi/JtTfWyWUKJEnXo7hARrZTPxwxBMlsX3nJN6fKSZqZAUEUrqc/yuqPyQ9lDkgR18nJH4UjQQrXwz+dn4xJm4nGyfaB3cjD9QxB9ii8Pz8pYEkSYGpJwU6/ScP1GEGWQ7s/u+eAyLvT2cmq03FJrkcVQQwCuz80pvlIyP5Eyez13skK1x9B46W7P6tWw8l1/GBJ7rhhycP1IEGPwsU/49nZySiOcsnlVJ9IKVwbQQwCuz9JxVLJNomISDzq40kUrs9AuB6FPyIqQknUUVNJBefQSexRJEFcj8I/Ai5HSUbwiElFpLxJ9ii0QPLSTT8O8NdI+6rUSRwTgUmF6wlB3SS2P/Bo48mRmPdIXHpESVK4KkGgGr8/r2riycy5tcjD0VvJFK7fQE5ikD/G/MDG+5mSyBYf/slcj6JAtMg2Pw6KS8kieBJJLYfgST0KL0HFINA/EgONSXKZzsm+vvPIAAAwQQAAAAAyiuBJtrBjybHp4EhSuBJB5/u5Pzg0+sjydKLJyb3BSTMzG0Hl0MI/9YG5SceKiEkT/HPJmpnBQAisXD9vOUzJZhDuSeDcckjhepQ/LbJ9P378pMnMIzBIHUDJSc3MHEEAAAAAMUbbSRaXiUnBT6fI16MgQQIrtz/v2dvJqIo3SRFnW0lcj4pAPQoXP+/Z28moijdJEWdbSZqZmUAAAAAAFEVJyT9V6seTAvPJCtcXQX9qvD+qe83JtKxsSUFvbcnNzCxBAAAAAPVkaUliTMRJ0TqHSZqZgUDsURg/FI5QyUB6l0nUGcBJCtcPQWIQuD9t0gHKFRjcyHa7H0gK1wdBHVq0P1kL+8gMv/XJjZAhSa5HIUGR7bw/32ZMSR7W7EmuPxfJrkcdQZqZGT9NYLXImYfLRwt4BEqPwglBHVq0Px5/k0n3GtjJo+z+yOxRJEFmZsY/T0yqyY3QNUj2vM9JFK4HQTEIvD+wCv/IvMr4yRDVI0lmZvZAzcyMP6PDGskvSI7JkMrXSQrXM0BmZiY/IJMmydkWg0i6/v5JexQuQVK4zj/9G7bIcajNR5MnBUo9CitBAADAPw058MmlcxBHG5V5yT0KJ0FGtsM/kXqQSUUeCUZW3OXJCtfDQDvfTz/fjLlJ+LawSVOsM0lI4ZpAWmQbPw3qG8kbWY/J92TZSc3MrEAAAAAAst97ScyafUlptc1JrkctQcP1yD+A1AhJpRdPSUOH9EkfhctArBx6P27NCElwaOfJuiODSR+FE0H+1Lg//dnNxyyjBUqm+vjIXI8mQZqZuT85aQnKWdDZR7Nk1UaPwmVAppsEPxCly8koiSXIWi64ScP1EEFKDLI/9N8FytvQnUi+YetIw/UIQOxRuD1fpEfI5cD1yYCIeknD9dBABoF1P4e64UnQAApJEC+RyXE9DkGiRbY/9wCSR8iTgsm0xfRJ9ijMQIlBYD9Jtv9JLrAhSVXpFUn2KLxAmplZP1G4+8kDHsDI9X1bSRSuz0BWDm0/NMpASTNQ1km6PJfJpHAlQdejwD+yl7NITaq3SFMdCMoUritBcT3KP/r6iUl9o8JJ/N+SSTMzg0CBlQM/J8GOyaQdI0nYR+PJXI/SQIPAaj+6ZqzJWhA2SCaq3MmkcPVAz/eTP4vdp8kcKJ7H4RzjSZqZHUGkcL0/i92nyRwonsfhHONJMzMfQQAAAABEQf/J8tLCyNyPXkmamRlBAAAAAK5Ki0nDdcRJvkWUScP1IEGkcL0/dxFjSBGvCUrgMevI4XoMQbgetT8if8VJPbkpSUOEuEkzMx9Bf2q8P8kOjMneZLjJRlGjSWZmdkBqvPQ+FireyREBSMkx3pBJzcxMvY2Xnj8g5+LJF/WpSfCbxMZ7FCZBUri+P+JgxkmqbitJF1i5STMzA0HherQ/bewByTvuqEkc7ttJMzMLQYXrsT8J7QHJje6oScft20lmZg5BAAAAADSau8kWEcBJFY9GSc3MrEC4HkU/HM1NSX/fBUpilaRFzcwEQcl2rj9X4+7JVagnycoMh0kfhStA4XoUP+TBqsl075TJX7CwSVyPKkFmZgZATvQASrVadkkCam7ISOEuQTMzwz+FIypJMF1oyZno+MlI4eJAGy99P2WZ0sjq09RJrii8SWZmJkHpJnE/EctZSYgYi8mBSeVJj8IpQQAAAACbFMfJ0JiGyXz9oUkAAMBAx0tXP1HTpEn8C6FIMNntyXE9DkGF67E/uvz2Sf6cHsmdJ4dJAAAkQR+Fuz8wiJRIQPuoSC3jD8pSuJZA8KcGP3Chk0jwvKdIWhkQyhSuD0FzaLE/FMqGyWAPs8nrZL7JMzMjQQAAwD8aoxDKaPnOyPUo5UcpXC9Af2q8Pue6Csq2KrDIMrUvSfYoHEEQWLk/5A3rSTIuA8n1MKZJrkdxQFK43j7FKs5JdB8ySQegwEnsURBBmpm5P+EnBcoJIlVJhEkVSbgeGUGe77c/jIkMSTz788ms/ZhJmpkhQfT9xD+rxZLJym/OyE/v/ElmZhJB8Ke2P+GUeMl/27TJhjfIybge1UAOLYI/NW8Syol+0chw7udHrkdhQAAAAADoEPBJJl2xyUcA2cdmZjZA7FE4PhhSPMnS7AhKaHATSexRKEEnMbg/z9z7yfCrXEm7hmpJw/UEQdejoD9t/vzJ6cJdSS2Ma0kUrh9BXI/CP/oHpEncSsRJ2fOdSWZmFkHjpbs/iIODSZ6rrcmz3NDJCtcbQd9PvT/6KfvJ2lXqSGt/nclmZipBaJEtP+gZNUmD/JrHMyYQysP1sECTGCQ/qHo1SeMJlMc7cxDKFK6nQJqZGT9OUTDJm2YQSjO7S0iuRy1BXI/CPwa4AUmIfs9JlZTTydejJEFcj8I/m+ATymza4shLZ5LIKVwvQa5HwT/04BPKM8biyBNwksgAADBBAAAAAKilocg98cnJMRbhyc3MnEB7FA4/QnQlSZKA2kniP8TJZmYuQRkExj/nnabJLmTYyZ5miEmkcI1Avp8aP0ErcUnG+OHJ5D+nya5HDUHVeKk/mzTbSSl71clTfPtHhestQVK4vj8XaAhK03DnSAHvfUmamblA16MwPzdKBkpm+ZJJ2BBDSEjhCkEAAAAA0iKiyaoWeknaRuXJ9ijMQBSuRz/vZe9HwIUFSggBm0lSuMZAPQpXP0DWq0hWwf/J3ZeoyY/CDUGLbLc/HHcuybxjqkn/HvNJw/UoQZZDuz/J4+5IfZUXSqlID8i4Hi1BZmbGPxzukUnbMQTJZdAEStejLEEX2b4/UzgKyrCrdkkxpwrJcT0qQbByyD/JDrvJe73xSS6s30hSuL5AyXZeP8IMDMpZwTVJPSFHyWZmIkGDwLo/QnsQyYNC3MlBUtDJuB41QK5HoT59Td7JJP8LyYvIz8nXo/hAJzGIP2E68EdVQgdKihCdSeF6HEFEi7w/MUCiyAo/B8o/XJrJzcwgQfp+uj8oWbZJ1H6rSXaFvslxPQZB0SKrP4dOrslxdcxJdaCjyWZmvkAlBkE/HGzhybszi0k35qnJAAAsQWZmxj8FgZPJyC+9yAYaCUpcj5pAy6ElP3pIFUrRaUXJxs1WSD0KF0HD9Sg/fm/fScm4CUlulNTJw/UkQd9PvT+NkqxIq5IWSqhrOUl7FJZArkchP/rCsEjYhgPK5mmtyQAAIEEAAAAAFLXrSRDxPEmsFMHJXI/KQBBYOT/EoxJKJB4tyfO5PEmPwiVBxSDAP2Mn1Ulbb7NJeeaeSVK4nkA/NR4/+2+Wycf3wMh/1AtKUri+QAAAAABlBB7KpOlAyMM01MiuR7FAXI9CPwHMSslP8BDKS9g/yQrXq0AAACA/aoKmya/gqEnieNlJcT2aQPp+Cj8zThfIP8UwR97fIEp7FM5A001CP1oEpUnjjffJ+pt/SVK47kBOYpA/wk2YyRjRN8nougfKzcwEQQAAAAClPgDKE3PBSazew8hmZuZAiUGAP+8Yqkj1kRRKKTB9SY/CdT8AAAAAHyyQSYKLDEhUCRLKH4UrQa5HwT80kqtJWbAqSVYXBErheiBBH4W7Pz5TB0diz5RI7ociyqRw5UApXG8/YsXNybemUkeWw/5JCtcjQaAarz++tbNIHLcQSqFLk8nNzPRAyXaOP/z8gkka8q1JuKn1SbgeIUHXo/A+byQsScEs5Eij5RvK4Xr0QFK4jj8Zr89IwIwiyvN2v0czM7tAukksP9CLzke03BrK2QliyXsUBkEZBKY/h/+pSI66FkqOr35JMzMjQQAAwD+kfKxIK7MWSpljgEkK16M9H4VLP/sDGcpldFBG5cl9yQAAMEEAAAAAchMZyoBEUUa0433JuB4JQR+Fqz9J3VBJBZMdShwRcMekcAFBqMaLP2Ffnck2YovHDJMSShSu50BkO38/QFIOyhjOMMnjT5VJ16McQY/CtT8n/6tICvckyiR9SUiF69lAf2pcP2p5AMqI9Y3HWz3VSRSuF0H2KLw/jrFGSW4o8EkUQNLJFK6vQMHKIT/VLILInhv0SPTSI8rNzBxBiUGwP+im8UldLEDJPK7TSa5HHUEpXL8/cbcFysgSA8m2WsNJmpnhQHsUjj/cp4NJqKIXSnvYEUlI4SJBKVy/P/WLqMlhh91JmyjCSUjhSkAzM/M+JGfoSesxuUm3lqRJMzODQEw3CT+F3rNJ4WO5yRwu3skUrg9BrByqP0UfE0XkTQtKRTPESQAAJEGkcL0/pG8LSnFmn8l9+mXJXI/6QNNNkj8S28jIiM0Yync5kElmZi5BH4UrP/ajh0mThrZJaET/SVK4BkEj25k/k7b5SaVm6EnsemFISOEqQfYovD/NcYZJzJwESU4KGsq4HglBFK6nP7aJt0lG2b3JUHPayWZmHkEAAAAAICCCSRkipsmqCwdKCtcbQQ4twj/LRslIoh0SSm9drEkpXB9BwcqxP9qykMiAoAbKCF7RyfYo7ECBlWM/YUMXyiHSU0ngB3fJCtcvQZzEwD/GMSjKaHAryDZOBUkK1xtBsHK4P/8lCMq7cwXJg+TGSeF6AEEAAAAAXm4WSuzHFEkfwZVJcT3CQBKDQD9BRqVJxBgCysPBmkmkcG1ASOFaPy21DspIo4dJ+yuLydejIEGHFrk/2AiiyYeOQ8n7ZxDKPQrnQCGwoj+XKCtKeUfhx6oBrEj2KIRAwcoBP7mCn0eQjwZK8bXYSexREEESg7A/nK2GSUQeG0rjNhVJSOEiQa5HwT9e6SjJPpjeSXdB/EnhehRBQmC1P35YBkpfqdbJM4+3yDMzL0FCYOU+ZuS5SdBIwMmiP93JH4WrQBsvHT//jrTJn2i3SQQK7Ek9CgtBcT2qP5+ZJ8m2pQfKiw3MycP18EDXo1A/Vk6tyWeKE8qvXBJJCtcnQbKdvz8xT5jJ/MkYyp3qGUkUrq9AeekmP69D4cl0Uu5JAW91ST0KI0HNzLw/7uAByh9Fp0lkR6VJXI8SQX0/tT/HqrlJ4Z/OSX7p1skzM+NA309tP3+NzUlsUgNKHV5eya5HiUAzMxM/CAYHymmul8kbtKhJUrgqQbpJvD/doZpJ2MseyqMXFsg9CsdADi2CP+wWAsoU5ptJRLG2ScP1oEB3vh8/R/HVSCdbLkqsWJDIj8L9QN9PjT9j5KDJdLyHSQ+zDsoAADBBAAAAAMjbEEpCA6jJdDppyVK4LkEAAAAA+9IRyNN9YMgvkzBKw/UAQc3MjD9EUQ/I/4ZqyECoMEoUrh9BNV66P0V9F0nGr4NJsXggSqRwTUDP94M/bejPSRN9j0kI5PnJZmbWQAAAAACpbyhKzuBkyR8pYEaPwh1BI9u5P2TbFUqZ1V7HEovByc3M5ECynW8/XR2RycR1EUoKPZPJhesdQXE9uj/LWCnKiYIVyJeOXkm4Hv1AtvONP/6/Esh4K2LILNoxSilcp0CsHBo/cteWyZLWD0rwMpXJPQoPQXE9qj9sMcvJvoCcR+wUE0q4Hg1BdZOoP8zmlsmvARBK51aVyY/C5UCTGGQ/aBX/SZEQoEmessHJPQqPQKJF9j6rvNFJ4cCQSY0a/MkzM3NADAILP5BoJ8o+CwFIGuWAyR+FH0Efhas/gkw1ybYYJspJB0zJ16PwQG8Sgz/l3F9JTYWSR1qWKkpxPVpA1XhpP+mT7UlMw/hJJsBOyWZmLkEAAAAAGIMTSeqaJcracW1Jw/UMQY/CpT8YBxTK9O3CyZ3Q/MhcjwJBYOWgP0UCJMrfnc7I58uMSaRwpUAAAAAA9vHPyNkYxsl7eRRK9iisQMl2Hj/zrP/J+2tAyTlf7EnD9QhBMzOjP1dnQ8n/6+1Ja/X9SfYotEA/NR4/hzzVSRtpEcp+HITIH4XLQGIQOD8KZ3pJmdL+SSPz4EnheihBPQq3PwzI1UjkMjJKMj6SyAAAoECWQws/tFWRSbhaEsrgiJ5JmpkVQYXrsT+nHElI648UyraC0MmamR1BpHC9P7DhPMlVDChKZQ5USc3MJEElBsE/bEkJyrrGzcktF3jJexQCQUw3qT8cTQnKr9DNySIleMmF6xFBexSuPyUiBMmMuQPKS7PzSY/CJUFmZsY/Y776SWBa+EnsCzzJuB4RQfLSrT+5HqzJt4kFSkxRtEkUrkdAHVpkPuppiMk6LojJR1QbSrge1UBt5zs/BiS2yevhhMchmR5KrkeBQMl2/j76yQPKxabNSWhUlskAABhBBoG1P7gnmsmmgRtKoy9vyVyPGkESg7A/4sNDR76F6kmqPQ3KMzMrQXnphj9Hn7HJ2yQRSgdVikkzMx9B16PwPplUJskwQ1xJvEgqymZm1kCamXk/5tTdSWFNCEr0YlhJmpkZQexRqD9nkKLHJ1YzSmh8IckUrhtBJQbBPstyvEkfYO7JdMbPyeF65EAlBmE/3aStyWWzBkrg6rVJzcwsQQAAAADdpK3JZbMGSuDqtUkAADBBAAAAAIw+FsgV/TXKVBLfyArXJ0GWQ7s/V8dNyTBQn0lqIB5Kj8L1QAaBhT/UGC/JG0flSSamCcpSuNZAwcphP00mzsn/BQnKpneISR+Fu0CgGi8/wPw8yZA8EMoPa9LJH4XjQNEiWz+Tjd1J7SgSyqLjtMj2KIRArBzaPtcagklBqBtKFISYyaRwKUGambk/O2Urysh3Y0maRCNJ7FEsQQAAwD8hD6DIIsU3SrDsasjD9dhAxSBwP37aisl0wB3Ko/6IycP1AEGgGo8/gHu3SZczIEqvlJ9Ij8IZQZ7vtz+SWyjJJvxeSdJeLMrNzPxAAAAAABxYKMr1DpvJGFWWSI/CGUHFILA/RuudyQ0iD8ppfLPJzcy0QIGVIz8g2hpJ6anGyUvqGUpmZqZAYhAYP+hSNkdcXxRKh5jkyaRwbUBEi6w+EJzjyf54GEmf2Q9K7FHgQLKdbz9J15/IKLgWyiuX20m4HgVAUrgePiUhnkmIGLJJSHURSgAAEEH0/aQ/xK4qypAqFMkUW4vJ16OAQAwCqz4B23HFV/zaSW5TGcqamRFBAAAAAAHbccVX/NpJblMZys3MBEEAAAAA5fMbSXcYyMllBRtKZmb2QAAAAAB2hotJjXCnyUb4GcrXowRBXrqZP1pFDko7AmxJo7HaSQrXD0EpXK8/w30OygmvbEk0VNrJj8KdQDm0CD/kGANIfR++SXNhI8ofhStBke28P6TYhEmjBXFIV6MwSs3MHECBlYM+RJcLysgR4knbrXBJCterQFYOLT/JFQhKuczbyQQnkknsUQRBZDuPP4Ew3ckH6eJJGvDRSeF6IEG2860/xWH8Sa/MacixrA3KPQqfQA4tEj8NVjVKLkQnyVqNKMmkcAlBuB6lP916/ElQTQLJaVsLypqZuUBcjyI/YpQsSN3yQUdBnz7K9ijcQOF6VD8g2RdIjTUpSlp2sMk9Cr9AgZUjP410h0ljHxDKhivTSaRwpUDl0EI/Jlk8SrMXx0jI6apIuB7VQLTIFj/f2ozJO9KuSRkeG8ofhatAtMgWP8cJssghrfTG5sg+SvYonECiRfY+ppqsxxBePkopFNPI7FHYQE5iUD9caNBJFfc4yfwbG0qF6yFBXI/CP4HQjkkmZY3JWb4kygrXE0GF67E/SK6myYlqJModu2jJ7FHAQD0KNz91eKDIru9VSfaxOMqPwhlBNV66P9Iyt0n3Wh9KQj90ScP16EAAAAAAxEIxStLjuMgjGZVJAAAoQVK4vj9dhPFJ5NUCSv7umMkfhftAgZWTP6S5LUoLbMPHfcWryXE9skA9Cjc/ccr5yeseEkoMj+HIhesZQTMzsz9OYydJ0DU9SgQsZci4Hp1AJzEoP+aHCUnxOCtKujOrydej+EArh4Y/M3k1yl7Kb8n2PxBJhevhQBSuRz/tkSdJgtkQyiXU9klcjyJBTDe5P5R1Bch6hCvKLfS5yQrXo0D8qTE/NF8WSmbeoMjq5fVJMzMrQcP1yD8ur+LJuqFmSZVaFEopXBtB16OwP2pDjkmzhSLKPROkST0KV0D4U6M+OSnHSQC6GEqPDY3JuB4BQVK4jj/uNS9KXhTFxyc8rcnNzMxAAAAAAByrp0hJJojJm082SqRwHUG4HrU/XNnUyZZVJMrofKNHUrgOQVTjpT+dQ4BJOAkfyg5+vclSuB5BAAAAAP57ykkBMg9KsvCuyexREEEX2a4/jb+FyYpdNUqNqwlJcT3KP5ZDCz25KCfK019YydRKr0kAADBBAAAAAMrtMEoqrY3IDz6nSWZmrkD6fio/8lLGSee8KcoZVrbGXI8OQVTjpT9ZZCfKD61YyceLr0kAAJBASgwCP228MEp1RdRHkMisyTMzD0G4HqU/Z1GmR0VY58lgSR9KmpmhQAIrBz9D8RLK2/3Xyd93lcmkcN1ASOFaP/Kbpkf9iOfJn2gfSjMzB0HNzIw/MQ6BydjD0knNKRrKKVwfQXWTuD8YiHrJ0MCRyXb8LEoK1w9BppukP3PAL0rfyjzJ+WicyfYoEEHD9Qg/yIsAyrd40ElJw9lJmpkNQXE9qj/QQz5KktbBSCC6ScmkcKVAgZUDP/qPu0mqBBZKMKSzSY/CIUFEi7w/6sJsSW0RxsnnayFKCtfLQPLSTT+yibtJnivgya9NBkrD9ehA16NQP/SHNUmuZTDK+LOdyZqZIUEAAAAAp46HyTfMN0ohjgtJZmY2QAAAAAAYm4fJJs03ShNKC0m4HhFBUri+P50/EUoCVM/Isr0FyuF6/EDFIKA/tR4Hyo1/b8lGvwVKPQqPQDVeuj563gLKRgEJyuiueUmkcN1A4XpUP/1TE8pnNSFJknUASo/CFUHfT60/WcqxSdtTwcksXhZKKVy3QHe+Pz8aOEJK87oRye1y40hmZi5BUri+P4vI6cklc7zJCbsDys3MEEEEVq4/MRMsSZmGQkpRf2vIZma2QAAAAAAbB0fKEzF4yHsdD0iamSFB9ii8P9fmlkl3KpDJQ6UqygrXB0Feuok/STo3ykgTTklr1HZJw/UkQScxuD/jupvJx291ydPMLUozM5NAxSAQPwHc2Um7b/LJwI/ryY/CJUGuR8E/QvUJyuk3EkqVwbXHUrgKQeF6pD+IsjvKdu4QSNOJkMnsUSBBH4WrP5E15Un19v3JZYHUyXE9skAj2xk/FJ4TSkR9CEqDfWXIpHAJQZhuoj/BqFvJ/zggSmsh28kzMy9B4XrEPwEiE0oiCtLILnoHysP1EEFcj6I/aATmSYK4JUopDm5H16MsQYXrsT86+bBJe52NSVL0JsoUrt9AUrhePwN9K8osA7hJgjtYyeF6KEFOYsA/5JYcyo9F98ePrv5JhespQTeJwT9C6hTKymGJyZoI7EkUrh9BI9u5P56JIUraY8zJBOeDyc3M9EBxPYo/Ou/VyVc2F0qOuaJJpHB9QFYO7T4MC/vJl9KxyTmNA0qkcCFB4Xq0P09dOUnhHjTKewOhyXsUFkHHS7c/7+g8SZkIIsqmnuBJPQoXQXsUrj93szZKF6FXyeSljEmamSFBAAAAALebPcoqoHrJH8kWSTMz60DJdl4/wgCSyQy+qsmY3SnK9ijkQBkEVj+fFhrKLDLmRmBJBco9CiNBSOG6P7z6KUpK2YLJRqG2SWZmKkF3vr8/uMhGyfLoI0h7bUXKexQeQR+Fqz9N5aZIVDEdyuIkAMoK1ytBpHC9Pya7RslIJyRIuZlFykjhskAhsBI/6ZMkyTMtz0nX/CpKcT0qQWDlsD96QhNKFbkMyh0xacikcBFBH4WrP356TckK4mTJODY9yilcf0CR7bw+Tc3BSJIM7En8UyVKMzMDQWDlkD8yYz5K6ZkiyZCOgUlmZoZAEoMAPyqoC0lQnDNKV2W6Sc3MHEEv3bQ/eGpUSdkg2skzwyXK4XoYQY/CtT+sx0lKv0rqSA8X2Eh7FC5B30+9P+vYGsocMuRGdFsHyh+FH0FaZLs/N/rTyKetPMrISJtJheupQD0KNz+9gJZIz9FNyR90RkozMwNBheuhPwxoDkkhyUfKPMUKSXsUKkHXo8A/Yd4XynkHjMksn/BJ7FEcQcuhtT+N7xlK+JXZyfy9p0n2KPxAXI+CPxn1gMXI4e9J4vMnyjMz+0A3iZE/vpaEyZoy/ckTCxXKH4UHQTMzkz9BokvJOBQ2SviJpknD9ShBdZO4P6DC2slznBpKymWmSY/CxUBmZiY/jD+ayZS6P8p7uzLIFK4jQb6fuj+EYdXIKOQ9ysFEnElmZsZAAAAAALxghcjfhTXKrZPEya5HGUFI4bo/VPWLSaNYqkltuS9K7FEoQYPAuj8nHR/KxnjQyWUMp0kpXO9AhxZ5PyEHvcmZoA9KP1XpybgepUCamRk/8d8lyRt6l0nFIz3KheuxQHe+Hz/FHtRJ6E0lSsmAiUnXoyRB1Xi5P3HbZcm1RwRK5zEWSvYoFEH+1Kg/HPKFyeTP/8nskRbKH4VLQG8Sgz6qliZKOrfySR0GDMkAABhBAAAAAF41s8h3KSVKZU79SaRwCUGDwJo/KnjPybL+NUpdg1RHXI8WQR+Fqz+S9YrIz61Pyijxwsg9Ci9B9ii8P8nwvsksGBFKJbLryaRwxUBmZiY/W3bhSZb0MEofoTDIrkctQfYovD81SRNKZcKrx2MIFspmZiJBJQaxP4UF98iOsEJKHG2TSRSup0AzMxM/ksU4yMJyDkpFlRrKCtfLQCuHNj+VjQZKeFkMytV4oUn2KPxAF9mePwFWO8rgwY/JGqeCyWZmHkHXo7A/Gf24ybcsO0pMGvlIPQrfQMdLNz95idhJPEaYSUi2JEqF6xFAXI/CPgDiF8pIQAXK1mB3yexRLEEAAAAAndJpSdqU6cddOEvKrkcBQdejkD94RDZJnxrDSRMvNkqkcOVAvHRTPzDfq0me68LHlMJByhSuF0EhsLI/8SovSW5TK8oU1OpJPQr/QMP1iD90oTvJJ2M7SunesUmuR7FAvHQTP44ZF8rYJLBJg3bySVK4LkFg5dA/dPnryF5NhUlgKUhKw/UkQRKDsD+fhstIA1g5SSJuTkp7FA5Bw/WoPw8Yb8lyixLJM0RJSgrXI0FI4co/3aglSdWKUMoVUmzIZmYaQYPAuj9NEz3KHePvxs3TxEmuR8lAz/czPyTQ2EkuP3FJi1gtSuxR2EC0yFY/Kau9SRLwPkq2GYpHzcy8QFK4Hj+jStPJcVw5SmAbWEcAADBBAAAAAMszLEj1S5jJ1R1HSsP1JEG0yLY/ZAxCSXo7SMo4Q1/JzczEQOF6ND81ZixJTD+tyHsBUEozM9NAbedbP7HJucnqZ8bJM8gkylK4LkFSuL4/9EA0yjUApsl4M59J16PIQOOlOz+gSCfK8WcDyvxxr0hmZhZBgZWzP3X8J8qsORHIiBUESoXrKUExCLw/ydQsSZWWHcovPApKUrgSQR1apD+YZhLKXvwaStiZoMiamSlBc2jBP24RD8rKJh3KAzrgyIXr+UCmm4Q/TiNPSh4AXMlqegJIKVzvQHNocT+yBe/JGCL6yXVp/8kK1+tAkxhkP0EcKsqGIulJmzB3yY/C5UBSuF4/mzdJSvbzj8nmCt5IFK4fQaabtD8n3BVKuXlCydVME8pcjyZBzcy8P7/8K0pCk/pJAI8QyT0KC0Hl0LI/D0/PSaEEcEgODj3KzcysQLKdDz+CtDbKJUNnSeWryMlI4R5BL920P+5FjsgOYuRJM/w2SpqZ0UBiEDg/bXYvyrqY5MmFqVpJAADIQIGVIz9T6rPJ3SjCyc/xK0rheqxACKwcP659O8ljuFNKr4YZSBSut0AhsBI/VKQbyvKAzMm8Bd9JFK4TQXNooT8FX8vJP3s+StBZsUgpXCNBSOG6P4FsesnX1D7KsEClSc3M1EB3vj8/p3/eSFWAVUo80+fIzcwoQQAAwD+WeibK1Ln7yWdgcsnhehhB9P20P/AbEco7JxtKMPs3SWZm5kC2830/eHY7yjsTxcko+UbJpHAFQYPAKj8KZhDKFJQXypl2cEkzM+tAAAAAAFzNT8qxs4JJjdkMRwrX60AfhWs/LLRGSQIRTcqAyljJKVyHQFTjBT96hjTJUZQUyM4IVcqPwuVAZDtfPz4EJEohK6ZJ6tDqSR+F60A7328/0W4synRG7Ek71nrJSOGSQJhu0j7H6ixJF/UNSkgOIEpSuBJBJzGoPzV638ndKBLKMm7rSXE9wkCHFhk/aAwKyS2cV8rXVvZH4XqMQF66yT6tFCbKIErGSBg0DEpmZr5AjZcOP4YwFsoelQhKBZ6jyexRwEBMNyk/elYaSXRkGMorghjK16MUQTMzgz+zawrJbSJYygui9kdmZg5BAAAAAKu8LslpGKBJ72JHylK4CkE9Cpc/07PTSVRIfUmQWzXKzczcQD0KVz/YHh7K5zdQydzrDkrhegBBJzGIPxwX6kn1K5fIEbQ4ytejsEBWDg0/osixyXcmM8rnBLXJ4XqUQLx00z5Fww/J6aVYSm/GUUeuRwFBIbCCP+Fv2MmGVC5K3vWdycP1AEG4HoU/kqk9ynvMCcl599PJKVzPQARWLj9MLe9JJjb7x2mmOMozMytBAAAAAC/gGknueqfJcQlIykjh0kB3vj8/fgyryeCVLcpNp9NJrkcNQU5ioD9EUxPKmoMdSpzROkmamQFBAAAAACldF0qavHxJhNsTSrgeGUGkcK0/TpOfRxidV8oepEDJexS+QKRwHT969E3K1YZNyazqdkl7FKZAj8IVPwxeREk8B3FIGyJXSrgevUCsHBo/AeiSyU0wisnI5ERKH4XTQBKDYD8viBxKiRIcyuE8GkgK1+NA8KdmP1ygl0dVRS3KNUIKyj0Kr0BQjRc/ENHfSacQ80lgKxTKPQqHQD813j7qRKpJQAZJyil0H0nD9fBAMQhsP1srHUoOtBzK7dUaSDMzI0EAAAAAMa5uyPGhXcpcD9NHH4WbQMUg8D61047JtfJOSougGkkpXPdAuklsPwl7E8r70hrKpZ91SVyP0kD4U0M/gpJByj8l98cj3NvJ4XocQSUGsT/+Fe9Jmdw7ShGSO8gK1x9Bj8K1PxY/M0lvTxXKJbUfynE9wkBU4yU/PzpcSZ+T2UnWNTvKFK7vQPCnZj8Zw1zKAgoJSStuA8cUrs9AAitHP/MirEnG7pJJBtJAypqZDUFaZJs/eG/cSSUBDsqqIgVKmpm5QJqZGT9bhN1IRNX2SUKMOMpmZvZADi1yPzXNH8qjMBZKKL82SZqZ4UCLbEc/0QIjyaMnickUaVFKj8L9QBKDgD9rwUDKcgmzyaWbjsmamQVB46WbP1LE3MlQzTFKER+hyc3MAEHsUYg/jxZMylCRAMkVNq9JcT2KQMP16D53Rz3JJGFaysFks8hI4dJATmJQP2Ao9EmWJQDI9YI8yvYobEBiEFg/xhmayfBVikeyG1NKAAAwQQAAwD/fQRhKjzqISI6FJEqamRlBAAAAAEN39ckF6rnJ3+wjShSun0BGthM/RqwCyJ1Q+UmwJTtKexSuQGZmBj8tDFtJgYYDSs1eLsp7FAJBTDeJP57INEqh+7DJa+LJSVK4vkCiRRY/9G5NSekJVMqzLWDJAACgQAAAAAC8MPHIC11eSvkRq8i4Ht1A30/NPnrr4sl/D+tJmHAbSnsUGkE/Na4/5v9Oyl//i0kkV19JCtcjQG8SAz7kN1bKn+txSCvQickUrh9B+FOzPznnsUlt9zXK92nGyRSuC0FCYJU/SWIyybSk0slJkkLKw/UUQef7aT/hvq7J7GDGSZgwN8rsUaBA16PwPv97C0opuTHKopoyx83MLEGambk/fLFMyDAEXErw3EfJj8LNQF66KT/DYV/KgZAKSWsqBsdcj/JAiUGAP/1pKcr+Zw9KqlUsybge/UDheoQ/mfSOSbetVUpSSp5ImpkBQd9PjT8sJxtK7aQfymL0IMmF69FACKw8PyW6OUoeRPpJdKwFScP1KEDD9Sg+a75LymjtWcn8zKRJPQqfQLTINj8zdS3JZdJaShUDH8lmZlZA5dDiPhp12UjwD85J9gRIyq5HEUF3vp8/k74qyjPc3skzB8fJAAAwQJZDiz0TjK/JbkbHSacCOMqamQlBAAAAAOSWG8p5ng3KQ7CqyQrXA0BzaIE/NOwnyhk5EsoheDHJCte7QKabBD/tN5DJ2EhXSuvIMsYzMwNBAAAAALluksmJklNKhNcaSbgehUAK16M+MXYISpatDUoZM+VJ4XokQVK4vj9mtg/K734vSjDy0sgfhfNA9P1UP/wC4Um1wJFJ+Ds5SgAAHEF56QZAtQcayqjRucmaWQ1KH4W7QLx0Ez+Lg3hIQ2w1yquiCkpI4SJBRrazP60FHcoxbCZKKwzPxwrXF0EAAAAAMAzfyaMg4cmFeSXKzcycQDVe+j6SkCfKwGwESo1MpkmF6/FAPQp3PzCGC8rYqxRKwxfSSXsUAkElBpE/ZTlLSqcorMjknNDJpHD9QNejcD/2GofJ2rNZyqNP1EhxPS5Bbee7P9ulTEn6zZFInhdfynsUjkDn+4k/4etXyRY3XMoKDhbJrkcZQU5isD+9wOrJUI5DSiIY70j2KKRAEFj5PkpfLcqAJxLKE5YaSRSud0C4HsU+0X+ryaNxVcp7L5DGZmYmQf7UuD8tHCxK9FEDyroBnMl7FJ5ANV76PqevYMr8TUdJRLL/xjMzC0F56ZY/1dtayplGV8niijrJmpmJQPCnxj5JUVpJEnzcyTWSQsqamRVBKVyPP2NWt0kPcktKmddiSfYoCEGR7Vw/oSQnyQoTjclOX1dK7FH4QEjhej/aNnNHr2NeyUa9X8rNzLRAmpkZPygd5cg9Y4xIdD5kyoXr2UBMN0k/FcTNyNlQWMlhy15Kj8L9QJhugj94U3FJlnhUyYxhWEoUro9AcT3KPq/SQ8nhnl9KZ/7+SEjhGkG2860/7eUGyvYdEkrPDOxJXI+iQMl2Hj/EfzNKVUgSytNqC0iPwhFBc2ihPzMFnEizBkbKB/zuyQAACEFSuI4/jzp5yVW6QErpCePJexQGQef7iT+N7CtKU8P1ycqswknNzKxAAAAAABT8K0qz2vXJNMHCST0Kj0CLbAc/9f+9yWg5zUlPRjrKrkcNQXNokT+Vwe5JD83PSQ0TK0pcjypByXauP9gOz8mgVv9JcTYlylK4BkEGgYU/4q+LSSB/+MjfP1xKPQr3QNejcD9ZLD7K+RqqyChmBUrNzBxBAAAAAItDlMkjT11K2AU6xgAAYEDufL8+xyytSN2sWco2A6NJUrhOQGDlcD+EIg3J9OBRSsqswEkzMw9BLbKdP+cn28kNpUhJ7CBIymZmKkHHS7c/I1YNyoE+GkmL9zXKzcyUQAAAAAAE4UNK8EWEyU1M2smPwuVA309NP+d5k0lLkwNKwssySvYo5EAfhWs/eX8VSozzG8q8aLNJZmYWQQAAAAAEHSHKih8Ryqvzr0muRx1BZmamP5P0HcnU8JLJQqJaSuxR2EA1Xjo/N5DzSC8KWMocH6tJ16MAQdV4iT/a7jfKHSzZSelIwclxPfpAF9luPxPn/8ljz8HJQOEqSlK4vkAAAAAAIljRSQkQDspyexrK7FEMQUw3qT+62uBJsexLysOTAknXoxRBObSoP7w2U0qpq7JHpvvOyc3M5EAv3UQ/kUBYyvMOdkirxbbJexQmQT0Ktz9zM9PJo5RSygjqykbheuxABoGFPwS1KMqA0MrJqcABSq5HIUEfhas/QbAhSuheJspFwSfJmpkZQQAAAACvykhJOD0EyrC4PMrNzMxAAAAAALTU3UmcYdRJzi4zSpqZmUBxPQo/6TJjSpiQbMgYy3jJ4XqcQBBY+T7S7hhJrxAbShHXLUpmZvZARrZzP0c0pEnO3dNJ/X1CSmZmJkEK1yM/8Ai0SAWbvEmLoFfKH4UbQW3nqz+HXMBJfEityYH9RUqPwsVAi2wnPxI4VMo3p8TIpfjLST0KF0G4HqU/skwPyk9kHEk6gTjKZmZmQLbzvT4yLkHK6casyEqCB0p7FA5BhxapP9Rj6EklKj1KlHOmyfYorECTGAQ/WEGHSaAkXcrCH1HJKVzPQJzEID/XBADKGLVFSoTN28jXowxB2c6XP6B86cgaomvKtWYbx4/CGUHl0KI/vua1yYxpp0lF10rKXI8aQR+Fqz9ToznKv18TSo4FgshcjwpBFK5nP2mbKUo98yVKMM9jSBSuA0HVeIk/mWQtyuG56slF3+FJCtf7QARWbj86vRbKUcEvynBqWkkpXBdBFK6nP5sDasmLs1zKt3SISY/CLUEEVp4/Z4HqSYMPHMrOoQlKzczkQLTINj+jogrKX8GYyHAqQko9CiNBSgyyPxcCbkqU7qnI0i+ESKRwGUGsHKo/yM3VSZ0WEcrRxh3KmpkZQQAAAAD0hcdJUa1VygoGLclSuAZBMzODP4HvSEpHhiFJqib5yT0K30CTGEQ/7eFZyhdfkMmxuoxJKVz/QPhTgz+8ko3J1TO9x3/NZUpxPQZBYhCIP+p+Q8lWJmHKX9OKya5HBUECK5c/xZdDyV47YcqE54rJZmYmQQAAAABidmlKXcVSyVxT0ciamflAN4lhP5fCZcmxOmhKbHrfSI/CvUDsURg/dUXuSdqMAcoPwiTKuB4tQfYovD+ep89HWBBxSoubX0fD9SxBpHC9PyukDkpoSdRJASgjylK4EkF7FJ4/fFVCSqcGN0mrywdKcT0eQZZDqz9YMRPKqJIySn7BiklmZr5Aj8IVP1NS3Umyiy/Km233SQrXo0DFIBA/MFARSpbUwkmj0SbKKVwjQQAAAACnSYZIx0rGSPXeb8oUrt9ArkdBP/KXNUld6q1J/PtcSsP18ECmm2Q/uEUzSfXiKcr3KCZKexSGQMdL9z6lwiPK/icsSnjfOUnNzBhBH4WrP//YxElt4RNJl1dayq5HCUE5tIg/8s2HyKEwbUoGxDrJrkehQAis3D5wXZHIk2ZlSiv0l8lmZrZA9igcP3jNP8o8FSZIN+gTSrgeKUHdJLY/0Fwvycr0XcovArBJpHApQexRuD/EuSFJVpVSSnDN5EkfhS9Bx0u3P36eI8qeQn1JuEEoysP1BEH2KHw/uzMGSoN+O8qljppJrkf5QMUgcD9OaSjKFDMuyjwkwkgK1xdBsp2vP2kTSsri5wXKwePOSGZmIkEGgbU/aY81ysRzEMo2VJZJ7FH4QKabZD9vm/vHZ/W3SOzcckrNzAhBWmSLP56llUl+ODLKUgkVypqZKUFxPbo/+4mLyQ2uZUo+0TJJw/UgQY/CtT92NBDKLO7ySR84G8qamaFA7FE4PzqL7EkYStDJUpE6ykjhDkFGtpM/B143yiaTCMoe66vJKVyHQBSuxz58IdPJqoAISvYDLcoAABxBrkexPxc9O0oLYgxKhVCNSUjhWkAj2/k+AH/3SYnBUUp4IqlImpkNQUjh2j+udAhIVlOCSS/Aa8pmZnZAoBovPnUj40npjA3K3GokSqRw9UCNl24/8Bv0SSSUHcnG41BKexT2QOxReD/4c0XKbu0HyqyqTcmPws1Az/czPzjch8nx8j7Kg/QJSgAALEEK17M/ND3HSSiaFUme+lzKCtcjQXNosT8IDQrJ454KSFWrcsquRxFB16OgP+wl7Mki+wVKEh0oyrgeNUD6fuo+jzYNSo+CR0o326pIexQmQa5HwT9Wgx7JBW9iygQErknD9chAexQuP7GM/Uk24kzK/nlCyR+F00AQWDk/41pJSmmTosjPkQvKrkcpQcdLtz9PqLTJ5nQmykHSHEozM/tAAAAAAP3Vc8mq8mjKLCNIyVyPEkCYbpI/n/oxSs7+IUaW3SlKXI8WQdv5rj/YEjhKEwW+SW/VBMrhegxBKVyPP/Hp7cgTutdJeTlbypqZKUGDwLo/CtIYypyE2Mmrxh9Kj8KdQOOl2z72Yv3IMV9VyVlUbsqamYFAvHTTPq5Oqki2SWTKBcqzSVyPGkHNzKw/u8GwyXiVHUo+fidKj8KlQEjhGj8A5BPKCusFylFHEUq4HuVA8tJNP+2hkMmXm1nKbci2yQrXH0GNl54/VkGbSHbVpMn/32dK9igcQUw3KT/BJ47Hcfd1Sggmo8gpXP9AAAAAAFhT30kVynPJrEhUygAAGEGiRaY/sta1yZuIJ8pH1x1KKVzfQIcWWT/1v85I/FW0SVk6ZUrD9fBAtvNdP7m49MmFBU1K7xaESfYoLEE5tMg/6lymSa5SQ0pus//J7FEkQVK4vj8yPY/Jy7ksSu2bI0rXoyRB9iisP4NLGkqWSevIaJJASmZmGkGDwKo/M4JFyv0k0slPndjJmpkpQQAAAACspxXJRAA0SiBrJ8rNzHxAaryEP9Ym1ckRoLjJ1N9MyuF6hEBqvLQ+qNOcyYYIY0pOw4FJj8L1QJHtXD/IDSzK/JScyZ3ZIcopXAdBN4mRP23oU0mBiQvKrh9HyqRwtUA9Chc/9FssyvyuJ0ohvYLJCtcfQbKdrz8SwD1KFVgUyuopgklmZgJBpHB9P2l+ZkoQTJjJf+dpySlcJ0HVeLk/BhpRyh+vs8m/3s5JSOEqQVCNxz+7wnBKBEuCyQfahkikcMVAyXY+PzeV+sjhh0TJdidzSpqZDUG8dJM/2somSYsdLkqOCS/KmpkVQd0kpj8VY/7IRyiYSeB4bEr2KNxA3SRGP03w4skJ9BzJseRbyuxRKEHsUbg/fhcUyo52+UnGYh/KmpnZQAAAAACLqTjKloSlSTQ4FEofhQNBSOF6PxG62UkO5PfIcANgyo/CCUHTTZI/Gl81SiAhP8luJydKKVz3QEw3aT8MIpTIq7Raygvo9ElI4SpBYOXAP3jqgMkAfr5HdRBzyhSul0B3vt8+C3hEyRc7B8pxkk7KKVzXQPT9ND8tNrxJ9r+tyf3HWMozMy9BAAAAAGn8JkmFagPJfVN2Sq5H4UDy0k0/Tj9eSkkJ6smJHuXIUrjGQFK4Hj9XgjLJ2btfSn8J2kkpXP9Af2p8P9hg8snIGElKmvW7yY/C7UAbLz0/JS0ASkDL/0ncoDBKj8IlQR+Fqz9JfkhK0pcwyWEJFEquRyVBK4e2P/picEhucF9K1/DuSRSu90AGgVU/pzY2SkUVN8nFqipKAAAgQQAAAACnNjZKRRU3ycWqKkozMyNBAAAAANl0gEnygr9JJS1iynsUjkCgGq8+xA5GSoHeGEqP1S9J16MAQPhTkz93zwZKLHOdyQiWSMo9CudAZmZGP3+9wkmyto1JMeZfSo/CHUEOLbI/cpdfSn5368nxeebImpmxQD81Hj/bi2bKCOXWybY0y0cK1xNBSOGaP7/2/sjVJ0jJ/4Z3SqRwFUFg5aA/SzMlSdrjakqfdrLJ7FH4QEjhej9hLiXKzaCCyXOHNkrXoxhBWDmkP4Y5fMlyDVlKzDjrSTMzq0DXo/A+TpclynU6Dko6awNKuB7VQAIrJz8bpnTKzUvqSJP4gskUrhNBvp+KP50nDEo9SE7K5rRYST0KI0GR7aw/b50FSrLGs0mcL0ZKZmbmQBSuRz+fXvhHzJteSq8++8kzMxtBhxapP1CPGUqCkEHK7eCDyYXrFUGNl54/Y/PESTYiA8qbSURKZmYSQWZmlj/JUSBKJX3lyejzIspmZipB003SP58XtcnCOVvKopHASUjh4kDP91M/4oEXSlRmbckNwEVKKVxvQEw3yT7gOjjKITAySqSbnscUrs9A0SI7PzHevUl0Nu7JblNOStejCEEAAAAA5juTyYO2G0qtJj5KmpmZQDVe+j4xGHNKLQQvSeYli8nD9SBBUriuP91WvknjbWJKTaCUSfYo5ECkcF0/d85jylbYrsl9457JZmYOQW8Skz94dgVKLLchyokeFEpI4epA4XpUPwlmSMpwMfxJ8IPHyexRKEE9Crc/pIBASagU/clHXVrKAAAoQQAAAAC9kJRJPtMVyttCQ8opXN9AhxY5P0ZXAEquSV5KObaByIXr2UBiEDg/z+6wSf9NcEplE8TIUrhePy/dxD/rEh/KCcU9Sudfi0kpXB9B16OwP9Zlr0kxtIfJ/h1oymZm5kAAAAAAjaTTSRThV0pLK7hJAAAMQWZmZj/Wm4xJ7W5QSbBKcsrsUYhAd76fPtPUk8nEVhxKgvA+Sj0KB0EAAAAAcFJaymWyAko1giPJj8INQaRwnT+XmUNKnwMAyg772Elcjx5BKVy/P+lKOcrPMzNKS1Kfx5qZ6UAAAAAA9FGWSamlGMpixkHKZmYuQZqZuT+HQTNKOio0SYfTM0qF6wFBAiuHP0eJHMrG2EjK920lSXE98kA/NV4/BHoIyt/x3smkfTzKcT36QDvfbz/HAXXKscabyYM1tUiF6/FAexRuPwLVF0pUZ15JNjlJSlyPskAEVg4/Kbt/yXviFMm8sndKhesdQcUgoD9Zf+5JXDXfyUtySMrherRAQmAFPw9oRckxiQdKubdWSuxREEHn+5k/sH6+Sa0PJMo6FDBK4XrcQFK4Pj+AhvxJRSUKypXdMsqF66lAcT0qPzk7U0oMTb1JQVvoSRSuC0HXo5A/urEBSsiEX0owU49IexQGQeF6lD67dlZJlYplyvcX18mPwhVBObSoP6VJHcqGt0nKAk0mSeF63EBeukk/KScySsYni0nmfy/KcT0uQdV4uT+6jgNKqa1eSqp5sEjD9SxBMzMzP6SFIkpam0ZKVPsiSQrX00AOLTI/D2sKyrOUKErGNA3KexQWQdNNsj9YJ6tJregCSuvFT0rXo9BAsp0vP2YYdsmdo2bKQvHOSQAAwEDP9xM/74ZDyseP88mbGPLJMzObQHNoMT9HaOzJsARoSuKk4cfsUfhAMzNzP+3lIUpoyepJV0Enyo/CLUEAAAAAu/a9yCSI30nYoWpKrkfpQPypUT8h43lK8AKDyeQ9F8kfhfNAw/VoP9NmMkp8/jJJWF85ymZmIkE9Crc/9FAZSDpQoUnNWnjKCtcbQYlBsD8ggGBJcgqNScNvdUrD9ShBtvM9Pw6P5km2005Kvk3fyXsUFkGDwJo/cE7Eyfi0cEoLSgHJPQoPQS2yjT+1NoDIKG2CSrfpmshmZqZA9ijcPt4WakjLUYFKlAwkSWZmAkEAAAAAjX9/yRFpe0p7ExvJ4XoEQQAAAACg3m/KtArEyas3IknheiRB7FG4P2AWiEhGOUHKi4kwSqRwLUEAAMA/gVxRyWUVv0kppW7KXI/aQItsRz8HscNJNEjyycl0U0rD9QhBuB6FP/9xf0rsTK5GMIt0yeF6zEA5tCg/x/JWSczxhEmfXXjKXI/yQAAAYD+gvlbKgc8Syt6yF0lcj/JAtvNdP9Kr/0cHORNKXbVZSlyPokA3iQE/j5R6yvDYnMlNT2/IrkfxQC/dRD9vKi3KnIJFSgc9cEgfhRNBF9mOP5QGpkm6IRRKD1RJSlyPHkExCOw+vXPsSdeKm8klIV7KAADAQAAAAADm0RtKlCZ0yURgS0qkcM1AmpkZP3/sJErgvCrJyAFJSlK4IkGLbLc/d+5rSoEuuMnsIpLJhesZQfhToz/S5rlJ5SbpyStyWcozMwtBEoOAPx/5H0o9/QnKtNMdSo/CzUB/ahw/CTNiylEZscmhj81J4XocQWQ7rz/U27NJVSaLyTMPbsoAAIhAj8L1PqTU/MljOUHIr15nys3MJEHn+7k/s6ZNycDjP8p4wy1KZmb+QGDlcD8EBmrKzw20ydOHpkkfhQdBK4eGP9KxG0pxJdDJPnI6SrgeBUE5tIg/jnvCScmpaUp4b5hJ16OwQLgeBT8OSYDK9mndxtH9fUlxPSZBdZO4P0A9qUmiznLKfbp3yT0KC0GWQ4s/aE+EScVDQEqjOilKSOH6QGq8VD/L4TLKbK0ISjN1C8qamblAQmAFPzshiMlhBaPIjRt/SuxRgEACKwc/8auCSjdz9EhiyPrIzczMQAAAAACWgGlKAnrUSXc1hUlcjwZBsp2PP2k96Elec2RKFa+HyXsU3kB7FC4/kKV4yn9zD8l3+6nJpHD9QBBYeT9IfMPJgMz0yaU3VkopXKdAEFgZPwUFkUmNH2nJJol4ShSuv0CmmyQ/mUKCSoAX2EZTLUvJZmYeQTm0qD8vMiRKfRAJyg8vHUrXoyRB+n66PzfQasr6UrJJVRKuSexR+EDsUVg/xua1SX6NjMnPsG/KMzMDQQAAAAA5eX5KOm+FyekVGslmZqZA1XhJP6XmxEmXAPfJnPRVSo/C9UAAAIA/oR4myi5dPUqdjKvJcT3qQPp+Sj9ZWn9K/IaVSRZA2sdcjwJBJQaBP2DweEqOD6/J6BULSQAAKEEAAAAAMT6BR7CUB8oHRGVKrkctQaRwvT/VHt/JOWhZScHXa0oAANBAGy89P6csVEqXsQ9KKseSSWZmJkFI4bo/zcU/Scf7BcrvymHKUrhuQCUGgT9jCJJJRaxqyYcZekoAAMhATDcpP7LAHMrs0CvK3GEDyoXryUB1kxg/LB/HST6m9slKOldKAACgQEa28z79O2dJEnFpyiPS6UkUritBhxa5Pwkf30kRu2vKJmBuyc3MtEDb+f4+1N7ASQePHsoSrkDKexQqQY/CtT/i8HPJ1qsDSlm+YErNzCRBAAAAANbyg0oh6vZIC0L9yGZmpkDpJhE/JtI+ShGNxkkFiB/KpHAFQf7UiD9FFvDJVmVoSkLKZUlmZh5BMzOzP/bFWkoVIEzJ9eIRyhSup0AMAus+4HDJSY1fVMqedQBKKVwrQeF6tD8VrzlKDQ1BykTEo8auRyVBj8K1P+NxeErQSTLJ66OzSdejBEEQWFk/Fn8vSV0KE0q6wltKuB4dQYcWqT8/xRHKplRLysNVwEl7FO5AVg5NP1DAqMgtE69I8S2Fys3MxEB3vh8/Im93Snb3t8lWe0FJ9igoQQIrtz8nL3XKfRWzyWeDekkzMx9BrkexP5op60m3bWdKf5WJyXE9ykCF6xE/pT5ySttBqcn+K5/Jj8ItQVyPsj865qJI7rSESl1HFskfhStBJzHYP22t5Ekef0FK9ZoTylyPLkE3icE/+btlyvA/BkqKGx5Jw/WYQIts5z5ZbXhKxKysSZcgY0kfhRNB/tSYPw7oKUpwMBVKi9YRSjMz00DXozA/OVwgSmksQUpchsHJMzMLQWQ7fz8KdG5JMQIxylkSQkpcjwJBw/VoP6V5Xsq0AZZIlcYWyj0K90DufF8/Xjlmyl88i8l//vLJCtcbQSUGsT/bmaFIeoxTypzGJcqkcBVBvHSTP74kZsng6KVJVSZ6yhSuj0BU46U+A6FayqV6uckO3//JSOH6QG8Sgz/T5ZZJzXVDyp0AKkpcj8JA4Xo0P2DqlUnzgc3H1JWBygAALEGPwrU/5SNwyCUscspvEe3J7FGYQOF61D4Xew1K7GG+SVvXUUopXL9AO98vP2MRS0o0mQVKcyHtyVyPmkAv3eQ+9Gg6yFDJtckXk35KPQorQY/ChT8EzgHJY93tSaL6cEoAAKhAuknMPk+7acr4X9JIJzMGyoXrFUG4HpU/ZJXbyGE1k0lrm4FKmpnpQGiRTT9UlYNK/Xk1SZRtNskpXN9AXropP5VPfkrULbrJRhfuR4/CAUHHS3c/e4TVyWJGdspqdxRJZmYGQTMzcz8l4D9KkvI0SdfpOUofhetAVg5NP+Qid8ndaAVKdLBjShSuF0FI4ao/UeQMStQJx0hmVGZKAADwQClcTz/6uc3Jflp2yt+2QcmamdFAQmAlP5ayysl8clzK6iTzyXsUKkFQjac/MWluSmmpAMr1U4dIrkfRQFTjRT80EYVKExlQSZVcVcjhegBB46V7PyYABUrf2ARKzORDyilcA0E3iYE/2DyAyppztEgTr6zJw/UQQef7mT/CBYXK3i0NSZvHJcmuR+lAWmQ7PyafTMrNBHhJj5snSo/CKUEfhas/oFlCyn8G6snLeRVKmpkRQbgepT+8mGVK7/9NyaDpB0quRw1BPQqXP/A0KkqjRkTJECNOyvYoLEErh7Y/hewJylndI0mOp2ZKrkfpQPLSTT8G1hDKfcpJyt8/3UmkcG1AK4cWPlFab0gcNFVKW0goyjMzY0D0/dQ9ZAFYSk/dBEmOXyLKH4XjQDm0aD9N+rFJ5S7wSbOiY0oAAPhAZmZmP0wjEcpPwDBKBQsUyjMzK0EAAAAAjna6SYoPkMlStnXKPQrnQAAAgD90vpdJ54rPxzsRg8pSuJZAhevRPlkjycmX3vvJ3mNcSj0K10AAAAAARMCCyuy/nMk5aeZHexT2QP7UWD8lSYbJRetTSpXSHspxPRJBaryUP6IcuUnnZj3Hm5SAyuxRFEH6fpo/oUKsyNHAskhv9YfKzcwEQQAAAACeWK/JgO6ASjz11sgAACBBAAAAAAKF08lihVNKosAJypqZCUEAAAAAQ53oyR+fdko7CbxImpkJQbgehT/Tr5DHIgBxyradAUoAAABBAAAAALqHgkod0CVJ/ceOSRSuK0FI4bo/LItfyk3FGsotGQNJmpkRQbgepT9p1E5KfKANSqTf3MmuR7lA3SQGPz82I8o304VJTOBRSmZmxkBzaBE/wX77ycLPbErGD2dJw/XYQPLSLT+CmjPIUMuCytPKo0lSuCJBy6G1P0x+Fsriff7IDnNjyuF6nEAAAAA/qe73yVRbrckSKGVKMzPzQAAAAADoXajJUiztSQv5aMq4HtVAkxgkPzTIFkoH2ANJ2nRjSqRwLUF7FK4/NMgWSgfYA0nadGNKpHAtQQAAAAANSt/IrIaVSRSdg0pxPdJAcT0qP7Fy2kgFajbK5gxMSpqZLUGkcM0/aVlVSCJghUr3/oNJSOHqQH0/VT/L2oTITBI1SsKfTkpSuC5BjZeuP8sJ0MgMeydKYStZygrXy0CJQSA/Onsnym5MPEhTtVpKAAAwQQAAAACLs+JJz0FnSiJAxUmkcPVAqMZLP2r5n0lHdYNKvGbOSAAAAEEnMWg/0QxbynLx1Enc4QFKuB7NQJqZGT9W+U7KWt0ySpyAGklI4RZBqvGiP2FMAEpBwhPK7RhDSnE9+kBEi2w/c5dNSv6ctUkpESHKexSmQOOlGz8i2ixKadVTyqrPJslmZrZAwcoBP+C+VkouMpHJg3EeygrXA0GHFnk/xd+PSfELTUo/YitKw/XQQCGwMj+BBuPJeeF6SoH270jNzNxAjZcuP8wBg8r+GifJZh2fyQrXH0EMAqs//zflSX7qE8ndlHnKPQo3QOF6lD6arnFKIeplyQrf9UkUritBtvOtPzajeUlI9BHK9ktjynE94kCuR0E/Qe5nyt+UEcpZYDZJmpnhQOOlOz9Ypv9JOmqWyR6rakpcj+JAqMZLPzKrOko+yh3KsZwDyilcx0BU4yU/OKTgSXyToMmB6HDKmpnRQBSuJz9BYiZKQlsvSvhdCcozMx9BgZWzP0aUikrtVcbI49Q4x83MJEFt56s/LnctylKbVso9oBNJPQr/QOxReD/2Oi9HlOYzyuWIVErsUeBARItMP5/EHkpVyWRKUAylRwAALEGPwrU/BkwpypJkPkj3FF1K7FEcQekmsT8BAwxKaUpQysRr8snXo9BAokUWP/9sxsgnIT/K/1RJSh+FI0HXo7A/oM10ytBYkMYKXAXKmpnhQFyPQj8Ro8bIL0o/yqiESUrXoxRBexSuP91oaEqFDBzJPoAVygrXC0GamYk/FqIKSnR6cUoQCJ5ICtcTQXE9Cj/ebglKMRduypopSkkK17tAhxYZP54p9clrjhvKKoJFSjMz40BCYEU/0MeIyoP+BMkn9EDJhevZQPp+Kj+Me3BKqfMOymVDecaF6yFBWDm0P/wQ3kibiznKwohPStejLEEAAAAA3s5myv5+GsqnVgxJcT2CQOXQAj8vlEtKWYiQyYIPMkoUro9AbxIDP4OgXEqtwMpJZ3oLypqZEUEAAAAAyCnryQ1aX0rNB/NJcT3KQHe+Hz9NuhJJmW4FSZjbiUo9Ci9BpHC9P3lmG0lxhDlJdcOIypqZKUF7FK4/GUaOyYpYhkplxg1JuB4FQScxaD9sVcTITRK1yTUVhEo9CudACKw8P7Jgn0nZ1lvKevEaytejCEFmZoY/lMqDSgc9qskVWzHJhestQeXQsj/Lo1pKNNa2SZQ0FsqkcB1BukmsPwJhGkqp2MLJxiZVSlK4HkAhsII/4JD9yVFNscklX2pKw/XYQJ7vZz+w4R9Kv7dgyhDEU8lmZt5AqMYrPzGyk8ixGYxKht0OSJqZFUFokY0/H+O5yMeRuEhVvYvKKVwbQWDloD9OYV/KXt8PSSNMJ8qkcN1AObQoP4oeisqfYBPJGbgbyR+Fw0DXo/A+5O5Xyoevxsgy6DJKPQoTQXE9ij/pgi/KnbAWSQvxWEr2KBRBBoGVPw5m/smlirHJzSdrSs3M9EAOLXI/QLETygidOEqsShnKw/WwQCPb+T5mE01KTJ6RyQBiM0pI4cJAAAAAAPX0lUmnv8JJrgt+ysP1DEFokY0/6J3mSQPsysjLKYBKPQobQeF6lD/sHD5Kjm8cyszwCUq4Hg1BeemGPzmzTckioV/KXwolyuxR4EAtsh0/5GfeSSxlbcpVD9RJUrgmQc/3sz8EjSZJQEztySRJfcopXB9BZmaGP2F5N0qmrulJYcs0ylyP6kCR7Vw/ZA0TyuD5QspQsQ5KpHAVQa5HsT/uXA9KiLJySv/5wEhcjypBw/UoP6yRN0payOlJWN00yjMzA0EAAAAA4GsdSfalO0l2KorK16PgQOXQIj+MjyhKELd0yM7uYspxPSZBfT+1P2NyOEpREw7KsyohynE9EkHLoYU/2sh3So2VP0mHHQFKAAAcQS2yrT+dGv7J07/mSfDJYUoUrh9B7FGoPytJK8n7XIPK3bTDyeF6VEDByuE+g1jJSYttGUqJUlhKH4UHQa5HgT+fBivK2WGhSQzKU8rD9SRBsHKoPyzNecqPDgFK1ccfyTMzH0F/aqw/rOt3Si9PwUl30MbJPQrXQItsJz9ajxpK70RrSlI3GMl7FBJBeemWP9BxPUpT/j9Ku2mzyXE9okAzMxM/wgZZyssO6EnKPw5KmpkFQekmcT/111hK92UnSq6tmMk9CrdA5dACP74hLEo6mpzJfJBUykjh2kAUric/ZbYGyuF2dspLMTVJ7FEAQZqZWT+y5zlKcdVTSl1MLclcj/pAf2pcP5nEmsgu0EjKloVJSuxR8EASg0A/aBl1Sp1AzEjbmg/KzcwYQQ4toj/MmYTJTpt7SYE5h8o9CtdA/KkxP2JbHsqOPEvK+971SexRKEBCYJU/OM14SsVIAcqx/lfJUrimQB1a5D4VbgvK0alzSnJvU0m4Hg1BN4mRP5H+g8kLGABK4Kl2ShSuF0F/aow/Lu2CyukE1clIvytJ7FFYQNV46T122W1KE4kJShPJnsnNzAhBPQqHP/9hlEirrlLK1oJASqRwLUEAAMA/ZmY4yn1mgcmb5lBKSOEKQc/3gz8WvoVJVDJxyfTKh8qkcA1Bj8KFP7L+UcoxCDtKTDFTyXsUBkGuR4E/u+OLyigfCMlAQ0XJMzMTQQAAAACay9jJbS16yjeGrUmuRxlBAACgPxueSkpoFkpKb/1Jx4XrDUH+1Jg/eu9yyqOdEEoAnjbJuB4pQXnptj8EcV5KA60sSj6bV0nhetxA1XgpP5BHdUpCrylHh48UyilcL0GPwnU/8vdtytvXFUrFWWdJheu5QAAAAD+Q88DJHM4DSs5YbErheiRBVg6tPwpxW0heWdDJcLKFSpqZyUCTGCQ/NgXex2T44UiaAo9KcT2SQD813j6DhlfK420TSe7dOsr2KMxAUI0XPxngGsqrnJvJUrRlyqRwBUFU44U/YfwIyiH9iUn5oHPKj8IBQYtsZz8snt7JXJmByl1VZ0m4Hi1BEFi5P9QWOUrTQ1dKS0xCSc3MHEEzM7M/Lo7pyfxOgMr1n3DJrkchQfYorD9Ywk5KamftyOiwRkopXOdAO99PPyjRdMkPfW7KWxQWyuF6DEG6SYw/y/Iuyq1hGkowiilKpHDNQPYoHD8lWGPKAWWRyY0kIsrsUShBy6G1P3m58UcG7CrITiCQShSun0CuR+E+ttQkyiUJXEovF7DJmpkFQfCnZj+xSo5KTiz0SISiGMnsURRBhesRP+7vGkkCNkfKCA5OSmZmDkECK5c/lnRMyiqjTMp4C+pGzcykQN9PzT647mZJ7ZWVyfPGiEpxPdJAZmYmPzEJgkqReU3JiZDoyT0KC0FCYIU/oIL9SRdaO8oI2jTKZmYKQUSLbD8tShnKU3YLyqNmSkp7FA5AbxIDPUoTR0rb1epJpL0uygAAJEHByrE/t7g+SitE0ckXlz/KpHAhQSlcrz9olBXJFKAMSmHdekrsURRBcT2aPwA8Tcl7XzzK8HNWShSuR0AK16M9fJ1bym5h0klvox1KFK4jQXsUrj+ucmZKEgKzyVTAF0pI4QJBO99vP4zZgsqNyytHEob6yexREEHy0o0/LSQvSNVeXMoVazzKpHDFQAaBFT/MjYlJlfkKyhw8dcoK18NAEFgZP4UuFkroIPjJxzVXyilcf0CF69E+u8Pfx1iH5EgabZBKheu5QBSuBz8ZPxpKrn9OSqM/BkrNzCxBAAAAADjacspKRRhKvIc/SfYoIEGynZ8/EDtDynMZUkrt6D7JrkcRQdv5Pj9cXB7KzTwkSrU6NErhehhBBFaOP37J+UkeLljKfkQVSgAAIEGuR6E/fTABSlJpMkrhST7KMzMbQTVemj8bnmVKfwXTSRsnEcp7FP5AWDmEPwaBfkpZk/3JFXV/SaRwJUFI4To/zrkpyMq6OkgumZFK16OYQPYo3D6KqX5KsR/HSShSzMm4HpVA+n6qPjfj7Mnf0rDH7FyFyuxRGEEUrpc/3v1JSgNjD0owqhpKSOHSQGIQGD8DMDlKPdQ4ynO2AcrD9ShB5/upPz7zd8oeGGXIu94ZypqZJUGR7Zw/K8zbSXrGhsqJVtTICtcnQUoMsj9N2DlKiFLYyLb8X0rNzCRBvp+qPyNJickLn/jJ/bh/SlK4GkHByqE/B3lcSgbsiElwuzPKexQuQTMzsz/yk07KyyxPynyy2UYAADBAK4cWPpka3EkP9dpIpdmGSqRwFUEv3ZQ/RmWQSghxq0fTBTzJPQrPQESLLD+S1sFImGuQSjwXI8muRwVBQmDlPm2yTcqNEchJ4aU2Sq5HyUBg5RA/hCUjyoxtZErhZaZJMzPzQAAAAABY5HvKZhhOSbgMDMpI4SpB16OwPzbgU8q1FSDK7pL2SWZmDkEAAAAALdUgydyhY8mcLo5K9ii0QNej8D4OII9KoPanyBzYaUnD9ShBDAK7Pxs8EMrbKH9KAVTdR5qZqUAdWiQ/kwhOysJmyElG8TZKZmYGQY/CdT/RjmpKHAnZSaXeCkqF6yVBSOG6P8wcYEpWEjBKK0uLyfYoGEEUrpc/uHMbyeN+Z0rLOzBKSOEuQZHtvD+TKY3KQUp0Scy3U0nXo8hAhesRP5ReSko23IRJB0VKSlyP0kBxPSo/JLjkSW3HW0rIbR5KzcwQQaRwfT9PzGDK4DMgSo4yy8mamRFBL92UP6onh0qhRnBJQkPHyc3MLEFMN7k/av0iygJhikkxDWtK7FEEQeF6dD9bMIpKfGOKSbx2lMnheqRAQmDlPtoeccpb6yjKadJKR4/C/UCkcF0/wbv7ydb4gsjP04RK16P4QMP1SD8buuzIm7biSZ4qh8quRylBx0u3P7e4skmc3mPK8p0kyuxRyEAUrgc/I5MJymw0GUpIgFNKCtcLQTMzkz+VAYpKk1uySTVqXElxPaJAEoMAPx0o+EluryjKpyNQyuF6GEEj25k/Mp6wydmkJ8qdsmLKAAAkQXnptj/8CT5KJwldSgZ6R0nXo/BAz/dzP1A3dshwi41KbEqpyTMz20AdWiQ/97HbyQMy4sn2XXpKrkcJQSuHdj/n5SRKDDVKykenC8oUru9AiUFgPxy7EskIGf7IBgqSSqRwJUFkO68/aWwzSV9rJsrvFXFK16MIQaRwXT+Mq0XKvtX5yXwwNkpmZgpBoBpvP89tB0fMyIJKPpsLyhSu30DsUTg/MssfRruHi8r4X8hJCteTQBSuxz6k42pJ+N9AShB/WUpcjxZBCtfDPyCcLkksejjKIRJkymZmBkGLbIc/4WTWRwJrWEro3UrK7FHwQDMzMz/6YS1HdVDHSda6i8qkcClBRrazP5bvhcoVMPzJcEicSBSuK0HLobU/XY4iyjxPR8oxFhTKj8IlQfCntj8IlwHK0QxRyqpUJkqPwtVAgZVDPyIUCskzRjHKT61rSkjhHkEAAAAAwZwXSvMOesmThXdKAAAQQQAAAAAxo25KtX8Cypww7smamQlBAAAAAMQ4dElQyfTGMJKRygrXy0Dl0CI/qQl+SiOkA0oEX6NJmpkhQRsvrT/ftj5KOksUyvW0LcoUrr9ABoEVP6JVhsr4fevJlkVJSfYoHEEv3aQ/aS9sSm5HEUnMiDHKAAAAQQAAAABpL2xKbkcRScyIMcpmZiZBAAAAAPvGGEoLrDrKoM8uSoXr8UApXE8/0geFSUygj0o6/i3JFK73QPLSTT+Fs5DK+jx/SVqX/UgAAIBAdZPYPsnfWspFYUrK0W49xxSu50CPwjU/2eVCShmNQUm+VFxKuB79QGZmZj/pxDNKJnLzSXycTEoUridBokW2P03xPkpccz7K/Bj/yYXrCUGPwnU/rBsLyjMnhEqJaZ9Gj8L1QH0/VT99coBKnYQMSrGBbkkUrvdAx0t3P4EDMcrbxjPJ2ZtsSh+Fy0BGtjM/GRALyZySMspWa21KCtcPQdNNkj+QX2nIBKgBSQijlMrD9dBAGy8dP3ldV0renm7J3MRHyh+Fe0AzMzM+bgZ/SlINEklHORlKzcz8QOxRWD+H5IRIfkiJSos17skK1y9Bmpm5PzWd2Mn3hTVKn6BUSpqZaUDsUbg+OQQjSn3ADMrDlFBKPQobQR+Fqz8u3IxJaG2Rykl6m0hSuCpBnu+3P/BZicogKHJJclTQya5H2UBkOx8/CfAzSvceb8rcC6TIrkcdQe58jz/tLY3KHRKwyY64ScmPwv1ADi1yP+na9EiwGhDKmbqCyilc30DJdh4/hs2DSZo9Ksq+SW5KmpnZQNEiGz9BywzKZg1ZyvFcGMpI4cpAfT81P52lDEkd94ZKLLj9yZqZCUHNzMy9LP8ISladScpnrC/KzczcQAAAAAAsv0BJSDQGSr5GhEpSuBpBQmClP8zNlskd55BKrKrLSHE9IkEfhas/hooZSg8daEk+1ntK9igAQQaBhT+imetHX72EynK9DUqamdlA9igcP+lz8sgVJx/KEc99Stej0ECBlSM/ENaBSiZ8Skn57w9KmpkVQZHtnD8qnv9J73jwyXAjdUr2KKxAmplZP0xaiEr7usZJEoqjybge9UAxCEw/ajgsyqdz28g+LXbKZmYOQY/ChT9xQNLJYHOLSrWEPMk9CgNBBoF1PyO4BEn925XK7+szyOF6NEAzM4M/63g+ytsRRkoQu/nJFK7XQBSuJz+hrchJGBqGSX18ikoUrhNBj8KVP+npgkpkIItIDOIVyuF6HEH+1Jg/2gzYSXd6aso3Nh3KKVwjQTEIzD/makzKr4JZSvRTQMlxPdJACtcjP2/4g0racRNKcnDdR1yPDkHLoYU/RWV/SqsRgUhOIyFKuB4BQdv5Xj+ZvoHK80zVSdKO4slmZgJBkxhkP2vcjcqwHMLJMCQhyY/CEUGgGo8/tAEsSmZxa0ovl6LJj8IZQXsUrj8rhRLKpESXSabZfUpcj7pAoBrvPj8SFsm57QHJpk2VSo/CCUGYboI/4FMsSoik2smOqV9KAAAEQU5icD8TuSjKdsx4yjPoIsm4Hg1Bj8KFPwAqjkr49qzJ5e50SRSuB0HFIHA/+W2GSeqVFclqzJJKKVzXQOXQIj9Hq2/KLJG3Rt9SOkrhehRBtMiWP0HlW8r3y3JJxYZIyj0KI0EAALA/MihrSqMlKUoxIbfJmpkBQfypcT8z64jK3PP3yZMGMEkK1xNB2c6XP3JaasprtMRJUrImSvYoIEG4HqU/5bpOyd3quUlTZ45KexQqQVTjtT+1ZA9KMUSCSv8FfklSuBpBrkdhPyam8cmHdoRIgEiLymZmtkCiRfY+mSwjyo9DJklVN31Kzcx8QLgeBT56T/ZJcTlhysFwI8rsUZBABFaOPg25MEqx9lhKqEzwSbgenUD0/RQ/+T8MSh7jcEm4woPKAADYQBkEFj8fGBzKLNeHSaKZfEqamR1By6GVPypEMcqrKY7JPWRtShSuG0GLbKc/fDnEyaVPTcrlnErKrkfJQO58Hz8cKGdJGpmQylyjmckpXP9AWmRbP0mn58YmiU/KKENfyh+FL0GF64E/Rb/IScJVSkomCk1K4XrUQNNNIj88YxbKvRpqygpu+sl7FCpBz/ezPxjG1EnQoEjIptmOSuxRJEF7FK4/yMlwyuTIHkoM/sfJCtcbQT0Kpz+B5irKyY97ShoK4cgAABxBRrajPwrHjUrcAkzJw7/Kyc3MLEECK7c/UHhMSRa3aErV6D/KH4ULQU5igD92eVFKAcczSbNmWkopXN9AAABAP6NOhMo91BlKnu4eR3sUrj8OLbK9dioRyoGbhMr1jkRJSOGaQGZm5j52KhHKgZuEyvWOREkAAKBAAAAAAM8qEcovm4TKvphESZqZ6UAAAEA/VYx8SpMGI0qCt3HJMzOzQCuHFj97nAHI7ZZZyhneV0oAAAhB16NwPzHdBcpn61fKJ8wrSgAA8EAAAAAApUVNyeVVKkpqF3rKpHC9QFpk+z7vGJBKNUiQSTSkmskzM/tAFK5HP4UYV0rD5VVKpmw+yT0K/0BWDm0/YYkPym/nhsq3D+7IMzMTQbbznT8OSQtKiA8+SvDgRErsUQRBH4VrP0b7z0mSmWFKe3w0ypqZ6UAAAAAAt5mTympwf0n9YF1JH4UTQYXrkT8H1PbJGQiJyvIre8kAABBBAAAAANLdW8j3Mt/IUb2YSuF6JEGkcJ0/s40CSr4028mjZX9KZmb+QPYoXD9ijYBKyUILygV+u0lmZgpBuB6FP66JL8ow3HXKoqRdSYXr0UC4HgU/vsE6SpJyb8p2DTpJuB61QE5iMD8yJ2hKjeo+Skh4f8l7FF5AyXa+PSwA08lQu1RKAydDyqRwJUFSuK4//4VNyvu5FcrtyizKj8LdQKabJD8UUypK+tpYyonvB8oAANhAbxIjP6Bk1UnLOgtKMfB8SoXrEUEzM4M/wfUkyh03DUqlKFpKj8IVQAIrBz2dk3VJZxefyTF5kUozM7tA+n4qP6An6sl0ALdIiOCNygAAoEAAAAAAcFnqydnltkiG243KAAAwQQAAAACMUMjJsk3tyWDjhEoAADBBAAAAAJd3f8dXgFtKcRNYSgAAHEEAAKA/1x/sSSPcgEknmorKpHAZQQ4toj9hgEXJ4qg2ynUqc0pI4QZBheuBP43mO0o4O7tJrNVhyqRwAUFGtlM/lNoDSqBxokl7ZoVKhestQexRuD89Dx3KQPBkyiTTBspSuCJBObSoP7cWQspt7NJJv6pXSvYoGEGJQaA/y3ZryjKVjEnZ/jpKUrjuQJZDSz94urTJZp+Myrnas8kUrudA46VbPy6gRErUcbpJdxZbSj0K10D8qTE/48n1ySc1c0q15RHKXI8CQWZmZj94UUfIUKz9yUzsjMofheNAj8I1P+9YIMqneGnKsKz4yRSuD0Fcj5I/uin5yMjPlUo6L41JzczkQJHtHD+mHkVKrwpeSbkgaErD9ZBAvp+aPj58ckrWH4FIM9s/ys3MJEGPwqU/RtmRymdNkMnlVZXJCtcTQW3nmz9NNWfJNxaRSnADt0muRxFB2/mOP9z0j8kJzpZKj4fHxnsU3kBSuB4/mR9NSnfSYUpGt19JhevxQIXrUT9D1RnKlakRSblshUrXo/hA4XpUP8jBtskc1mdKRMs4yilcH0HZzqc/dqP9SWYlscnsdYZKFK4fQUoMoj+Uo5XKIq2ByTDuSMkK18tAx0sXP+Q8sskSfZRKonlkSGZmBkFGtlM/nD4nSn+hgkoX3UrIcT3iQDm0KD/wSMRJFc9WyrGHScofhaNAlkMLPxUvvsm3r7pJJ0uMyq5HoUAK10M/W7ooyp+OukndvXNK4XpUQC2ynT0JQWnKU5rLydFZMsrXowhBJzGIP7SH7MlezbhITVCPyj0K9z/FIDA9nt2MStnXqsivWAJKzczUQFK4Hj+bpB7KoqJdSt2SFko9Ci9BvHSzP6EHcchVh+9JwI+PSuxRDEFWDo0/t3NESVYkgkkPYpZKZmYmQQAAAADe1FNKF3JXScU3XkpSuC5BUI23P7bp4MklWqpHOl6RSjMzI0HsUcg/q3C4SRfrCUqiEoTKCtcLQaRwfT91S7JJ/Ct/yk2wG0oUrhNBAiuHP9Qj/Elqv3VJvE+LSuxRGEFWDo0/E+saym4RTEk1/YRKPQobQTeJoT9TSXRKb+bASTa3KEo9Ct9ACtcjPyaotknEO2hKg4k7ynsULkFU47U/U2+ZyNLjkcqnitrJXI8qQQAAAACYknnKXxCmyYVCKErNzBBB4XqUP6A7ZEo4/NvJGn42ShSuE0FmZoY/RsswSJIiOsrSvHpKSOHaQEoMIj8Zjt3JiMZeSmIrPcopXBNB4XqUP2HAk0pTiOnI1w3DSa5H0UBaZBs/GnBGykz1aUowrnDJzcz8QMuhZT+UqYxJJ6VOSpM7YMrhehRBz/ejP8PWhMowSdHJ9ToASrgexUCmmwQ/mDHpRe+kkUpnlOVJMzPzPy2ynT2LKE7KfEWiSdFyXUrNzChBary0P1T8NsrFTX7KDVUDSOF6KEHdJLY/C1wpyqB0D0hB0oPKpHD9QBSuBz92g7PJKjA+yi7/aMrsUehAGQRWPwVROcrsOVxKAcn6SXsU9kAIrHw/0TIdSpfbo8k6s4HK4Xq8QE5iED8e2wxKBWO6yaiOhMpmZhpB2/muP8gTQEq4PXjKsh6JyKRwHUGwcpg/LlcWyNd21Ejxk5xKmpkRQdv5jj+YY2RKWWo8Skwd1EnheuRAVONFP1ycTUoYSExJY29oSh+F40Cwcig/TKiXynlsg8n2pkvJMzMTQQAAAACAj93IbsZYSpN+Ysr2KCxB7FG4P9PWdEoaQEJK5oYUyXE9DkEzM5M/Jz8/Sll3dUoB3DzJMzMnQYXrsT9T5opJsoEZSc5ImMqamelAAAAAALEOpkh2K9pJeT+TyjMzG0EAAAAAA1tbygBCX8qIgATJuB4VQY/ClT8XZBXJBjtzykg4RMqkcA1BuB6FP2uAFklprxTIfyucSpqZKUGPwrU/',
+  names: [[0, "Toliman"], [1, "Rigil Kentaurus"], [2, "Barnard's Star"], [3, "Lalande 21185"], [4, "Sirius"], [6, "Ross 154"], [7, "Ran"], [8, "Lacaille 9352"], [9, "Struve 2398 B"], [13, "Procyon"], [14, "Struve 2398 A"], [15, "Groombridge 34"], [18, "Luyten's Star"], [19, "Kapteyn's Star"], [20, "Lacaille 8760"], [21, "Kruger 60"], [22, "Wolf 1061"], [32, "Keid"], [38, "Altair"], [48, "Alsafi"], [56, "Guniibuu"], [58, "Achird"], [64, "82 G. Eri"], [84, "268 G. Cet"], [85, "96 G. Psc"], [95, "Vega"], [97, "Fomalhaut"], [99, "p Eridani"], [105, "Tabit"], [107, "p Eridani"], [116, "Chara"], [141, "Rana"], [142, "Groombridge 1830"], [165, "Añañuca"], [176, "Noquisi"], [184, "Pollux"], [187, "Alula Australis"], [211, "Zavijava"], [213, "Denebola"], [231, "Arcturus"], [238, "Muphrid"], [250, "Porrima"], [259, "Deneb Algedi"], [286, "Copernicus"], [322, "Capella"], [336, "Titawin"], [352, "Alshain"], [371, "Chalawan"], [377, "Errai"], [388, "Dalim"], [409, "Talitha"], [439, "Rasalhague"], [441, "Alchiba"], [449, "Alderamin"], [476, "Cervantes"], [486, "Castor"], [488, "Helvetios"], [583, "Caph"], [678, "Diadem"], [690, "Zosma"], [701, "Sheratan"], [703, "Alzirr"], [707, "Menkent"], [749, "Wasat"], [830, "Mothallah"], [839, "Tureis"], [845, "Larawag"], [897, "Hamal"], [927, "Aldebaran"], [1146, "Syrma"], [1157, "Aljanah"], [1199, "Unukalhai"], [1203, "Heze"], [1218, "Dziban"], [1237, "Alphecca"], [1238, "Koeia"], [1241, "Sarin"], [1267, "Zubenelgenubi"], [1275, "Alrakis"], [1358, "Kaus Borealis"], [1400, "Regulus"], [1401, "Graffias"], [1420, "Kaffaljidhma"], [1425, "Merak"], [1458, "Megrez"], [1460, "Alsephina"], [1482, "Menkalinan"]],
 };
 
 </script>
@@ -2746,6 +3165,163 @@ window.HELIOS_STARS = {
 
 </script>
 <script>
+/* ===== src/js/motion.js ===== */
+/* ==========================================================================
+   motion.js — 太阳的三层位移与参考系换算
+   纯函数，不碰 DOM。所有返回值单位都是 AU，方向在 J2000 黄道系里。
+   模型：太阳绕银心走匀速圆轨道；本动 19.4 km/s 指向武仙座；CMB 方向单独给出。
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  var A = window.HELIOS_ASTRO;
+  var M = window.HELIOS_MOTION;
+
+  var AU_PER_YEAR_PER_KMS = M.units.auPerYearPerKms;
+
+  /* 银道系在黄道系里的三个基向量（列） */
+  var xGal = A.raDecToEclipticUnit(266.4051, -28.936175); // 指向银心
+  var zGal = A.raDecToEclipticUnit(192.85948, 27.12825); // 指向北银极
+  var yGal = A.normalize(A.cross(zGal, xGal)); // 银经 90°，即太阳公转方向
+
+  var apexPec = A.raDecToEclipticUnit(M.sun.peculiar.apexRaDeg, M.sun.peculiar.apexDecDeg);
+  var apexCmb = A.raDecToEclipticUnit(M.sun.cmb.apexRaDeg, M.sun.cmb.apexDecDeg);
+
+  var R_GC_AU = M.sun.galactic.radiusKpc * M.units.auPerKpc;
+  var OMEGA = (2 * Math.PI) / M.sun.galactic.periodYr; // rad / yr
+  var V_CIRC = M.sun.galactic.speedKms;
+
+  function scale3(v, k) {
+    return [v.x * k, v.y * k, v.z * k];
+  }
+  function add3(a, b) {
+    return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  }
+  function len3(a) {
+    return Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+  }
+
+  /* 绕银心的位移（圆轨道的弦） */
+  function galacticOffset(years) {
+    var th = OMEGA * years;
+    var c = 1 - Math.cos(th);
+    var s = Math.sin(th);
+    return [
+      R_GC_AU * (c * xGal.x + s * yGal.x),
+      R_GC_AU * (c * xGal.y + s * yGal.y),
+      R_GC_AU * (c * xGal.z + s * yGal.z),
+    ];
+  }
+
+  /* 本动位移 */
+  function peculiarOffset(years) {
+    var d = M.sun.peculiar.speedKms * AU_PER_YEAR_PER_KMS * years;
+    return scale3(apexPec, d);
+  }
+
+  /* 相对 CMB 的总位移（已包含上面两项，不再叠加） */
+  function cmbOffset(years) {
+    var d = M.sun.cmb.speedKms * AU_PER_YEAR_PER_KMS * years;
+    return scale3(apexCmb, d);
+  }
+
+  /**
+   * 当前参考系下要减去的太阳位移。
+   * gain：「轨迹放大因子」。太阳真实漂移 46.4 AU/年 是地球轨道半径的 46 倍，
+   *        直接画出来就是一条斜线、看不出螺旋；gain 把漂移按 1/gain 显示，
+   *        让「轨道直径 : 螺距」回到能看出螺旋的比例。它只影响展示，不改任何天文量。
+   */
+  function frameOffset(frameId, years, gain) {
+    var g = 1 / (gain && gain > 0 ? gain : 1);
+    var v;
+    if (frameId === 'galactic') v = galacticOffset(years);
+    else if (frameId === 'cmb') v = cmbOffset(years);
+    else return [0, 0, 0];
+    return [v[0] * g, v[1] * g, v[2] * g];
+  }
+
+  /* 瞬时速度矢量（km/s）：绕银心的圆速度 + 本动 */
+  function velocityKms(years) {
+    var th = OMEGA * years;
+    // 圆速度方向 = yGal 转到 θ 之后
+    var vx = yGal.x * Math.cos(th) - xGal.x * Math.sin(th);
+    var vy = yGal.y * Math.cos(th) - xGal.y * Math.sin(th);
+    var vz = yGal.z * Math.cos(th) - xGal.z * Math.sin(th);
+    var circ = [vx * V_CIRC, vy * V_CIRC, vz * V_CIRC];
+    var pec = scale3(apexPec, M.sun.peculiar.speedKms);
+    var tot = add3(circ, pec);
+    return {
+      circ: V_CIRC,
+      gcSpeed: len3(tot), // 相对银心的瞬时速度（220 ± 19.4）
+      cmbSpeed: M.sun.cmb.speedKms,
+      vector: tot,
+    };
+  }
+
+  /* 里程表：相对 J2000 走过的银河弧长 */
+  function odometer(years) {
+    var th = OMEGA * years;
+    var deg = (th * 180) / Math.PI;
+    return {
+      rad: th,
+      degAbs: Math.abs(deg),
+      turns: th / (2 * Math.PI),
+      // 弧长 = 半径 × 弧度
+      arcLy: Math.abs(th) * M.sun.galactic.radiusLy,
+      arcAu: Math.abs(th) * R_GC_AU,
+      // 弦长（直线位移）
+      chordAu: R_GC_AU * 2 * Math.abs(Math.sin(th / 2)),
+    };
+  }
+
+  /* 太阳向点在星空里的方向（用于 L2 自查：应在武仙座，靠近织女星） */
+  function apexDirection() {
+    return { x: apexPec.x, y: apexPec.y, z: apexPec.z };
+  }
+
+  /**
+   * 从 epoch 到 now 之间太阳位移的增量（除以放大因子）。
+   * 用增量而不是绝对位移，是为了让渲染坐标始终是「小数字」：
+   * 偏移累积到几万 AU 时把 epoch 挪到当前时刻即可，画面不需要跳。
+   */
+  function frameOffsetDelta(frameId, epochYears, nowYears, gain) {
+    var g = 1 / (gain && gain > 0 ? gain : 1);
+    var v;
+    if (frameId === 'galactic') {
+      var a = galacticOffset(nowYears);
+      var b = galacticOffset(epochYears);
+      v = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+    } else if (frameId === 'cmb') {
+      var c = cmbOffset(nowYears);
+      var d = cmbOffset(epochYears);
+      v = [c[0] - d[0], c[1] - d[1], c[2] - d[2]];
+    } else {
+      return [0, 0, 0];
+    }
+    return [v[0] * g, v[1] * g, v[2] * g];
+  }
+
+  window.HELIOS_MOTION_MATH = {
+    xGal: xGal,
+    yGal: yGal,
+    zGal: zGal,
+    apexPec: apexPec,
+    apexCmb: apexCmb,
+    radiusGcAu: R_GC_AU,
+    auPerYearPerKms: AU_PER_YEAR_PER_KMS,
+    galacticOffset: galacticOffset,
+    peculiarOffset: peculiarOffset,
+    cmbOffset: cmbOffset,
+    frameOffset: frameOffset,
+    frameOffsetDelta: frameOffsetDelta,
+    velocityKms: velocityKms,
+    odometer: odometer,
+    apexDirection: apexDirection,
+  };
+})();
+
+</script>
+<script>
 /* ===== src/js/shaders/common.glsl.js ===== */
 /* ==========================================================================
    common.glsl.js — 所有 shader 共用的常量、哈希、噪声、坐标工具
@@ -2990,9 +3566,13 @@ void bodySurface(
     float ice = smoothstep(0.70, 0.86, abs(lat) + 0.055 * fbm(lp * 9.0, 3));
     base = mix(base, cC, ice);
 
-    float cloud = fbm(lp * 3.9 + vec3(0.0, 0.0, 1.7), min(oct + 2, 10));
-    cloud = smoothstep(0.50, 0.68, cloud) * (0.85 + 0.15 * fbm(lp * 12.0, 3));
-    base = mix(base, vec3(0.93, 0.95, 0.96), cloud * 0.86);
+    /* 两层云：低层积云走得慢，高层卷云走得快，两层用不同的域偏移 */
+    float cloudLow = fbm(lp * 3.9 + vec3(0.0, 0.0, 1.7), min(oct + 2, 10));
+    float cloudHigh = fbm(lp * 6.7 + vec3(11.0, 5.0, 21.0), min(oct + 1, 9));
+    float cloud = smoothstep(0.50, 0.68, cloudLow) * (0.85 + 0.15 * fbm(lp * 12.0, 3));
+    float cirrus = smoothstep(0.58, 0.78, cloudHigh) * 0.42;
+    base = mix(base, vec3(0.90, 0.92, 0.94), cloud * 0.70);
+    base = mix(base, vec3(0.86, 0.89, 0.93), cirrus);
 
     float cityNoise = fbm(lp * 52.0 + 21.0, 4) * smoothstep(0.30, 0.62, fbm(lp * 8.0 + 3.0, 3));
     float city = smoothstep(0.16, 0.30, cityNoise) * smoothstep(0.42, 0.72, fbm(lp * 150.0 + 7.0, 3));
@@ -3054,6 +3634,14 @@ void bodySurface(
     float swirl = fbm(vec3(lon * 7.0 + lat * 9.0, lat * 11.0, 2.0), 4);
     base = mix(base, mix(cC, cC * 0.62, swirl), grs * (0.70 + 0.30 * swirl));
     base = mix(base, cC * 1.06, smoothstep(1.05, 1.45, r2) * smoothstep(1.9, 1.45, r2) * 0.16);
+
+    /* 纬向风切变：赤道急流与中纬度带的交界处产生剪切湍流 */
+    float shear = cos(lat * 6.0) * 0.5 + 0.5;
+    base *= 0.88 + 0.20 * shear;
+    /* 极区气旋：南北极各有若干小涡旋，靠噪声环纹体现 */
+    float pole = smoothstep(0.60, 0.94, abs(lat));
+    float cyc = fbm(vec3(lon * 3.2, lat * 6.0, 9.0), 3);
+    base = mix(base, mix(cB * 0.72, cA * 1.12, sin(cyc * 26.0) * 0.5 + 0.5), pole * 0.45);
 
     albedo = base;
     specMask = 0.0;
@@ -3244,6 +3832,124 @@ vec3 skyRadiance(vec3 dir, int oct) {
 
 </script>
 <script>
+/* ===== src/js/shaders/galaxy.glsl.js ===== */
+/* ==========================================================================
+   galaxy.glsl.js — L3 银河视图：程序化的银河盘 + 太阳轨道与当前位置
+   这是一个独立的示意坐标系（单位 kpc），和太阳系的 AU 坐标不是同一套比例，
+   所以用淡入淡出过渡，不做「连续缩放」。位置与轨道半径是真的，形态是画的。
+   ========================================================================== */
+window.HELIOS_SHADERS = Object.assign(window.HELIOS_SHADERS || {}, {
+  'galaxy': /* glsl */ `
+#define KPC_SUN 8.3
+
+/* 对数螺旋臂：theta = k·ln(r) + 臂序号偏移 */
+float spiralArm(float r, float ang, float arms, float pitch, float phase) {
+  float k = 1.0 / tan(pitch);
+  float th = k * log(max(r, 0.35));
+  float d = ang - th - phase;
+  float wrapped = mod(d + PI / arms, TAU / arms) - PI / arms;
+  return exp(-pow(wrapped / 0.30, 2.0));
+}
+
+vec3 galaxyRadiance(vec2 uv) {
+  /* 虚拟相机：在银道面坐标里，绕银心转，俯角 uGalaxyCam.z */
+  float distKpc = uGalaxyCam.x;
+  float azim = uGalaxyCam.y;
+  float elev = uGalaxyCam.z;
+
+  vec3 camPos = distKpc * vec3(cos(elev) * cos(azim), cos(elev) * sin(azim), sin(elev));
+  vec3 fwd = normalize(-camPos);
+  vec3 right = normalize(cross(fwd, vec3(0.0, 0.0, 1.0)));
+  vec3 up = cross(right, fwd);
+
+  vec3 rd = normalize(right * uv.x * uTanHalfFov * uAspect + up * uv.y * uTanHalfFov + fwd);
+  vec3 ro = camPos;
+
+  /* ---- 背景天区：极暗的深空 + 远处星系点 ---- */
+  vec3 col = vec3(0.004, 0.005, 0.010);
+  float far = fbm(rd * 18.0 + 3.0, 3);
+  col += vec3(0.010, 0.012, 0.020) * smoothstep(0.55, 0.85, far);
+
+  /* ---- 银盘：射线与 z=0 平面的交点 ---- */
+  float denom = rd.z;
+  if (abs(denom) > 1e-4) {
+    float t = -ro.z / denom;
+    if (t > 0.0) {
+      vec3 p = ro + rd * t;
+      float r = length(p.xy);
+      float ang = atan(p.y, p.x);
+
+      if (r < 17.0) {
+        /* 核球 */
+        float bulge = exp(-pow(r / 1.7, 1.6)) * 2.1;
+        /* 盘 */
+        float disk = exp(-r / 2.9) * 0.55 + exp(-r / 6.5) * 0.20;
+        /* 旋臂：两条主臂 + 两条次臂 */
+        float arms = spiralArm(r, ang, 2.0, 0.22, 0.0) * 0.95 + spiralArm(r, ang, 2.0, 0.22, 2.9) * 0.50;
+        arms += spiralArm(r, ang, 4.0, 0.15, 1.2) * 0.26;
+        float knots = smoothstep(0.55, 0.92, fbm(vec3(p.xy * 1.5, 7.0), 5));
+        float gas = disk * (0.35 + 1.8 * arms) * (0.70 + 0.85 * knots);
+
+        /* 尘埃带：沿臂的内侧偏暗 */
+        float dust = smoothstep(0.45, 0.75, ridged(vec3(p.xy * 2.2, 11.0), 4)) * exp(-r / 7.0);
+        gas *= 1.0 - 0.50 * dust;
+
+        vec3 bulgeCol = vec3(1.00, 0.88, 0.66);
+        vec3 diskCol = mix(vec3(0.66, 0.76, 1.00), vec3(0.92, 0.90, 0.86), smoothstep(1.5, 8.0, r));
+        vec3 armCol = vec3(0.56, 0.72, 1.00);
+        vec3 g = bulgeCol * bulge + diskCol * disk * 0.50 + armCol * gas * 0.80;
+
+        /* 中心更亮 */
+        g += vec3(1.0, 0.92, 0.78) * exp(-r * r / 0.22) * 2.4;
+        col += g * 0.62;
+      }
+    }
+  }
+
+  /* ---- 太阳的轨道与当前位置（叠加在最上面，不受盘面遮挡） ---- */
+  {
+    /* 轨道圆环：r = 8.3 kpc 的一条细线 */
+    float denom2 = rd.z;
+    if (abs(denom2) > 1e-4) {
+      float t = -ro.z / denom2;
+      if (t > 0.0) {
+        vec3 p = ro + rd * t;
+        float r = length(p.xy);
+        float ring = 1.0 - smoothstep(0.0, 0.10, abs(r - KPC_SUN));
+        col += vec3(0.36, 0.62, 0.70) * ring * 0.55;
+
+        /* 太阳在轨道上的位置：从银心看是 180° + 相位 */
+        float sunAng = PI + uSunGalAngle;
+        vec2 sunP = KPC_SUN * vec2(cos(sunAng), sin(sunAng));
+        float dSun = length(p.xy - sunP);
+        float marker = exp(-pow(dSun / 0.35, 2.0)) * 1.6 + exp(-pow(dSun / 1.2, 2.0)) * 0.25;
+        col += vec3(0.98, 0.82, 0.46) * marker;
+
+        /* 太阳到银心的连线（虚线感） */
+        float lineW = 0.03;
+        vec2 a = vec2(0.0);
+        vec2 b = sunP;
+        vec2 pa = p.xy - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        float dLine = length(pa - ba * h);
+        float seg = step(0.55, fract(h * 9.0));
+        col += vec3(0.50, 0.56, 0.60) * (1.0 - smoothstep(0.0, lineW, dLine)) * seg * 0.30;
+
+        /* 银心标记 */
+        float dGc = length(p.xy);
+        col += vec3(1.0, 0.88, 0.62) * (1.0 - smoothstep(0.0, 0.5, dGc)) * 0.9;
+      }
+    }
+  }
+
+  return col;
+}
+`,
+});
+
+</script>
+<script>
 /* ===== src/js/shaders/scene.glsl.js ===== */
 /* ==========================================================================
    scene.glsl.js — 主场景 pass：一个全屏四边形，逐像素解一串球体求交
@@ -3285,6 +3991,7 @@ uniform vec4 uBodyColA[MAXB];  // rgb 主色，a 大气强度
 uniform vec4 uBodyColB[MAXB];  // rgb 次色，a 大气厚度（相对半径）
 uniform vec4 uBodyColC[MAXB];  // rgb 第三色，a 环槽（0 无 / 1 / 2）
 uniform vec4 uBodyColD[MAXB];  // rgb 大气色调
+uniform vec4 uBodyPar[MAXB];   // x Mie 前向散射强度，y 反照率系数
 
 uniform vec4 uRingGeom[MAXR];   // 内径, C 外缘, B 外缘, 卡西尼内缘
 uniform vec4 uRingGeom2[MAXR];  // 卡西尼外缘, A 外缘, F 环, 样式
@@ -3301,6 +4008,12 @@ uniform vec2  uSkyObjSize[8];
 uniform float uSkyObjPa[8];
 uniform float uSkyObjBright[8];
 uniform int   uSkyObjKind[8];
+
+uniform float uGalaxyMix;     // 0 = 太阳系，1 = 银河视图
+uniform vec3  uGalaxyCam;     // x=距银心 kpc，y=方位角，z=俯角
+uniform float uSunGalAngle;   // 太阳绕银心的相位
+uniform float uNearMix;       // L2 恒星邻域淡入
+uniform int   uOctaveCap;     // 画质档位对噪声层数的上限
 `,
 
   'sceneBody': /* glsl */ `
@@ -3335,11 +4048,28 @@ float ringAlpha(float rr, int slot) {
 
   float a;
   if (style == 1) {
-    /* 天王星的环又细又暗：整段用一个极低的底噪 + ε 环的亮边 */
-    a = 0.055;
-    a += exp(-pow((rr - aOuter) / 0.006, 2.0)) * 0.85;
-    a += exp(-pow((rr - (inner + (aOuter - inner) * 0.42)) / 0.004, 2.0)) * 0.42;
-    a += exp(-pow((rr - (inner + (aOuter - inner) * 0.66)) / 0.004, 2.0)) * 0.38;
+    /* 天王星的 13 条细环：半径按 25559 km 的行星半径归一化，逐条画 */
+    const float UR[13] = float[13](
+      1.6000, // ζ / 1986U2R
+      1.6368, // 6
+      1.6523, // 5
+      1.6655, // 4
+      1.7496, // α
+      1.7865, // β
+      1.8458, // η
+      1.8634, // γ
+      1.8897, // δ
+      1.9572, // λ
+      2.0013, // ε（最亮最宽）
+      2.5862, // ν
+      3.8226  // μ
+    );
+    float a = 0.0;
+    for (int i = 0; i < 13; i++) {
+      float w = (i == 10) ? 0.0038 : 0.0016;
+      float wgt = (i == 10) ? 0.95 : (i == 0 ? 0.10 : (i >= 11 ? 0.16 : 0.34));
+      a += exp(-pow((rr - UR[i]) / w, 2.0)) * wgt;
+    }
     a *= 0.55 + 0.45 * hairline(rr);
     return clamp(a, 0.0, 1.0);
   }
@@ -3380,7 +4110,7 @@ vec3 atmosphereGlow(vec3 ro, vec3 rd, float tLimit) {
     float d = sqrt(max(d2, 0.0));
     if (d < R) continue;                        // 盘面内部已经有大气的边缘项，别再叠一层
     float x = clamp((d - R) / max(shell - R, 1e-6), 0.0, 1.0);
-    float halo = pow(1.0 - x, 4.2) * 0.14;
+    float halo = pow(1.0 - x, 4.2) * 0.11;
     /* 只有被太阳照到的那一侧的大气才会亮 */
     vec3 limbDir = normalize(normalize(ro + rd * tClose - c) + vec3(1e-5));
     float lit = smoothstep(-0.45, 0.55, dot(limbDir, normalize(-c)));
@@ -3407,24 +4137,34 @@ vec3 shadeBody(int i, vec3 P, vec3 rd) {
   /* 太阳：自发光 */
   if (type == 0) {
     vec3 lp = worldToLocal(nW, 7.25, 0.9, spin);
-    int oct = 4 + int(uDetail * 4.0);
-    float supergran = fbm(lp * 22.0, 4);
-    float gran = ridged(lp * 86.0, oct);
+    /* 三个尺度的细胞：米粒 / 中尺度对流 / 超米粒 */
+    float g1 = ridged(lp * 96.0, 4);
+    float g2 = ridged(lp * 34.0, 4);
+    float g3 = fbm(lp * 11.0, 3);
+    float gran = g1 * 0.5 + g2 * 0.32 + g3 * 0.18;
+
+    /* 黑子：本影 + 半影，成对出现在活动带 */
     float belt = smoothstep(0.72, 0.28, abs(lp.z));
-    float spot = smoothstep(0.735, 0.775, fbm(lp * 12.0 + 17.0, 5)) * belt;
+    float spotField = fbm(lp * 12.0 + 17.0, 5);
+    float penumbra = smoothstep(0.700, 0.745, spotField) * belt;
+    float umbra = smoothstep(0.752, 0.790, spotField) * belt;
     float facula = smoothstep(0.58, 0.76, ridged(lp * 34.0 + 5.0, 3));
 
-    float heat = 0.24 + 0.44 * gran + 0.24 * supergran + 0.13 * facula;
+    /* 边缘耀斑：临边附近的细亮丝 */
+    float muS = clamp(dot(nW, normalize(uCamPos - P)), 0.0, 1.0);
+    float flare = smoothstep(0.42, 0.06, muS) * smoothstep(0.55, 0.85, ridged(lp * 46.0 + 31.0, 3));
+
+    float heat = 0.26 + 0.46 * gran + 0.16 * facula;
     vec3 hot = vec3(1.0, 0.96, 0.87);
     vec3 warm = vec3(1.0, 0.62, 0.26);
     vec3 col = mix(warm, hot, saturate(heat));
-    col *= 1.0 - spot * 0.80;             // 黑子：暗但不全黑
+    col *= 1.0 - penumbra * 0.35 - umbra * 0.55;
 
     /* 临边昏暗：边缘偏红偏暗 */
-    float muS = clamp(dot(nW, normalize(uCamPos - P)), 0.0, 1.0);
     float limb = 1.0 - 0.50 * (1.0 - muS) - 0.28 * pow(1.0 - muS, 3.0);
     col *= limb;
     col += vec3(1.0, 0.62, 0.30) * pow(1.0 - muS, 4.0) * 0.30;
+    col += vec3(1.0, 0.55, 0.26) * flare * 2.2;
     return col * 1.02;
   }
 
@@ -3438,11 +4178,35 @@ vec3 shadeBody(int i, vec3 P, vec3 rd) {
   float soft = mix(0.012, 0.16, atmo);
   float diff = smoothstep(-soft, soft, mu);
 
+  vec3 Vv = normalize(uCamPos - P);
+  /* Oren–Nayar 近似：粗糙表面在掠射角不会骤暗，岩石天体不再「塑料」 */
+  if (type == 1 || type == 4 || type == 9) {
+    float s = 0.6;
+    float A = 1.0 - 0.5 * s * s / (s * s + 0.33);
+    float B = 0.45 * s * s / (s * s + 0.09);
+    float ti = acos(clamp(mu, 0.0, 1.0));
+    float to = acos(clamp(dot(nW, Vv), 0.0, 1.0));
+    float al = max(ti, to);
+    float be = min(ti, to);
+    vec3 Li = normalize(L - nW * mu);
+    vec3 Vo = normalize(Vv - nW * dot(nW, Vv));
+    float gam = clamp(dot(Li, Vo), 0.0, 1.0);
+    float on = max(mu, 0.0) * (A + B * gam * sin(al) * tan(be));
+    diff = mix(diff, clamp(on, 0.0, 1.02), 0.55);
+  }
+
   /* 光照补偿：真实 1/r² 会让海王星只剩 0.1%，为了看得见做压缩，README 有说明 */
   float r = max(length(P), 0.05);
   float irr = clamp(1.15 / pow(r, 0.55), 0.55, 1.12);
+  float albedoGain = uBodyPar[i].y;
+  vec3 col = albedo * albedoGain * diff * irr * 0.95;
 
-  vec3 col = albedo * diff * irr * 0.95;
+  /* Mie 前向散射：太阳在身后时，大气边缘出现一圈亮环 */
+  if (atmo > 0.001) {
+    float g = clamp(-dot(Vv, L), 0.0, 1.0);
+    float rim = pow(1.0 - clamp(dot(nW, Vv), 0.0, 1.0), 3.0);
+    col += uBodyColD[i].rgb * pow(g, 5.0) * rim * atmo * uBodyPar[i].x * 1.6;
+  }
 
   /* 环在行星上的投影 */
   float slot = uBodyColC[i].a;
@@ -3603,8 +4367,10 @@ void main() {
     float ts;
     float shadow = 1.0;
     if (raySphere(ringP, L, c, R, ts)) shadow = 0.16;
-    /* 环自身的散射：不用物理相函数，只让背光侧稍暗 */
+    /* 环自身的散射：不用物理相函数，只让背光侧稍暗；太阳在环背后时按前向散射增亮 */
     vec3 ringCol = uRingColor[si] * (0.20 + 0.52 * max(dot(normalize(ringP - ro), L), 0.0)) * shadow;
+    float backlit = clamp(-dot(normalize(ringP - ro), L), 0.0, 1.0);
+    ringCol *= 1.0 + 0.85 * pow(backlit, 4.0);
     col = mix(col, ringCol, a);
     if (tRing < tOut) tOut = tRing;
   }
@@ -3612,6 +4378,12 @@ void main() {
   col += sunCorona(ro, rd, min(tBest, tRing));
   col += atmosphereGlow(ro, rd, min(tBest, tRing));
   col = hoverRing(col, uv, ro, rd);
+
+  /* L3：银河视图淡入。它是一个独立的 kpc 坐标系，用淡入淡出过渡，不假装连续。 */
+  if (uGalaxyMix > 0.001) {
+    vec3 gal = galaxyRadiance(uv);
+    col = mix(col, gal, uGalaxyMix);
+  }
 
   fragColor = vec4(col, 1.0);
   gl_FragDepth = (tOut > 1e17) ? 1.0 : clamp(1.0 - exp(-tOut * 0.9), 0.0, 0.999);
@@ -3633,6 +4405,7 @@ precision highp float;
 in vec3 aDir;      // 天球方向（黄道系单位向量）
 in vec4 aColor;    // rgb = 颜色，a = 相对通量
 in float aMag;     // V 星等，用来定尺寸
+in vec3 aPos;      // L2：恒星的真实 3D 位置（AU，黄道系）
 
 uniform mat3  uCamBasis;   // 列：右、上、前
 uniform float uTanHalfFov;
@@ -3641,13 +4414,27 @@ uniform vec2  uRes;
 uniform float uGain;       // 用户星空亮度
 uniform float uMinPx;
 uniform float uPxScale;    // dpr
+uniform float uMode;       // 0 = 天球方向（无穷远），1 = 3D 位置（L2）
+uniform vec3  uCamPos;
+uniform float uNearMix;
+uniform float uStretch;    // 一个像素对应多少世界单位（L2 的点大小）
 
 out vec4 vColor;
 out vec2 vQuiet;
 
 void main() {
-  vec3 d = aDir;
-  float zf = dot(d, uCamBasis[2]);
+  float zf;
+  vec3 v3;
+  if (uMode > 0.5) {
+    vec3 rel = aPos - uCamPos;
+    zf = dot(rel, uCamBasis[2]);
+    v3 = vec3(dot(rel, uCamBasis[0]), dot(rel, uCamBasis[1]), zf);
+  } else {
+    float d = dot(aDir, uCamBasis[2]);
+    zf = d * 1e12;
+    v3 = vec3(dot(aDir, uCamBasis[0]), dot(aDir, uCamBasis[1]), 0.0);
+  }
+
   if (zf <= 0.02) {
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
     gl_PointSize = 0.0;
@@ -3655,19 +4442,28 @@ void main() {
     vQuiet = vec2(0.0);
     return;
   }
-  vec2 ndc = vec2(
-    dot(d, uCamBasis[0]) / (zf * uTanHalfFov * uAspect),
-    dot(d, uCamBasis[1]) / (zf * uTanHalfFov)
-  );
+
+  vec2 ndc;
+  if (uMode > 0.5) {
+    ndc = vec2(v3.x / (zf * uTanHalfFov * uAspect), v3.y / (zf * uTanHalfFov));
+  } else {
+    float z = dot(aDir, uCamBasis[2]);
+    ndc = vec2(v3.x / (z * uTanHalfFov * uAspect), v3.y / (z * uTanHalfFov));
+  }
   gl_Position = vec4(ndc, 0.9999995, 1.0);
 
   float flux = aColor.a;
   float lum = clamp(flux * uGain, 0.0, 40.0);
 
-  /* 亮星给更大的点，暗星只占 1–2 px —— 不允许「每颗一样亮」 */
   float px = uMinPx + pow(clamp(flux, 0.0, 1.0), 0.42) * 2.6;
-  px *= uPxScale;
-  gl_PointSize = px;
+  if (uMode > 0.5) {
+    /* L2：近邻恒星用真实距离；点大小保底 1.6 px，否则和无穷远星点分不出来 */
+    float sizePx = uStretch > 0.0 ? (1.6 / zf) * uRes.y * 0.5 : 1.6;
+    px = clamp(sizePx, 1.6, 9.0);
+    lum *= uNearMix;
+    if (lum > 0.001) lum = max(lum, 0.05);
+  }
+  gl_PointSize = px * uPxScale;
 
   vColor = vec4(aColor.rgb * lum, 1.0);
   vQuiet = vec2(aMag, px);
@@ -3684,22 +4480,22 @@ uniform float uSpike;   // 只有最亮的几颗给星芒
 out vec4 fragColor;
 
 void main() {
+  /* PSF：核心用高斯，外围用 Moffat 的长尾，合起来才像真实星点而不是像素方块 */
   vec2 p = gl_PointCoord * 2.0 - 1.0;
   float r2 = dot(p, p);
   if (r2 > 1.0) discard;
-  float core = exp(-r2 * 5.5);
-  float halo = exp(-r2 * 1.6) * 0.30;
+  float core = exp(-r2 * 7.0);
+  float moffat = pow(1.0 + r2 * 4.0, -2.2) * 0.42;
 
-  /* 星芒 / 衍射十字：艺术化处理，只给最亮的一档 */
   float mag = vQuiet.x;
   float spike = 0.0;
-  if (mag < 1.2) {
-    float k = clamp((1.2 - mag) / 2.2, 0.0, 1.0) * uSpike;
+  if (mag < 2.0) {
+    float k = clamp((2.0 - mag) / 3.0, 0.0, 1.0) * uSpike;
     vec2 a = abs(p);
-    float arm = exp(-a.y * 9.0) * exp(-a.x * 1.1) + exp(-a.x * 9.0) * exp(-a.y * 1.1);
-    spike = arm * k * 0.45;
+    float arm = exp(-a.y * 11.0) * exp(-a.x * 1.3) + exp(-a.x * 11.0) * exp(-a.y * 1.3);
+    spike = arm * k * 0.5;
   }
-  vec3 col = vColor.rgb * (core + halo + spike);
+  vec3 col = vColor.rgb * (core + moffat + spike);
   fragColor = vec4(col, 1.0);
 }
 `,
@@ -3730,7 +4526,7 @@ void main() {
 <script>
 /* ===== src/js/shaders/post.glsl.js ===== */
 /* ==========================================================================
-   post.glsl.js — HDR 后处理链：亮部提取 → 可分离高斯 → ACES 合成
+   post.glsl.js — HDR 后处理链：亮部提取 → 两级 bloom → ACES → 色差 / 暗角 / 颗粒
    没有这一层，太阳就没法「亮到溢出却不过曝」，银河暗部也会被压死。
    ========================================================================== */
 window.HELIOS_SHADERS = Object.assign(window.HELIOS_SHADERS || {}, {
@@ -3740,7 +4536,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 uniform sampler2D uScene;
-uniform vec2 uTexel;     // 目标纹理的 texel 尺寸
+uniform vec2 uTexel;
 uniform float uThreshold;
 uniform float uKnee;
 
@@ -3782,18 +4578,39 @@ void main() {
 }
 `,
 
+  'copyFrag': /* glsl */ `
+precision highp float;
+in vec2 vUv;
+out vec4 fragColor;
+uniform sampler2D uSource;
+uniform vec2 uTexel;
+void main() {
+  vec3 c = vec3(0.0);
+  c += texture(uSource, vUv + uTexel * vec2(-0.5, -0.5)).rgb;
+  c += texture(uSource, vUv + uTexel * vec2(0.5, -0.5)).rgb;
+  c += texture(uSource, vUv + uTexel * vec2(-0.5, 0.5)).rgb;
+  c += texture(uSource, vUv + uTexel * vec2(0.5, 0.5)).rgb;
+  fragColor = vec4(c * 0.25, 1.0);
+}
+`,
+
   'compositeFrag': /* glsl */ `
 precision highp float;
 in vec2 vUv;
 out vec4 fragColor;
 
 uniform sampler2D uScene;
-uniform sampler2D uBloom;
+uniform sampler2D uBloom;      // 紧的一级（1/4）
+uniform sampler2D uBloomWide;  // 宽的一级（1/8）
+uniform vec2  uSceneTexel;     // 场景纹理的单位像素
+uniform float uSS;             // 超采样倍率（1 / 1.25 / 1.5）
+uniform int   uDebug;          // 0 成片 / 1 场景 / 2 辉光 / 3 无辉光
 uniform float uExposure;
 uniform float uBloomGain;
 uniform float uGrain;
 uniform float uVignette;
-uniform float uFrame;     // 固定帧号，保证同一 URL 两次截图一致
+uniform float uAberration;
+uniform float uFrame;
 
 vec3 aces(vec3 x) {
   const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
@@ -3804,26 +4621,59 @@ vec3 toSRGB(vec3 c) {
   return mix(c * 12.92, 1.055 * pow(max(c, 1e-5), vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
 }
 
-float grain(vec2 p) {
-  return fract(sin(dot(p + uFrame * 0.0, vec2(12.9898, 78.233))) * 43758.5453);
+float grainNoise(vec2 p) {
+  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+/* 超采样降采样：一个输出像素里取 4 个次像素做 box filter，边缘立刻干净 */
+vec3 sampleScene(vec2 uv) {
+  vec3 c = texture(uScene, uv).rgb;
+  if (uSS > 1.001) {
+    vec2 o = uSceneTexel * 0.5;
+    c = vec3(0.0);
+    c += texture(uScene, uv + vec2(-o.x, -o.y)).rgb;
+    c += texture(uScene, uv + vec2( o.x, -o.y)).rgb;
+    c += texture(uScene, uv + vec2(-o.x,  o.y)).rgb;
+    c += texture(uScene, uv + vec2( o.x,  o.y)).rgb;
+    c *= 0.25;
+  }
+  return c;
 }
 
 void main() {
-  vec3 scene = texture(uScene, vUv).rgb;
-  vec3 bloom = texture(uBloom, vUv).rgb;
-  vec3 col = scene + bloom * uBloomGain;
+  /* 轻微横向色差：越靠边缘越明显 */
+  vec2 dir = vUv - 0.5;
+  float amt = uAberration * dot(dir, dir);
+  vec3 scene;
+  scene.r = sampleScene(vUv + dir * amt).r;
+  scene.g = sampleScene(vUv).g;
+  scene.b = sampleScene(vUv - dir * amt).b;
+
+  vec3 bloom = texture(uBloom, vUv).rgb + texture(uBloomWide, vUv).rgb * 0.75;
+
+  if (uDebug == 1) {
+    fragColor = vec4(toSRGB(aces(scene * uExposure)), 1.0);
+    return;
+  }
+  if (uDebug == 2) {
+    fragColor = vec4(toSRGB(aces(bloom * uBloomGain * 2.0)), 1.0);
+    return;
+  }
+
+  vec3 col = scene + (uDebug == 3 ? vec3(0.0) : bloom * uBloomGain);
   col *= uExposure;
   col = aces(col);
 
-  /* 极轻的暗角，把视线收回中央 */
   vec2 q = vUv - 0.5;
   float vig = 1.0 - uVignette * dot(q, q) * 1.35;
   col *= clamp(vig, 0.0, 1.0);
 
   col = toSRGB(col);
-  float n = grain(gl_FragCoord.xy) - 0.5;
-  col += n * uGrain;
-  fragColor = vec4(col, 1.0);
+  /* 抖动：8bit 输出前加一点噪声，压掉暗部渐变里的色带 */
+  float dither = (grainNoise(gl_FragCoord.xy) - 0.5) * (1.6 / 255.0);
+  col += dither;
+  col += (grainNoise(gl_FragCoord.xy + 31.7) - 0.5) * uGrain;
+  fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
 `,
 });
@@ -3930,18 +4780,19 @@ void main() {
     var colorType = floatOK ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
 
     /* ---- 程序 ---- */
-    var sceneProg, starProg, lineProg, brightProg, blurProg, compProg;
+    var sceneProg, starProg, lineProg, brightProg, blurProg, copyProg, compProg;
     var errors = [];
     try {
       sceneProg = program(
         gl,
         S['sceneVert'],
-        S['common'] + S['sceneDecl'] + S['surface'] + S['sky'] + S['sceneBody']
+        S['common'] + S['sceneDecl'] + S['surface'] + S['sky'] + S['galaxy'] + S['sceneBody']
       );
       starProg = program(gl, S['starVert'], S['starFrag']);
       lineProg = program(gl, S['lineVert'], S['lineFrag']);
       brightProg = program(gl, S['sceneVert'], S['brightFrag']);
       blurProg = program(gl, S['sceneVert'], S['blurFrag']);
+      copyProg = program(gl, S['sceneVert'], S['copyFrag']);
       compProg = program(gl, S['sceneVert'], S['compositeFrag']);
     } catch (e) {
       errors.push(String(e && e.message ? e.message : e));
@@ -3951,15 +4802,23 @@ void main() {
     var sceneU = locs(gl, sceneProg, [
       'uRes', 'uCamPos', 'uCamBasis', 'uTanHalfFov', 'uAspect', 'uDetail', 'uTime',
       'uBgOn', 'uBodyCount', 'uHover',
-      'uBodyPos', 'uBodyAxes', 'uBodyColA', 'uBodyColB', 'uBodyColC', 'uBodyColD',
+      'uBodyPos', 'uBodyAxes', 'uBodyColA', 'uBodyColB', 'uBodyColC', 'uBodyColD', 'uBodyPar',
       'uRingGeom', 'uRingGeom2', 'uRingExtra', 'uRingColor',
       'uEclToGal', 'uStarBright', 'uMilkyGain', 'uSkyObjCount',
       'uSkyObjDir', 'uSkyObjAxis', 'uSkyObjSize', 'uSkyObjPa', 'uSkyObjBright', 'uSkyObjKind',
+      'uGalaxyMix', 'uGalaxyCam', 'uSunGalAngle', 'uNearMix', 'uOctaveCap',
     ]);
-    var starU = locs(gl, starProg, ['uCamBasis', 'uTanHalfFov', 'uAspect', 'uRes', 'uGain', 'uMinPx', 'uPxScale', 'uSpike']);
+    var starU = locs(gl, starProg, [
+      'uCamBasis', 'uTanHalfFov', 'uAspect', 'uRes', 'uGain', 'uMinPx', 'uPxScale', 'uSpike',
+      'uMode', 'uCamPos', 'uNearMix', 'uStretch',
+    ]);
     var brightU = locs(gl, brightProg, ['uScene', 'uTexel', 'uThreshold', 'uKnee']);
     var blurU = locs(gl, blurProg, ['uSource', 'uDirection', 'uSigma']);
-    var compU = locs(gl, compProg, ['uScene', 'uBloom', 'uExposure', 'uBloomGain', 'uGrain', 'uVignette', 'uFrame']);
+    var copyU = locs(gl, copyProg, ['uSource', 'uTexel']);
+    var compU = locs(gl, compProg, [
+      'uScene', 'uBloom', 'uBloomWide', 'uExposure', 'uBloomGain', 'uGrain', 'uVignette', 'uAberration', 'uFrame',
+      'uSceneTexel', 'uSS', 'uDebug',
+    ]);
 
     /* ---- 全屏四边形（无顶点缓冲，用 gl_VertexID） ---- */
     var emptyVao = gl.createVertexArray();
@@ -4011,6 +4870,60 @@ void main() {
       gl.bindVertexArray(null);
     })();
 
+    /* ---- L2 近邻恒星（带真实距离） ---- */
+    var nearCount = 0;
+    var nearVao = gl.createVertexArray();
+    var nearBuf = gl.createBuffer();
+    (function buildNearStars() {
+      var N = window.HELIOS_STARS_NEAR;
+      if (!N || !N.b64) return;
+      var bin = atob(N.b64);
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      var f32 = new Float32Array(bytes.buffer, 0, N.n * 5);
+      // 交错：dir(3) color(4) mag(1) pos(3) = 11 floats
+      var data = new Float32Array(N.n * 11);
+      for (var k = 0; k < N.n; k++) {
+        var px = f32[k * 5], py = f32[k * 5 + 1], pz = f32[k * 5 + 2];
+        var mag = f32[k * 5 + 3], ci = f32[k * 5 + 4];
+        var len = Math.hypot(px, py, pz) || 1;
+        var rgb = blackbodyRGB(bvToKelvin(ci));
+        var flux = Math.pow(10, -0.4 * (mag + 1.44));
+        var o = k * 11;
+        data[o] = px / len;
+        data[o + 1] = py / len;
+        data[o + 2] = pz / len;
+        data[o + 3] = rgb[0];
+        data[o + 4] = rgb[1];
+        data[o + 5] = rgb[2];
+        data[o + 6] = flux;
+        data[o + 7] = mag;
+        data[o + 8] = px;
+        data[o + 9] = py;
+        data[o + 10] = pz;
+      }
+      nearCount = N.n;
+      gl.bindVertexArray(nearVao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, nearBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      var stride = 44;
+      var aDir = gl.getAttribLocation(starProg, 'aDir');
+      var aColor = gl.getAttribLocation(starProg, 'aColor');
+      var aMag = gl.getAttribLocation(starProg, 'aMag');
+      var aPos = gl.getAttribLocation(starProg, 'aPos');
+      gl.enableVertexAttribArray(aDir);
+      gl.vertexAttribPointer(aDir, 3, gl.FLOAT, false, stride, 0);
+      gl.enableVertexAttribArray(aColor);
+      gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, stride, 12);
+      gl.enableVertexAttribArray(aMag);
+      gl.vertexAttribPointer(aMag, 1, gl.FLOAT, false, stride, 28);
+      if (aPos >= 0) {
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, stride, 32);
+      }
+      gl.bindVertexArray(null);
+    })();
+
     /* ---- 线段（轨道 / 星座），每帧更新 ---- */
     var lineVao = gl.createVertexArray();
     var lineBuf = gl.createBuffer();
@@ -4051,6 +4964,8 @@ void main() {
     var sceneTarget = null;
     var bloomA = null;
     var bloomB = null;
+    var bloomW = null;
+    var bloomX = null;
 
     function ensureTargets(w, h) {
       if (sceneTarget && sceneTarget.w === w && sceneTarget.h === h) return;
@@ -4059,19 +4974,18 @@ void main() {
         gl.deleteTexture(sceneTarget.tex);
         if (sceneTarget.depth) gl.deleteRenderbuffer(sceneTarget.depth);
       }
-      if (bloomA) {
-        gl.deleteFramebuffer(bloomA.fbo);
-        gl.deleteTexture(bloomA.tex);
-      }
-      if (bloomB) {
-        gl.deleteFramebuffer(bloomB.fbo);
-        gl.deleteTexture(bloomB.tex);
-      }
+      [bloomA, bloomB, bloomW, bloomX].forEach(function (t) {
+        if (t) { gl.deleteFramebuffer(t.fbo); gl.deleteTexture(t.tex); }
+      });
       sceneTarget = makeTarget(w, h, true);
       var bw = Math.max(1, w >> 2);
       var bh = Math.max(1, h >> 2);
       bloomA = makeTarget(bw, bh, false);
       bloomB = makeTarget(bw, bh, false);
+      var ww = Math.max(1, w >> 3);
+      var wh = Math.max(1, h >> 3);
+      bloomW = makeTarget(ww, wh, false);
+      bloomX = makeTarget(ww, wh, false);
     }
 
     /* ---- 缓冲 ---- */
@@ -4081,6 +4995,7 @@ void main() {
     var bodyColB = new Float32Array(MAXB * 4);
     var bodyColC = new Float32Array(MAXB * 4);
     var bodyColD = new Float32Array(MAXB * 4);
+    var bodyPar = new Float32Array(MAXB * 4);
     var ringGeom = new Float32Array(MAXR * 4);
     var ringGeom2 = new Float32Array(MAXR * 4);
     var ringExtra = new Float32Array(MAXR * 4);
@@ -4097,6 +5012,7 @@ void main() {
       gl: gl,
       ok: true,
       starCount: starCount,
+      nearStarCount: nearCount,
       starIndex: starIndex,
       floatOK: floatOK,
       drawCalls: 0,
@@ -4123,13 +5039,15 @@ void main() {
         var w = st.pixelWidth;
         var h = st.pixelHeight;
         if (!w || !h) return;
-        ensureTargets(w, h);
+        var sw = st.sceneWidth || w;
+        var sh = st.sceneHeight || h;
+        ensureTargets(sw, sh);
 
-        var aspect = w / h;
+        var aspect = sw / sh;
         var pxScale = st.pxScale || 1;
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget.fbo);
-        gl.viewport(0, 0, w, h);
+        gl.viewport(0, 0, sw, sh);
         gl.disable(gl.BLEND);
         gl.depthMask(true);
         gl.clearColor(0, 0, 0, 1);
@@ -4141,7 +5059,7 @@ void main() {
         gl.depthFunc(gl.LEQUAL);
         gl.useProgram(sceneProg);
         gl.bindVertexArray(emptyVao);
-        gl.uniform2f(sceneU.uRes, w, h);
+        gl.uniform2f(sceneU.uRes, sw, sh);
         gl.uniform3fv(sceneU.uCamPos, st.camPos);
         gl.uniformMatrix3fv(sceneU.uCamBasis, false, st.camBasis);
         gl.uniform1f(sceneU.uTanHalfFov, st.tanHalf);
@@ -4157,6 +5075,7 @@ void main() {
         gl.uniform4fv(sceneU.uBodyColB, bodyColB);
         gl.uniform4fv(sceneU.uBodyColC, bodyColC);
         gl.uniform4fv(sceneU.uBodyColD, bodyColD);
+        gl.uniform4fv(sceneU.uBodyPar, bodyPar);
         gl.uniform4fv(sceneU.uRingGeom, ringGeom);
         gl.uniform4fv(sceneU.uRingGeom2, ringGeom2);
         gl.uniform4fv(sceneU.uRingExtra, ringExtra);
@@ -4171,25 +5090,41 @@ void main() {
         gl.uniform1fv(sceneU.uSkyObjPa, skyPa);
         gl.uniform1fv(sceneU.uSkyObjBright, skyBright);
         gl.uniform1iv(sceneU.uSkyObjKind, skyKind);
+        gl.uniform1f(sceneU.uGalaxyMix, st.galaxyMix || 0);
+        gl.uniform3fv(sceneU.uGalaxyCam, st.galaxyCam || [30, 0, 0.4]);
+        gl.uniform1f(sceneU.uSunGalAngle, st.sunGalAngle || 0);
+        gl.uniform1f(sceneU.uNearMix, st.nearMix || 0);
+        gl.uniform1i(sceneU.uOctaveCap, st.octaveCap || 7);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         api.drawCalls = 1;
 
         /* ---- 星点 ---- */
+        gl.useProgram(starProg);
+        gl.uniformMatrix3fv(starU.uCamBasis, false, st.camBasis);
+        gl.uniform1f(starU.uTanHalfFov, st.tanHalf);
+        gl.uniform1f(starU.uAspect, aspect);
+        gl.uniform2f(starU.uRes, sw, sh);
+        gl.uniform1f(starU.uGain, st.starGain);
+        gl.uniform1f(starU.uMinPx, 1.0);
+        gl.uniform1f(starU.uPxScale, pxScale);
+        gl.uniform1f(starU.uSpike, 1.0);
+        gl.uniform3fv(starU.uCamPos, st.camPos);
+        gl.uniform1f(starU.uNearMix, st.nearMix || 0);
+        gl.uniform1f(starU.uStretch, 0.0);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE);
+        gl.depthMask(false);
+
         if (st.bgOn && starCount) {
-          gl.useProgram(starProg);
           gl.bindVertexArray(starVao);
-          gl.uniformMatrix3fv(starU.uCamBasis, false, st.camBasis);
-          gl.uniform1f(starU.uTanHalfFov, st.tanHalf);
-          gl.uniform1f(starU.uAspect, aspect);
-          gl.uniform2f(starU.uRes, w, h);
-          gl.uniform1f(starU.uGain, st.starGain);
-          gl.uniform1f(starU.uMinPx, 1.0);
-          gl.uniform1f(starU.uPxScale, pxScale);
-          gl.uniform1f(starU.uSpike, 1.0);
-          gl.enable(gl.BLEND);
-          gl.blendFunc(gl.ONE, gl.ONE);
-          gl.depthMask(false);
+          gl.uniform1f(starU.uMode, 0.0);
           gl.drawArrays(gl.POINTS, 0, starCount);
+          api.drawCalls++;
+        }
+        if (st.bgOn && nearCount && (st.nearMix || 0) > 0.002) {
+          gl.bindVertexArray(nearVao);
+          gl.uniform1f(starU.uMode, 1.0);
+          gl.drawArrays(gl.POINTS, 0, nearCount);
           api.drawCalls++;
         }
 
@@ -4230,7 +5165,6 @@ void main() {
         var passes = st.bloomPasses;
         for (var p = 0; p < passes; p++) {
           var sigma = 2.2 + p * 1.1;
-          // 横向
           gl.bindFramebuffer(gl.FRAMEBUFFER, bloomB.fbo);
           gl.viewport(0, 0, bw, bh);
           gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
@@ -4238,7 +5172,6 @@ void main() {
           gl.uniform2f(blurU.uDirection, 1 / bw, 0);
           gl.uniform1f(blurU.uSigma, sigma);
           gl.drawArrays(gl.TRIANGLES, 0, 3);
-          // 纵向
           gl.bindFramebuffer(gl.FRAMEBUFFER, bloomA.fbo);
           gl.bindTexture(gl.TEXTURE_2D, bloomB.tex);
           gl.uniform2f(blurU.uDirection, 0, 1 / bh);
@@ -4247,10 +5180,39 @@ void main() {
           api.drawCalls += 2;
         }
 
+        /* ---- 第二级（更宽、1/8 分辨率）---- */
+        gl.useProgram(copyProg);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, bloomW.fbo);
+        gl.viewport(0, 0, bloomW.w, bloomW.h);
+        gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
+        gl.uniform1i(copyU.uSource, 0);
+        gl.uniform2f(copyU.uTexel, 1 / bw, 1 / bh);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+        gl.useProgram(blurProg);
+        for (var p2 = 0; p2 < 2; p2++) {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, bloomX.fbo);
+          gl.viewport(0, 0, bloomW.w, bloomW.h);
+          gl.bindTexture(gl.TEXTURE_2D, bloomW.tex);
+          gl.uniform1i(blurU.uSource, 0);
+          gl.uniform2f(blurU.uDirection, 1 / bloomW.w, 0);
+          gl.uniform1f(blurU.uSigma, 3.0 + p2 * 2.0);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, bloomW.fbo);
+          gl.bindTexture(gl.TEXTURE_2D, bloomX.tex);
+          gl.uniform2f(blurU.uDirection, 0, 1 / bloomW.h);
+          gl.uniform1f(blurU.uSigma, 3.0 + p2 * 2.0);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
+        api.drawCalls += 5;
+
         /* ---- 合成到画布 ---- */
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, w, h);
         gl.useProgram(compProg);
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, bloomW.tex);
+        gl.uniform1i(compU.uBloomWide, 2);
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
         gl.uniform1i(compU.uBloom, 1);
@@ -4261,7 +5223,11 @@ void main() {
         gl.uniform1f(compU.uBloomGain, st.bloomGain);
         gl.uniform1f(compU.uGrain, st.grain);
         gl.uniform1f(compU.uVignette, st.vignette);
+        gl.uniform1f(compU.uAberration, st.aberration === undefined ? 0.0016 : st.aberration);
         gl.uniform1f(compU.uFrame, st.frameIndex);
+        gl.uniform2f(compU.uSceneTexel, 1 / sw, 1 / sh);
+        gl.uniform1f(compU.uSS, st.ss || 1);
+        gl.uniform1i(compU.uDebug, st.debugView || 0);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         api.drawCalls++;
         gl.bindVertexArray(null);
@@ -4301,6 +5267,10 @@ void main() {
           bodyColD[i * 4 + 1] = b.atmoColor[1];
           bodyColD[i * 4 + 2] = b.atmoColor[2];
           bodyColD[i * 4 + 3] = 0;
+          bodyPar[i * 4] = b.mie || 0;
+          bodyPar[i * 4 + 1] = b.albedo === undefined ? 1 : b.albedo;
+          bodyPar[i * 4 + 2] = 0;
+          bodyPar[i * 4 + 3] = 0;
         }
       },
 
@@ -4601,8 +5571,8 @@ void main() {
 <script>
 /* ===== src/js/ui.js ===== */
 /* ==========================================================================
-   ui.js — HUD、列表、信息面板、帮助浮层、焦点管理
-   只负责 DOM，不碰轨道计算；所有数字来自 data.*.js，由 app.js 传进来。
+   ui.js — HUD、参考系/时间/尺度控件、里程表、轨迹对照插图、信息面板、帮助浮层
+   只负责 DOM，不碰轨道计算。
    ========================================================================== */
 (function () {
   'use strict';
@@ -4610,14 +5580,6 @@ void main() {
   var $ = function (id) {
     return document.getElementById(id);
   };
-
-  var SPEEDS = [
-    { id: 'pause', label: '暂停', days: 0 },
-    { id: 'day', label: '1 天/秒', days: 1 },
-    { id: 'week', label: '1 周/秒', days: 7 },
-    { id: 'month', label: '1 月/秒', days: 30 },
-    { id: 'year', label: '1 年/秒', days: 365.25 },
-  ];
 
   var SCALES = [
     { id: 'orrery', label: '比例压缩' },
@@ -4641,6 +5603,7 @@ void main() {
 
   function createUI(app) {
     var ui = {};
+    var MOTION = window.HELIOS_MOTION;
 
     /* ---- 天体列表 ---- */
     var rosterList = $('rosterList');
@@ -4652,17 +5615,10 @@ void main() {
       btn.className = 'roster-item';
       btn.setAttribute('data-body', String(i));
       btn.setAttribute('aria-label', '查看' + b.nameZh + '（' + b.nameEn + '）的特写');
-      btn.innerHTML =
-        '<span class="idx" aria-hidden="true">' + (i + 1) + '</span><span class="nm">' + b.nameZh + '</span>';
-      btn.addEventListener('click', function () {
-        app.focusBody(i);
-      });
-      btn.addEventListener('mouseenter', function () {
-        app.setHover(i);
-      });
-      btn.addEventListener('mouseleave', function () {
-        app.setHover(-1);
-      });
+      btn.innerHTML = '<span class="idx" aria-hidden="true">' + (i + 1) + '</span><span class="nm">' + b.nameZh + '</span>';
+      btn.addEventListener('click', function () { app.focusBody(i); });
+      btn.addEventListener('mouseenter', function () { app.setHover(i); });
+      btn.addEventListener('mouseleave', function () { app.setHover(-1); });
       li.appendChild(btn);
       rosterList.appendChild(li);
       rosterButtons.push(btn);
@@ -4678,30 +5634,60 @@ void main() {
         b.textContent = it.label;
         b.setAttribute('data-id', it.id);
         b.setAttribute('aria-pressed', it.id === activeId ? 'true' : 'false');
-        b.addEventListener('click', function () {
-          onPick(it.id);
-        });
+        if (it.title) b.title = it.title;
+        b.addEventListener('click', function () { onPick(it.id); });
         host.appendChild(b);
         btns.push(b);
       });
       return btns;
     }
 
-    var speedBtns = buildSegmented($('speedGroup'), SPEEDS, 'pause', function (id) {
-      app.setSpeed(id);
-    });
-    var scaleBtns = buildSegmented($('scaleGroup'), SCALES, 'orrery', function (id) {
-      app.setScale(id);
-    });
-    var qualityBtns = buildSegmented($('qualityGroup'), QUALITY, 'standard', function (id) {
-      app.setQuality(id);
-    });
-
     function press(btns, id) {
       btns.forEach(function (b) {
         b.setAttribute('aria-pressed', b.getAttribute('data-id') === id ? 'true' : 'false');
       });
     }
+
+    var scaleBtns = buildSegmented($('scaleGroup'), SCALES, 'orrery', function (id) { app.setScale(id); });
+    var frameBtns = buildSegmented($('frameGroup'), MOTION.frames.map(function (f) { return { id: f.id, label: f.label, title: f.desc }; }), 'sun', function (id) { app.setFrame(id); });
+    var qualityBtns = buildSegmented($('qualityGroup'), QUALITY, 'standard', function (id) { app.setQuality(id); });
+
+    /* 时间倍率：暂停 + 六档 */
+    var timeHost = $('timeGroup');
+    timeHost.innerHTML = '';
+    var timeBtns = [];
+    var TIME_ITEMS = [{ id: 'paused', label: '暂停' }].concat(
+      MOTION.timeSteps.map(function (s) { return { id: s.id, label: s.glyph, title: '1 秒 = ' + s.label }; })
+    );
+    TIME_ITEMS.forEach(function (it) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = it.label;
+      b.setAttribute('data-id', it.id);
+      b.setAttribute('aria-pressed', it.id === 'paused' ? 'true' : 'false');
+      if (it.title) b.title = it.title;
+      b.addEventListener('click', function () {
+        if (it.id === 'paused') app.pause();
+        else app.setTimeStep(it.id);
+      });
+      timeHost.appendChild(b);
+      timeBtns.push(b);
+    });
+
+    $('btnToday').addEventListener('click', function () { app.goToday(); });
+
+    var trailHost = $('trailGainGroup');
+    var trailBtns = [];
+    MOTION.trailGains.forEach(function (g) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = '×' + g;
+      b.setAttribute('data-id', String(g));
+      b.setAttribute('aria-pressed', g === 1 ? 'true' : 'false');
+      b.addEventListener('click', function () { app.setTrailGain(g); });
+      trailHost.appendChild(b);
+      trailBtns.push(b);
+    });
 
     /* ---- 设置行 ---- */
     var settingsToggle = $('settingsToggle');
@@ -4720,44 +5706,54 @@ void main() {
       app.setStarBrightness(Number(starSlider.value) / 100);
     });
 
+    function slider(id, outId, onInput, scale) {
+      var el = $(id);
+      var out = $(outId);
+      if (!el) return;
+      el.addEventListener('input', function () {
+        out.textContent = el.value;
+        onInput(Number(el.value) / (scale || 100));
+      });
+    }
+    slider('exposure', 'exposureOut', function (v) { app.setPostParam('exposure', v); });
+    slider('bloom', 'bloomOut', function (v) { app.setPostParam('bloom', v); });
+    slider('grain', 'grainOut', function (v) { app.setPostParam('grain', v); });
+    slider('aberration', 'aberrationOut', function (v) { app.setPostParam('aberration', v); });
+
+    var debugBtns = buildSegmented(
+      $('debugGroup'),
+      [
+        { id: '0', label: '成片' },
+        { id: '1', label: '场景' },
+        { id: '2', label: '辉光' },
+        { id: '3', label: '无辉光' },
+      ],
+      '0',
+      function (id) { app.setDebugView(Number(id)); }
+    );
+
+    $('btnSavePng').addEventListener('click', function () { app.savePng(); });
+    $('btnResetParams').addEventListener('click', function () { app.resetParams(); });
+
     var bgToggle = $('toggleBackground');
     var cnToggle = $('toggleConstellations');
-    bgToggle.addEventListener('click', function () {
-      app.toggleBackground();
-    });
-    cnToggle.addEventListener('click', function () {
-      app.toggleConstellations();
-    });
+    bgToggle.addEventListener('click', function () { app.toggleBackground(); });
+    cnToggle.addEventListener('click', function () { app.toggleConstellations(); });
 
     /* ---- 日期 ---- */
     var dateInput = $('dateInput');
-    dateInput.addEventListener('change', function () {
-      var v = dateInput.value;
-      if (!v) return;
-      app.setDateString(v);
-    });
-    dateInput.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') dateInput.blur();
-    });
+    dateInput.addEventListener('change', function () { if (dateInput.value) app.setDateString(dateInput.value); });
+    dateInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') dateInput.blur(); });
 
-    /* ---- 返回 ---- */
-    $('btnBack').addEventListener('click', function () {
-      app.exitFocus();
-    });
-    $('panelClose').addEventListener('click', function () {
-      app.exitFocus();
-    });
+    /* ---- 返回 / 帮助 ---- */
+    $('btnBack').addEventListener('click', function () { app.exitFocus(); });
+    $('panelClose').addEventListener('click', function () { app.exitFocus(); });
 
-    /* ---- 帮助浮层 ---- */
     var help = $('help');
     var helpClose = $('helpClose');
     var lastFocus = null;
-    helpClose.addEventListener('click', function () {
-      app.closeHelp();
-    });
-    help.addEventListener('click', function (e) {
-      if (e.target === help) app.closeHelp();
-    });
+    helpClose.addEventListener('click', function () { app.closeHelp(); });
+    help.addEventListener('click', function (e) { if (e.target === help) app.closeHelp(); });
 
     /* ---- 对外接口 ---- */
     ui.setActive = function (i) {
@@ -4768,35 +5764,56 @@ void main() {
     };
 
     ui.setHover = function (i) {
-      rosterButtons.forEach(function (b, k) {
-        b.classList.toggle('is-hovered', k === i);
-      });
+      rosterButtons.forEach(function (b, k) { b.classList.toggle('is-hovered', k === i); });
     };
 
-    ui.focusRoster = function (i) {
-      if (rosterButtons[i]) rosterButtons[i].focus();
-    };
-
-    ui.setSpeed = function (id) {
-      press(speedBtns, id);
-    };
+    ui.focusRoster = function (i) { if (rosterButtons[i]) rosterButtons[i].focus(); };
 
     ui.setScale = function (id, note) {
       press(scaleBtns, id);
       $('scaleNote').textContent = note || '';
     };
 
-    ui.setQuality = function (id) {
-      press(qualityBtns, id);
+    ui.setFrame = function (id, note) {
+      press(frameBtns, id);
+      $('frameNote').textContent = note || '';
+      document.body.classList.toggle('frame-moving', id !== 'sun');
     };
 
-    ui.setBackground = function (on) {
-      bgToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+    ui.setTimeStep = function (id) {
+      press(timeBtns, id);
     };
 
-    ui.setConstellations = function (on) {
-      cnToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+    ui.setPlaying = function (on) {
+      if (!on) press(timeBtns, 'paused');
     };
+
+    ui.setQuality = function (id) { press(qualityBtns, id); };
+    ui.setDebugView = function (n) { press(debugBtns, String(n)); };
+
+    ui.setPostSlider = function (key, v) {
+      var map = { exposure: ['exposure', 50, 180, 100], bloom: ['bloom', 0, 150, 100], grain: ['grain', 0, 200, 100], aberration: ['aberration', 0, 300, 100] };
+      var m = map[key];
+      if (!m) return;
+      var el = $(m[0]);
+      var out = $(m[0] + 'Out');
+      var val = Math.round(Math.min(m[2], Math.max(m[1], v * 100)));
+      if (el) el.value = String(val);
+      if (out) out.textContent = String(val);
+    };
+
+    /* ---- 遥测 ---- */
+    var fpsHist = [];
+    ui.setTelemetry = function (t) {
+      $('tFps').textContent = t.fps > 0 ? t.fps.toFixed(0) : '—';
+      $('tFrame').textContent = String(t.frame);
+      $('tQuality').textContent = t.quality;
+      $('tRender').textContent = t.render;
+      $('tLod').textContent = 'L' + t.lod;
+      $('tDpr').textContent = t.dpr.toFixed(2);
+    };
+    ui.setBackground = function (on) { bgToggle.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+    ui.setConstellations = function (on) { cnToggle.setAttribute('aria-pressed', on ? 'true' : 'false'); };
 
     ui.setStarBrightness = function (v) {
       starSlider.value = String(Math.round(v * 100));
@@ -4804,40 +5821,98 @@ void main() {
     };
 
     ui.setDate = function (date) {
-      var iso =
-        String(date.getUTCFullYear()).padStart(4, '0') +
-        '-' +
-        String(date.getUTCMonth() + 1).padStart(2, '0') +
-        '-' +
-        String(date.getUTCDate()).padStart(2, '0');
+      if (!date || Number.isNaN(date.getTime())) return;
+      var y = date.getUTCFullYear();
+      if (y < 1600 || y > 2400) return;
+      var iso = String(y).padStart(4, '0') + '-' + String(date.getUTCMonth() + 1).padStart(2, '0') + '-' + String(date.getUTCDate()).padStart(2, '0');
       if (dateInput.value !== iso) dateInput.value = iso;
     };
 
-    ui.setDateNote = function (text) {
-      $('jdNote').textContent = text;
-    };
+    ui.setDateNote = function (text) { $('jdNote').textContent = text; };
 
-    ui.setReadout = function (text) {
-      $('readout').textContent = text || '';
-    };
-
-    ui.setMastheadTucked = function (tucked) {
-      $('masthead').classList.toggle('is-tucked', !!tucked);
-    };
-
-    ui.setHint = function (text) {
-      $('hint').textContent = text;
-    };
-
+    ui.setMastheadTucked = function (t) { $('masthead').classList.toggle('is-tucked', !!t); };
+    ui.setHint = function (text) { $('hint').textContent = text; };
     ui.setBackVisible = function (on) {
       var b = $('btnBack');
-      if (on) b.removeAttribute('hidden');
-      else b.setAttribute('hidden', '');
+      if (on) b.removeAttribute('hidden'); else b.setAttribute('hidden', '');
     };
-
     ui.setHudVisible = function (on) {
       $('hud').classList.toggle('is-hidden', !on);
       document.body.classList.toggle('no-ui', !on);
+    };
+
+    ui.setPlanetLocked = function () { /* 2050 冻结已取消：行星一直算下去 */ };
+
+    /* ---- 里程表 ---- */
+    var fmtNum = function (n, d) { return Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+
+    function fmtAngle(deg) {
+      if (deg < 1e-4) return (deg * 3600).toExponential(1) + '<span class="u">″</span>';
+      if (deg < 0.01) return (deg * 3600).toFixed(2) + '<span class="u">″</span>';
+      if (deg < 10) return deg.toFixed(3) + '<span class="u">°</span>';
+      return fmtNum(deg, deg < 100 ? 1 : 0) + '<span class="u">°</span>';
+    }
+    function fmtLy(ly) {
+      if (ly < 1e-3) return ly.toExponential(1) + '<span class="u">ly</span>';
+      if (ly < 1) return ly.toFixed(4) + '<span class="u">ly</span>';
+      if (ly < 1e4) return fmtNum(ly, ly < 100 ? 2 : 0) + '<span class="u">ly</span>';
+      return (ly / 1e4).toExponential(1) + '<span class="u">万 ly</span>';
+    }
+
+    ui.setReadouts = function (m) {
+      $('odoDate').textContent = m.date;
+      $('odoFrame').textContent = m.frameLabel;
+      $('odoVgc').innerHTML = fmtNum(m.gcSpeed, 1) + '<span class="u">km/s</span>';
+      $('odoRgc').innerHTML = fmtNum(m.rGcLy, 0) + '<span class="u">ly</span> · ' + m.rGcKpc + '<span class="u">kpc</span>';
+      $('odoArc').innerHTML = fmtAngle(m.arcDeg) + ' · ' + fmtLy(m.arcLy);
+      $('odoGain').innerHTML = '×' + m.trailGain + (m.trailGain === 1 ? '<span class="u">真实</span>' : '<span class="u">已放大</span>');
+      $('odoLod').innerHTML = 'L' + m.lod + ' <span class="u">' + ['天体特写', '太阳系', '恒星邻域', '银河'][m.lod] + '</span>';
+      $('odoVcmb').innerHTML = m.cmbSpeed.toFixed(2) + '<span class="u">km/s</span>';
+      if (m.hoverText) $('readout').textContent = m.hoverText;
+    };
+
+    /* ---- 轨迹对照插图 -------------------------------------------------- */
+    function helixPath(cx, cy, w, h, pitchPx, turns) {
+      var pts = [];
+      var N = 96;
+      var r = w * 0.28;
+      for (var i = 0; i <= N; i++) {
+        var t = i / N;
+        var th = t * turns * Math.PI * 2;
+        var x = cx + Math.sin(th) * r;
+        var y = cy + h / 2 - t * h;
+        pts.push((i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1));
+        if (turns * (t * 1) > 1.4) break;
+      }
+      return pts.join(' ');
+    }
+
+    ui.setTrailGain = function (g, model) {
+      press(trailBtns, String(g));
+      var svg = $('trailSvg');
+      var cap = $('trailCaption');
+      if (!svg) return;
+      var W = 210, H = 96;
+      var half = (W - 18) / 2;
+      function panel(x0, title, pitchAu, sub) {
+        var scalePx = (half - 10) / 8; // 8 AU 宽度放进半栏
+        var pitchPx = Math.min(2000, pitchAu * scalePx);
+        var turns = Math.max(0.06, H / Math.max(pitchPx, 0.4));
+        var path = helixPath(x0 + half / 2, 14, half - 16, H - 34, pitchPx, Math.min(turns, 6));
+        return (
+          '<g><text x="' + (x0 + half / 2) + '" y="11" text-anchor="middle" class="ti-lbl">' + title + '</text>' +
+          '<path d="' + path + '" class="ti-path"/></g>' +
+          '<text x="' + (x0 + half / 2) + '" y="' + (H - 4) + '" text-anchor="middle" class="ti-sub">' + sub + '</text>'
+        );
+      }
+      var truePitch = model.truePitchAu;
+      var shown = model.shownPitchAu;
+      svg.innerHTML =
+        panel(6, '真实 ×1', truePitch, '螺距 ' + truePitch.toFixed(1) + ' AU/年') +
+        panel(W / 2 + 6, '轨迹放大 ×' + g, shown, '按 1/' + g + ' 显示');
+      cap.innerHTML =
+        '地球轨道半径 1 AU，太阳一年真实走 ' + truePitch.toFixed(1) + ' AU —— 放大 ×' + g +
+        ' 后按 ' + shown.toFixed(2) + ' AU/年 画，螺距才和轨道直径可比。天文量没有变。';
     };
 
     /* ---- 信息面板 ---- */
@@ -4882,7 +5957,9 @@ void main() {
           statRow('有效温度', fmt(body.effectiveTempK), 'K', s.effectiveTempK),
           statRow('光球温度', fmt(body.photosphereTopK) + ' – ' + fmt(body.photosphereBottomK), 'K', 'NASA Sun Fact Sheet'),
           statRow('轴倾角', fmt(body.obliquityDeg, 2), '°', s.obliquityDeg),
-          statRow('卫星数', '—', null, '太阳不绕行星运行')
+          statRow('相对邻近恒星', '19.4', 'km/s', 'NASA Sun Fact Sheet'),
+          statRow('相对银心', '≈220', 'km/s', 'Wikipedia: Milky Way'),
+          statRow('相对 CMB', '369.82 ± 0.11', 'km/s', 'Planck 2018')
         );
         $('compareFill').style.width = '100%';
         $('compareValue').textContent = '109.2 × 地球直径';
@@ -4898,12 +5975,7 @@ void main() {
           statRow('平均距日', fmt(body.meanDistMkm, 1), '×10⁶ km', s.meanDistMkm),
           statRow('平均温度', fmt(body.meanTempC), '°C', s.meanTempC),
           statRow('轴倾角', fmt(body.obliquityDeg, 1), '°', s.obliquityDeg),
-          statRow(
-            '卫星数',
-            fmt(body.moons),
-            '（截至 2025 年 3 月）',
-            s.moons
-          )
+          statRow('卫星数', fmt(body.moons), '（截至 2025 年 3 月）', s.moons)
         );
         var ratio = body.diameterKm / 12756;
         var maxRatio = Math.max(11.21, ratio);
@@ -4919,7 +5991,6 @@ void main() {
 
       $('panelNote').textContent = body.note || '';
       panel.removeAttribute('hidden');
-      // 触发过渡
       void panel.offsetWidth;
       panel.classList.add('is-open');
     };
@@ -4946,9 +6017,7 @@ void main() {
       lastFocus = null;
     };
 
-    ui.helpOpen = function () {
-      return !help.hasAttribute('hidden');
-    };
+    ui.helpOpen = function () { return !help.hasAttribute('hidden'); };
 
     ui.setLoader = function (text) {
       var l = $('loaderLine');
@@ -4958,42 +6027,27 @@ void main() {
     ui.hideLoader = function () {
       var l = $('loader');
       l.classList.add('is-done');
-      window.setTimeout(function () {
-        l.style.display = 'none';
-      }, 700);
+      window.setTimeout(function () { l.style.display = 'none'; }, 700);
     };
 
-    ui.showFallback = function (msg) {
-      var f = $('fallback');
-      f.removeAttribute('hidden');
-      if (msg) {
-        var p = document.createElement('p');
-        p.className = 'fallback-foot';
-        p.textContent = msg;
-        f.appendChild(p);
-      }
-      $('loader').style.display = 'none';
-      document.getElementById('hud').style.display = 'none';
-    };
+    ui.showFallback = function (msg) { /* 由 app 直接处理 */ };
 
-    ui.setSrLine = function (text) {
-      $('srList').textContent = text;
-    };
-
+    ui.setSrLine = function (text) { $('srList').textContent = text; };
     ui.dateInput = dateInput;
 
     return ui;
   }
 
-  window.HELIOS_UI = { createUI: createUI, SPEEDS: SPEEDS, SCALES: SCALES, QUALITY: QUALITY };
+  window.HELIOS_UI = { createUI: createUI, SCALES: SCALES, QUALITY: QUALITY };
 })();
 
 </script>
 <script>
 /* ===== src/js/app.js ===== */
 /* ==========================================================================
-   app.js — 状态机、世界装配、输入、URL、渲染循环
-   四种状态：全景 Orrery / 特写 Close-up / 时间（任何状态可用）/ 帮助浮层
+   app.js — 状态机、世界装配、四层运动、输入、URL、渲染循环
+   状态：全景 Orrery / 特写 Close-up / 时间（任何状态可用）/ 帮助浮层
+   v2 追加：三档参考系、螺旋轨迹、L0–L3 连续缩放、六档时间与里程表
    ========================================================================== */
 (function () {
   'use strict';
@@ -5002,26 +6056,31 @@ void main() {
   var DATA = window.HELIOS_BODIES;
   var SKY = window.HELIOS_SKY;
   var ORBITS = window.HELIOS_ORBITS;
+  var MOTION = window.HELIOS_MOTION;
+  var M = window.HELIOS_MOTION_MATH;
 
   var AU_KM = 149597870.7;
   var TAU = Math.PI * 2;
+  var DEG = Math.PI / 180;
 
-  /* ---- 尺度模式 ---------------------------------------------------------
-     k / p：r_world = k · r_au^p；radiusScale：1 AU 半径对应多少世界单位
-     minPx：最小像素保护（0 = 不保护，完全真实） */
+  /* ---- 尺度模式 --------------------------------------------------------- */
   var SCALES = {
     orrery: { k: 1.15, p: 0.55, radiusScale: 36, minPx: 3.2, label: '比例压缩' },
     distance: { k: 1.0, p: 1.0, radiusScale: 30, minPx: 2.6, label: '真实距离' },
     true: { k: 1.0, p: 1.0, radiusScale: 1.0, minPx: 0, label: '完全真实' },
   };
 
+  /* ss = 场景超采样倍率；maxPx = 场景缓冲的像素预算（决定 1080p 下能否跑满 ss） */
   var QUALITY = {
-    standard: { maxPx: 1.15e6, dprCap: 1.5, bloomPasses: 2, detailScale: 0.62, grain: 0.016 },
-    high: { maxPx: 2.2e6, dprCap: 2.0, bloomPasses: 4, detailScale: 0.85, grain: 0.012 },
-    cinematic: { maxPx: 3.6e6, dprCap: 2.0, bloomPasses: 6, detailScale: 1.0, grain: 0.009 },
+    standard: { maxPx: 2.2e6, dprCap: 1.5, ss: 1.0, octaves: 5, ringSamples: 32, psf: 3, bloomPasses: 2, detailScale: 0.6, grain: 0.024 },
+    high: { maxPx: 3.4e6, dprCap: 2.0, ss: 1.25, octaves: 7, ringSamples: 64, psf: 5, bloomPasses: 4, detailScale: 0.85, grain: 0.016 },
+    cinematic: { maxPx: 5.4e6, dprCap: 2.0, ss: 1.5, octaves: 9, ringSamples: 128, psf: 7, bloomPasses: 6, detailScale: 1.0, grain: 0.012 },
   };
 
-  // 移动端 / 小屏 / 少核自动降档
+  /* 后期参数：滑杆给的是倍数，1 = 默认 */
+  var POST_DEFAULTS = { exposure: 1, bloom: 1, grain: 1, aberration: 1 };
+  var POST = Object.assign({}, POST_DEFAULTS);
+
   function defaultQuality() {
     var w = window.innerWidth;
     var cores = navigator.hardwareConcurrency || 4;
@@ -5032,13 +6091,18 @@ void main() {
 
   var SKY_GAIN = 8.7e-5;
   var FLIGHT_MS = 1000;
-  var JD_MIN = A.julianDay(1800, 1, 1, 0);
-  var JD_MAX = A.julianDay(2050, 12, 31, 0);
+  var SETTLE_MS = 200;
+  var JD_MIN = A.julianDay(1600, 1, 1, 0);
+  var JD_MAX = A.julianDay(2400, 12, 31, 0);
+  var TODAY_JD = A.julianDay(2026, 11, 4, 0);
 
   /* ---- 启动参数 --------------------------------------------------------- */
   var QS = new URLSearchParams(location.search);
   var SHOT = QS.get('shot') === '1';
   var SHOT_UI = QS.get('ui') !== '0';
+  window.__HELIOS_DEBUG_ON = QS.has('debug');
+  // 截图模式下把所有 CSS 过渡和动画关掉：否则面板入场这类动画会让同一 URL 两次截图不一样
+  if (SHOT) document.documentElement.classList.add('shot-mode');
   var DPR_OVERRIDE = QS.get('dpr') ? Math.max(0.5, Math.min(3, Number(QS.get('dpr')))) : null;
 
   function parseHash() {
@@ -5063,16 +6127,36 @@ void main() {
 
   function jdToDateString(jd) {
     var c = A.calendarFromJulianDay(jd);
-    return (
-      String(c.y).padStart(4, '0') + '-' + String(c.m).padStart(2, '0') + '-' + String(Math.floor(c.d)).padStart(2, '0')
-    );
+    return String(c.y).padStart(4, '0') + '-' + String(c.m).padStart(2, '0') + '-' + String(Math.floor(c.d)).padStart(2, '0');
+  }
+
+  /** 模拟时刻的可读标签：2050 年以内显示日历，超出显示年数 */
+  function simDateLabel(jd) {
+    var years = (jd - A.J2000) / 365.25;
+    var y = 2000 + years;
+    if (jd >= JD_MIN && jd <= JD_MAX) {
+      var c = A.calendarFromJulianDay(jd);
+      return (
+        String(c.y).padStart(4, '0') + '-' + String(c.m).padStart(2, '0') + '-' + String(Math.floor(c.d)).padStart(2, '0')
+      );
+    }
+    var sign = y < 0 ? '公元前 ' : '公元 ';
+    var ay = Math.abs(y);
+    if (ay >= 1e8) return sign + (ay / 1e8).toFixed(2) + ' 亿年';
+    if (ay >= 1e4) return sign + (ay / 1e4).toFixed(2) + ' 万年';
+    return sign + Math.round(ay) + ' 年';
   }
 
   /* ---- 状态 ------------------------------------------------------------- */
   var hash = parseHash();
   var initScale = SCALES[QS.get('scale')] ? QS.get('scale') : SCALES[hash.scale] ? hash.scale : 'orrery';
-  var initJd = dateStringToJd(QS.get('date') || '') || dateStringToJd(hash.date) || A.julianDay(2026, 11, 4, 0);
+  var initJd = dateStringToJd(QS.get('date') || '') || dateStringToJd(hash.date) || TODAY_JD;
   var initFocusName = QS.get('focus') || hash.body || '';
+  var initFrame = ['sun', 'galactic', 'cmb'].indexOf(QS.get('frame') || hash.frame) >= 0
+    ? QS.get('frame') || hash.frame
+    : 'sun';
+  var initZoom = Number(QS.get('zoom') || hash.zoom || 1);
+  if (!isFinite(initZoom) || initZoom <= 0) initZoom = 1;
   var initFocus = -1;
   DATA.bodies.forEach(function (b, i) {
     if (b.id === initFocusName) initFocus = i;
@@ -5081,25 +6165,37 @@ void main() {
   var STATE = {
     scale: initScale,
     jd: initJd,
+    frame: initFrame,
     playing: !SHOT,
-    speedDays: SHOT ? 0 : 1,
-    // 地址栏里的 #body=… 一律还原（交互与 shot 模式都一样）
+    yearsPerSecond: SHOT ? 0 : 0,
     focus: initFocus,
     hover: -1,
     bgOn: true,
     constellations: false,
     starBright: 0.55,
     hudVisible: SHOT ? SHOT_UI : true,
-    quality: defaultQuality(),
+    quality: ['standard', 'high', 'cinematic'].indexOf(QS.get('q')) >= 0 ? QS.get('q') : defaultQuality(),
     helpOpen: false,
     lastFocusEl: null,
     overviewCam: null,
+    debugView: 0,
+    trailGain: MOTION.trailGainDefault,
+    trailSpanYears: 3,
+    epochYears: 0,
+    lod: 1,
+    planetLocked: false,
   };
 
   var bodies = DATA.bodies;
   var moons = DATA.moons || [];
+  var timeSteps = MOTION.timeSteps;
 
-  /* ---- 依赖 ---- */
+  function timeStepById(id) {
+    for (var i = 0; i < timeSteps.length; i++) if (timeSteps[i].id === id) return timeSteps[i];
+    return timeSteps[0];
+  }
+
+  /* ---- 依赖 ------------------------------------------------------------- */
   var canvas = document.getElementById('gl');
   var renderer = window.HELIOS_RENDERER.create(canvas);
   if (!renderer || renderer.failed) {
@@ -5109,8 +6205,7 @@ void main() {
     } else {
       fb.querySelector('h2').textContent = '这台设备上的 WebGL2 驱动无法编译本页的着色器';
       var pre = document.createElement('pre');
-      pre.style.cssText =
-        'font-size:10px;color:#6FA8B8;white-space:pre-wrap;max-height:180px;overflow:auto;max-width:100%;';
+      pre.style.cssText = 'font-size:10px;color:#6FA8B8;white-space:pre-wrap;max-height:180px;overflow:auto;max-width:100%;';
       pre.textContent = String(renderer.error || '').slice(0, 2500);
       fb.appendChild(pre);
     }
@@ -5125,7 +6220,7 @@ void main() {
   cam.reducedMotion = !!reduced;
   if (reduced) {
     STATE.playing = false;
-    STATE.speedDays = 0;
+    STATE.yearsPerSecond = 0;
   }
 
   /* ---- UI ---- */
@@ -5146,7 +6241,6 @@ void main() {
     return {
       id: b.id,
       typeId: b.typeId,
-      // 极轴：倾角与方位角都来自真实极轴（research/pole-directions.md）
       tilt: b.pole ? b.pole.tilt : b.obliquityDeg || 0,
       node: b.pole ? b.pole.node : hash01(b.id) * TAU,
       hero: b.hero || null,
@@ -5155,9 +6249,12 @@ void main() {
       colorA: b.visual.colorA,
       colorB: b.visual.colorB,
       colorC: b.visual.colorC,
+      albedo: (DATA.meta.albedo && DATA.meta.albedo[b.id]) || 1,
       atmoStrength: b.atmosphere ? b.atmosphere.strength : 0,
       atmoScale: b.atmosphere ? b.atmosphere.scale : 0,
       atmoColor: b.atmosphere ? b.atmosphere.color : [0, 0, 0],
+      // Mie 前向散射强度：与大气厚度挂钩，各天体不同（金星/地球最强）
+      mie: b.atmosphere ? Math.min(0.95, 0.12 + b.atmosphere.scale * 20) : 0,
       ringSlot: b.rings ? (b.id === 'saturn' ? 1 : 2) : 0,
       orbitId: b.orbitId || null,
     };
@@ -5208,13 +6305,9 @@ void main() {
   /* ---- 深空天体 ---- */
   var skyList = SKY.objects.map(function (o) {
     var dir = A.raDecToEclipticUnit(o.ra, o.dec);
-    var ra = (o.ra * Math.PI) / 180;
-    var dec = (o.dec * Math.PI) / 180;
-    var north = {
-      x: -Math.sin(dec) * Math.cos(ra),
-      y: -Math.sin(dec) * Math.sin(ra),
-      z: Math.cos(dec),
-    };
+    var ra = o.ra * DEG;
+    var dec = o.dec * DEG;
+    var north = { x: -Math.sin(dec) * Math.cos(ra), y: -Math.sin(dec) * Math.sin(ra), z: Math.cos(dec) };
     var east = { x: -Math.sin(ra), y: Math.cos(ra), z: 0 };
     var pa = ((o.pa || 0) * Math.PI) / 180;
     var axisEq = {
@@ -5234,7 +6327,7 @@ void main() {
       axis: A.normalize(axis),
       size: { x: aRad, y: bRad },
       pa: 0,
-      bright: Math.min(flux / area * SKY_GAIN, 3.0),
+      bright: Math.min((flux / area) * SKY_GAIN, 3.0),
       kind: kindMap[o.kind] === undefined ? 0 : kindMap[o.kind],
     };
   });
@@ -5243,16 +6336,10 @@ void main() {
 
   /* ---- 银河矩阵：黄道 → 银道 ------------------------------------------- */
   var eclToGal = (function () {
-    var e = (A.OBLIQUITY_J2000 * Math.PI) / 180;
-    var c = Math.cos(e),
-      s = Math.sin(e);
-    // 黄道 → 赤道
-    var R = [
-      [1, 0, 0],
-      [0, c, -s],
-      [0, s, c],
-    ];
-    var M = [
+    var e = A.OBLIQUITY_J2000 * DEG;
+    var c = Math.cos(e), s = Math.sin(e);
+    var R = [[1, 0, 0], [0, c, -s], [0, s, c]];
+    var MM = [
       [-0.0548755604, -0.8734370902, -0.4838350155],
       [0.4941094279, -0.44482963, 0.7469822445],
       [-0.867666149, -0.1980763734, 0.4559837762],
@@ -5261,38 +6348,69 @@ void main() {
     for (var col = 0; col < 3; col++) {
       for (var row = 0; row < 3; row++) {
         var v = 0;
-        for (var k = 0; k < 3; k++) v += M[row][k] * R[k][col];
+        for (var k = 0; k < 3; k++) v += MM[row][k] * R[k][col];
         out[col * 3 + row] = v;
       }
     }
     return out;
   })();
 
-  /* ---- 常量空间计算 ----------------------------------------------------- */
+  /* ---- 尺度换算 --------------------------------------------------------- */
   function scaleDef() {
     return SCALES[STATE.scale];
   }
-
   function distWorld(rAU) {
     var d = scaleDef();
     return d.k * Math.pow(Math.max(rAU, 1e-6), d.p);
   }
-
   function radiusWorld(radiusAU) {
     return radiusAU * scaleDef().radiusScale;
   }
-
   function overviewDistance() {
-    var d = scaleDef();
     var outer = distWorld(30.07);
     return (outer / Math.tan((cam.fovDeg * Math.PI) / 360)) * 1.12;
   }
 
+  /** 银河/CMB 参考系下的取景：按「轨迹一圈占多大」来定，让螺旋填满画面 */
+  function trailFraming() {
+    var driftAu =
+      (MOTION.sun.galactic.speedKms * MOTION.units.auPerYearPerKms * STATE.trailSpanYears) / STATE.trailGain;
+    var driftWorld = distWorld(driftAu);
+    var extent = Math.max(10, driftWorld * 1.2 + 5);
+    return (extent / (2 * Math.tan((cam.fovDeg * Math.PI) / 360))) * 0.95;
+  }
+
   function spinAngle(rotHours, jd) {
-    var days = jd - A.J2000;
-    var a = (days * 24) / rotHours * TAU;
+    var a = ((jd - A.J2000) * 24) / rotHours * TAU;
     a = a % TAU;
     return a < 0 ? a + TAU : a;
+  }
+
+  /* ---- 四层运动 --------------------------------------------------------- */
+  function simYears() {
+    return (STATE.jd - A.J2000) / 365.25;
+  }
+
+  /** 当前参考系要减掉的太阳位移（世界单位）。orrery 模式下位移也按同一套 r^0.55 压缩，
+      否则「压缩过的轨道 + 没压缩的漂移」会让螺旋和轨道不成比例。 */
+  function offsetAt(years) {
+    var off = M.frameOffsetDelta(STATE.frame, STATE.epochYears, years, STATE.trailGain);
+    var d = scaleDef();
+    if (d.p === 1) return off;
+    var m = Math.sqrt(off[0] * off[0] + off[1] * off[1] + off[2] * off[2]);
+    if (m < 1e-9) return off;
+    var f = distWorld(m) / m;
+    return [off[0] * f, off[1] * f, off[2] * f];
+  }
+
+  function frameOffsetWorld() {
+    return offsetAt(simYears());
+  }
+
+  /** 行星位置一直在算。JPL 根数的拟合区间是 1800–2050，越过之后是外推——
+      这一点写在 README 里，界面上不再冻结、也不弹提示。 */
+  function planetJd() {
+    return STATE.jd;
   }
 
   /* ---- 每帧世界装配 ----------------------------------------------------- */
@@ -5300,26 +6418,29 @@ void main() {
     planetPos: [],
     planetR: [],
     auPos: [],
-    focusPos: [0, 0, 0],
-    focusR: 0.1,
+    offset: [0, 0, 0],
     sunPos: [0, 0, 0],
     sunR: 0.1,
   };
 
   function assembleWorld(jd) {
+    var pjd = planetJd();
+    var off = frameOffsetWorld();
+    world.offset = off;
     var positions = [];
     var au = [];
     for (var i = 1; i < bodies.length; i++) {
       var el = ORBITS.elements[meta[i].orbitId];
-      var p = A.heliocentric(el, jd);
+      var p = A.heliocentric(el, pjd);
       var f = distWorld(p.r) / p.r;
-      positions[i] = [p.x * f, p.y * f, p.z * f, p.r];
+      positions[i] = [p.x * f - off[0], p.y * f - off[1], p.z * f - off[2], p.r];
       au[i] = [p.x, p.y, p.z];
     }
-    positions[0] = [0, 0, 0, 0];
+    positions[0] = [-off[0], -off[1], -off[2], 0];
     au[0] = [0, 0, 0];
     world.planetPos = positions;
     world.auPos = au;
+    world.sunPos = positions[0];
     world.planetR = positions.map(function (p, i) {
       return radiusWorld(meta[i].radiusAU);
     });
@@ -5327,6 +6448,55 @@ void main() {
     return positions;
   }
 
+  /** 任意时刻的天体位置（给轨迹采样用，不写进 world） */
+  function planetPosAt(jd, i, off) {
+    if (i === 0) return [-off[0], -off[1], -off[2]];
+    var el = ORBITS.elements[meta[i].orbitId];
+    var p = A.heliocentric(el, Math.max(JD_MIN, Math.min(JD_MAX, jd)));
+    var f = distWorld(p.r) / p.r;
+    return [p.x * f - off[0], p.y * f - off[1], p.z * f - off[2]];
+  }
+
+  /* ---- 轨迹：按模拟时间等间距采样，切换参考系立刻重算 -------------------- */
+  var TRAIL_SAMPLES = 96;
+  var trailCache = { key: '', planets: [], sun: [], span: 0 };
+
+  function trailKey() {
+    return (
+      STATE.frame + '|' + STATE.trailGain + '|' + STATE.scale + '|' +
+      STATE.jd.toFixed(3) + '|' + STATE.trailSpanYears.toFixed(6)
+    );
+  }
+
+  function buildTrails() {
+    var key = trailKey();
+    if (trailCache.key === key) return trailCache;
+    var span = STATE.trailSpanYears;
+    var yearsNow = simYears();
+    var step = span / (TRAIL_SAMPLES - 1);
+    var off = frameOffsetWorld();
+    var planets = [];
+    var sun = [];
+    for (var s = 0; s < TRAIL_SAMPLES; s++) {
+      var dt = span - s * step; // 从最早到当前
+      var offAt = offsetAt(yearsNow - dt);
+      sun.push([-offAt[0], -offAt[1], -offAt[2]]);
+    }
+    for (var i = 1; i < bodies.length; i++) {
+      var arr = [];
+      for (var s2 = 0; s2 < TRAIL_SAMPLES; s2++) {
+        var dt2 = span - s2 * step;
+        var jd2 = STATE.jd - dt2 * 365.25;
+        var off2 = offsetAt(yearsNow - dt2);
+        arr.push(planetPosAt(jd2, i, off2));
+      }
+      planets.push(arr);
+    }
+    trailCache = { key: key, planets: planets, sun: sun, span: span };
+    return trailCache;
+  }
+
+  /* ---- 渲染列表 --------------------------------------------------------- */
   function buildRenderList(jd, W, H) {
     var list = [];
     var positions = world.planetPos;
@@ -5346,35 +6516,32 @@ void main() {
         type: meta[i].typeId,
         tilt: meta[i].tilt,
         node: meta[i].node,
-        spin: spinAngle(meta[i].rotHours, jd),
+        spin: spinAngle(meta[i].rotHours, planetJd()),
         colorA: meta[i].colorA,
         atmoStrength: meta[i].atmoStrength,
         colorB: meta[i].colorB,
         atmoScale: meta[i].atmoScale,
         colorC: meta[i].colorC,
         atmoColor: meta[i].atmoColor,
+        albedo: meta[i].albedo,
+        mie: meta[i].mie,
         ringSlot: meta[i].ringSlot,
         pxRadius: pxR,
       });
     }
 
-    // 卫星
     for (var m = 0; m < moonMeta.length; m++) {
       var mm = moonMeta[m];
       var pIdx = mm.parent;
       var ppos = positions[pIdx];
       var pr = world.planetR[pIdx];
       var orbitR = pr * mm.orbitRatios;
-      var phi = mm.phase + (TAU * (jd - A.J2000)) / mm.periodDays;
-      // 在母体赤道面内绕行
+      var phi = mm.phase + (TAU * (planetJd() - A.J2000)) / mm.periodDays;
       var tiltR = (meta[pIdx].tilt * Math.PI) / 180;
-      var cT = Math.cos(tiltR),
-        sT = Math.sin(tiltR);
-      var e1 = [1, 0, 0];
-      var e2 = [0, cT, sT];
-      var px = ppos[0] + orbitR * (Math.cos(phi) * e1[0] + Math.sin(phi) * e2[0]);
-      var py = ppos[1] + orbitR * (Math.cos(phi) * e1[1] + Math.sin(phi) * e2[1]);
-      var pz = ppos[2] + orbitR * (Math.cos(phi) * e1[2] + Math.sin(phi) * e2[2]);
+      var cT = Math.cos(tiltR), sT = Math.sin(tiltR);
+      var px = ppos[0] + orbitR * Math.cos(phi);
+      var py = ppos[1] + orbitR * Math.sin(phi) * cT;
+      var pz = ppos[2] + orbitR * Math.sin(phi) * sT;
       var mpos = [px, py, pz];
       var mr = radiusWorld(mm.radiusAU);
       var mpx = cam.screenRadius(mpos, mr, H);
@@ -5389,13 +6556,15 @@ void main() {
         type: 9,
         tilt: mm.tilt,
         node: mm.node,
-        spin: spinAngle(mm.rotHours, jd),
+        spin: spinAngle(mm.rotHours, planetJd()),
         colorA: mm.colorA,
         atmoStrength: 0,
         colorB: mm.colorB,
         atmoScale: 0,
         colorC: mm.colorC,
         atmoColor: [0, 0, 0],
+        albedo: 0.85,
+        mie: 0,
         ringSlot: 0,
         pxRadius: mpx,
       });
@@ -5404,26 +6573,21 @@ void main() {
   }
 
   /* ---- 线段投影（CPU 侧近平面裁剪） ------------------------------------ */
-  var lineScratch = new Float32Array(7 * 2 * 4096);
+  var lineScratch = new Float32Array(7 * 2 * 8192);
   var lineCount = 0;
 
-  function pushLine(p0, p1, c0, depthShift) {
+  function pushLine(p0, p1, c0, c1, ox, oy) {
     if (lineCount + 2 > lineScratch.length / 7) return;
     var b = cam.basis();
     var pos = cam.position();
     var th = cam.tanHalf();
     var asp = core.w / core.h;
     var NEAR = 1e-7;
+    var dx0 = ox || 0, dy0 = oy || 0;
 
     function toView(p) {
-      var dx = p[0] - pos[0],
-        dy = p[1] - pos[1],
-        dz = p[2] - pos[2];
-      return {
-        x: dx * b[0] + dy * b[1] + dz * b[2],
-        y: dx * b[3] + dy * b[4] + dz * b[5],
-        z: dx * b[6] + dy * b[7] + dz * b[8],
-      };
+      var dx = p[0] - pos[0], dy = p[1] - pos[1], dz = p[2] - pos[2];
+      return { x: dx * b[0] + dy * b[1] + dz * b[2], y: dx * b[3] + dy * b[4] + dz * b[5], z: dx * b[6] + dy * b[7] + dz * b[8] };
     }
 
     var a = toView(p0);
@@ -5439,21 +6603,20 @@ void main() {
 
     var base = lineCount * 7;
     var arr = lineScratch;
-    arr[base + 0] = a.x / (a.z * th * asp);
-    arr[base + 1] = a.y / (a.z * th);
+    arr[base + 0] = a.x / (a.z * th * asp) + dx0;
+    arr[base + 1] = a.y / (a.z * th) + dy0;
     arr[base + 2] = core.depthOf(a.z);
     arr[base + 3] = c0[0];
     arr[base + 4] = c0[1];
     arr[base + 5] = c0[2];
     arr[base + 6] = c0[3];
-
-    arr[base + 7] = q.x / (q.z * th * asp);
-    arr[base + 8] = q.y / (q.z * th);
+    arr[base + 7] = q.x / (q.z * th * asp) + dx0;
+    arr[base + 8] = q.y / (q.z * th) + dy0;
     arr[base + 9] = core.depthOf(q.z);
-    arr[base + 10] = c0[0];
-    arr[base + 11] = c0[1];
-    arr[base + 12] = c0[2];
-    arr[base + 13] = c0[3];
+    arr[base + 10] = c1[0];
+    arr[base + 11] = c1[1];
+    arr[base + 12] = c1[2];
+    arr[base + 13] = c1[3];
     lineCount += 2;
   }
 
@@ -5464,9 +6627,10 @@ void main() {
   function orbitWorldPoints() {
     if (Math.abs(orbitCache.jd - STATE.jd) < 0.4 && orbitCache.scale === STATE.scale) return orbitCache.pts;
     var out = [];
+    var pjd = planetJd();
     for (var i = 1; i < bodies.length; i++) {
       var el = ORBITS.elements[meta[i].orbitId];
-      var path = A.orbitPath(el, STATE.jd, ORBIT_SEGMENTS);
+      var path = A.orbitPath(el, pjd, ORBIT_SEGMENTS);
       var pts = new Float32Array(path.length * 3);
       for (var k = 0; k < path.length; k++) {
         var p = path[k];
@@ -5511,8 +6675,7 @@ void main() {
     return constWorld;
   }
 
-  function projectSkyPair(d0, d1, out, color) {
-    // 天球方向 → 屏幕；分成 12 段并逐段裁剪
+  function projectSkyPair(d0, d1, color) {
     var b = cam.basis();
     var th = cam.tanHalf();
     var asp = core.w / core.h;
@@ -5520,34 +6683,18 @@ void main() {
     var prev = null;
     for (var k = 0; k <= N; k++) {
       var t = k / N;
-      var v = {
-        x: d0.x + (d1.x - d0.x) * t,
-        y: d0.y + (d1.y - d0.y) * t,
-        z: d0.z + (d1.z - d0.z) * t,
-      };
+      var v = { x: d0.x + (d1.x - d0.x) * t, y: d0.y + (d1.y - d0.y) * t, z: d0.z + (d1.z - d0.z) * t };
       var l = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) || 1;
-      v.x /= l;
-      v.y /= l;
-      v.z /= l;
+      v.x /= l; v.y /= l; v.z /= l;
       var vz = v.x * b[6] + v.y * b[7] + v.z * b[8];
       var cur = vz > 0.02 ? { x: v.x / (vz * th * asp), y: v.y / (vz * th) } : null;
       if (prev && cur) {
         var base = lineCount * 7;
         if (lineCount + 2 > lineScratch.length / 7) return;
-        lineScratch[base] = prev.x;
-        lineScratch[base + 1] = prev.y;
-        lineScratch[base + 2] = 1.0;
-        lineScratch[base + 3] = color[0];
-        lineScratch[base + 4] = color[1];
-        lineScratch[base + 5] = color[2];
-        lineScratch[base + 6] = color[3];
-        lineScratch[base + 7] = cur.x;
-        lineScratch[base + 8] = cur.y;
-        lineScratch[base + 9] = 1.0;
-        lineScratch[base + 10] = color[0];
-        lineScratch[base + 11] = color[1];
-        lineScratch[base + 12] = color[2];
-        lineScratch[base + 13] = color[3];
+        lineScratch[base] = prev.x; lineScratch[base + 1] = prev.y; lineScratch[base + 2] = 1.0;
+        lineScratch[base + 3] = color[0]; lineScratch[base + 4] = color[1]; lineScratch[base + 5] = color[2]; lineScratch[base + 6] = color[3];
+        lineScratch[base + 7] = cur.x; lineScratch[base + 8] = cur.y; lineScratch[base + 9] = 1.0;
+        lineScratch[base + 10] = color[0]; lineScratch[base + 11] = color[1]; lineScratch[base + 12] = color[2]; lineScratch[base + 13] = color[3];
         lineCount += 2;
       }
       prev = cur;
@@ -5556,15 +6703,8 @@ void main() {
 
   /* ---- 主循环 ----------------------------------------------------------- */
   var core = {
-    w: 1,
-    h: 1,
-    pxW: 1,
-    pxH: 1,
-    dpr: 1,
-    lastDate: '',
-    depthOf: function (t) {
-      return Math.min(1 - Math.exp(-t * 0.9), 0.9995);
-    },
+    w: 1, h: 1, pxW: 1, pxH: 1, dpr: 1, lastDate: '',
+    depthOf: function (t) { return Math.min(1 - Math.exp(-t * 0.9), 0.9995); },
   };
 
   function computePixelSize() {
@@ -5572,20 +6712,43 @@ void main() {
     var dpr = DPR_OVERRIDE !== null ? DPR_OVERRIDE : Math.min(window.devicePixelRatio || 1, q.dprCap);
     var cw = Math.max(1, canvas.clientWidth || window.innerWidth);
     var ch = Math.max(1, canvas.clientHeight || window.innerHeight);
-    var w = Math.round(cw * dpr);
-    var h = Math.round(ch * dpr);
-    var px = w * h;
-    if (px > q.maxPx) {
-      var s = Math.sqrt(q.maxPx / px);
-      w = Math.max(1, Math.round(w * s));
-      h = Math.max(1, Math.round(h * s));
+    var w = Math.max(1, Math.round(cw * dpr * dynScale));
+    var h = Math.max(1, Math.round(ch * dpr * dynScale));
+    // 场景在超采样分辨率上渲染，合成时做 4 抽样降采样：行星边缘和环的锯齿会明显少一截
+    var ss = q.ss;
+    var sw = Math.max(1, Math.round(w * ss));
+    var sh = Math.max(1, Math.round(h * ss));
+    if (sw * sh > q.maxPx) {
+      var k = Math.sqrt(q.maxPx / (sw * sh));
+      sw = Math.max(1, Math.round(sw * k));
+      sh = Math.max(1, Math.round(sh * k));
+      ss = sw / w;
     }
-    core.w = cw;
-    core.h = ch;
-    core.pxW = w;
-    core.pxH = h;
-    core.dpr = w / cw;
+    core.w = cw; core.h = ch;
+    core.pxW = w; core.pxH = h;
+    core.sceneW = sw; core.sceneH = sh;
+    core.ss = ss;
+    core.dpr = sw / cw; // 场景像素 / CSS 像素：星点尺寸要用它
     renderer.resize(w, h);
+  }
+
+  /* 动态分辨率：连续掉帧就把渲染比例降一档，恢复后慢慢升回来。shot 模式下冻结。 */
+  var dynScale = 1;
+  var slowFrames = 0;
+  var fastFrames = 0;
+  function adaptResolution(dt) {
+    if (SHOT) return;
+    if (dt > 34) { slowFrames++; fastFrames = 0; }
+    else if (dt < 20) { fastFrames++; slowFrames = 0; }
+    if (slowFrames > 45 && dynScale > 0.52) {
+      dynScale = Math.max(0.5, dynScale * 0.85);
+      slowFrames = 0;
+      computePixelSize();
+    } else if (fastFrames > 240 && dynScale < 1) {
+      dynScale = Math.min(1, dynScale * 1.1);
+      fastFrames = 0;
+      computePixelSize();
+    }
   }
 
   function resize() {
@@ -5595,28 +6758,52 @@ void main() {
   var lastT = 0;
   var frames = 0;
   var elapsed = 0;
-  var readyFrames = SHOT ? 6 : 1;
+  var expoSmooth = 1;
+  var needReadout = false;
+
+  /** 由相机距离决定 LOD 与银河淡入 */
+  function computeLod() {
+    var d = cam.dist;
+    var l1 = overviewDistance();
+    var mixNear = clamp01((Math.log(Math.max(d, 1)) - Math.log(l1 * 40)) / (Math.log(l1 * 900) - Math.log(l1 * 40)));
+    var mixGal = clamp01((Math.log(Math.max(d, 1)) - Math.log(l1 * 900)) / (Math.log(l1 * 4000) - Math.log(l1 * 900)));
+    var lod = d < l1 * 3 ? 1 : d < l1 * 900 ? 2 : 3;
+    if (STATE.focus >= 0) lod = 0;
+    return { nearMix: mixNear, galaxyMix: mixGal, lod: lod };
+  }
+
+  function clamp01(x) {
+    return x < 0 ? 0 : x > 1 ? 1 : x;
+  }
+
+  var trailColorFor = [
+    [0.42, 0.68, 0.78],
+    [0.66, 0.62, 0.54],
+    [0.92, 0.85, 0.55],
+    [0.44, 0.72, 1.00],
+    [0.98, 0.50, 0.32],
+    [1.00, 0.82, 0.52],
+    [1.00, 0.92, 0.64],
+    [0.60, 0.96, 1.00],
+    [0.46, 0.62, 1.00],
+  ];
 
   function render(now) {
-    var dt = lastT ? Math.min(now - lastT, 120) : 16;
+    /* 截图模式用固定步长：同一 URL 两次截图必须逐像素一致，不能受机器快慢影响 */
+    var dt = SHOT ? 16 : lastT ? Math.min(now - lastT, 120) : 16;
     lastT = now;
     frames++;
     if (!SHOT) elapsed += dt / 1000;
+    adaptResolution(dt);
 
-    if (STATE.playing && STATE.speedDays > 0 && !SHOT) {
-      STATE.jd += (STATE.speedDays * dt) / 1000;
-      if (STATE.jd > JD_MAX) {
-        STATE.jd = JD_MAX;
-        STATE.playing = false;
-        STATE.speedDays = 0;
-        ui.setSpeed('pause');
-      }
-      var ds = jdToDateString(STATE.jd);
-      if (ds !== core.lastDate) {
-        core.lastDate = ds;
-        ui.setDate(A.dateFromJd(STATE.jd));
-        ui.setDateNote('JD ' + STATE.jd.toFixed(2));
-        updateReadout();
+    if (STATE.playing && STATE.yearsPerSecond !== 0 && !SHOT) {
+      STATE.jd += (STATE.yearsPerSecond * 365.25 * dt) / 1000;
+      var label = simDateLabel(STATE.jd);
+      if (label !== core.lastDate) {
+        core.lastDate = label;
+        ui.setDate(A.dateFromJd(planetJd()));
+        ui.setDateNote('JD ' + planetJd().toFixed(2));
+        needReadout = true;
       }
     }
 
@@ -5625,55 +6812,142 @@ void main() {
 
     assembleWorld(STATE.jd);
 
-    // 特写时相机跟随天体（飞行途中交给缓动，避免镜头瞬移）
-    if (STATE.focus >= 0 && !cam.isFlying()) {
+    // 参考系下整体漂移：相机留在「银河系」里不动，让太阳自己走过去；
+    // 只有太阳快走出画面时才慢慢跟一下（死区 75%），所以运动是看得见的。
+    if (STATE.frame !== 'sun' && STATE.focus < 0 && !cam.isFlying()) {
+      var b = cam.basis();
+      var halfH = cam.dist * cam.tanHalf();
+      var halfW = halfH * (core.w / core.h);
+      var sp = world.sunPos;
+      var ddx = sp[0] - cam.target[0];
+      var ddy = sp[1] - cam.target[1];
+      var ddz = sp[2] - cam.target[2];
+      var rx = ddx * b[0] + ddy * b[1] + ddz * b[2];
+      var uy = ddx * b[3] + ddy * b[4] + ddz * b[5];
+      var limX = halfW * 0.75;
+      var limY = halfH * 0.72;
+      var ox = Math.abs(rx) > limX ? rx - Math.sign(rx) * limX : 0;
+      var oy = Math.abs(uy) > limY ? uy - Math.sign(uy) * limY : 0;
+      if (ox !== 0 || oy !== 0) {
+        var kk = 1 - Math.exp(-dt / 700);
+        var mx = ox * kk;
+        var my = oy * kk;
+        cam.target[0] += b[0] * mx + b[3] * my;
+        cam.target[1] += b[1] * mx + b[4] * my;
+        cam.target[2] += b[2] * mx + b[5] * my;
+        cam.compute();
+      }
+    } else if (STATE.focus >= 0 && !cam.isFlying()) {
       var fp = world.planetPos[STATE.focus];
       if (fp) {
-        cam.target[0] = fp[0];
-        cam.target[1] = fp[1];
-        cam.target[2] = fp[2];
+        var lift = focusLift();
+        cam.target[0] = fp[0] - cam.basis()[3] * lift;
+        cam.target[1] = fp[1] - cam.basis()[4] * lift;
+        cam.target[2] = fp[2] - cam.basis()[5] * lift;
       }
     }
 
+    // 浮动原点：位移累积到几万 AU 就把 epoch 挪到当前，并同步平移相机，画面不跳
+    if (STATE.frame !== 'sun' && !cam.isFlying()) {
+      var offNow = world.offset;
+      var mag = Math.sqrt(offNow[0] * offNow[0] + offNow[1] * offNow[1] + offNow[2] * offNow[2]);
+      if (mag > 3e4) {
+        STATE.epochYears = simYears();
+        cam.target[0] += offNow[0];
+        cam.target[1] += offNow[1];
+        cam.target[2] += offNow[2];
+        trailCache.key = '';
+        assembleWorld(STATE.jd);
+        cam.compute();
+      }
+    }
+
+    var lodInfo = computeLod();
+    STATE.lod = lodInfo.lod;
+
     var list = buildRenderList(STATE.jd, core.w, core.h);
     renderer.uploadBodies(list);
+    if (window.__HELIOS_DEBUG_ON) {
+      window.HELIOS_DEBUG = {
+        frame: STATE.frame,
+        scale: STATE.scale,
+        dist: cam.dist,
+        offset: world.offset.slice(),
+        sunPos: world.sunPos.slice(0, 3),
+        camPos: Array.prototype.slice.call(cam.position()),
+        sunR: list[0].radius,
+        sunPx: cam.screenRadius(world.sunPos, list[0].radius, core.h),
+        nearMix: lodInfo.nearMix,
+        galaxyMix: lodInfo.galaxyMix,
+        exposure: expoSmooth,
+        lod: lodInfo.lod,
+      };
+    }
 
-    // 线段（轨道线只在全景里画：特写时相机贴着轨道，线会从镜头里穿过去）
+    /* 线段：轨道（L1 全景）+ 螺旋轨迹（非太阳参考系）+ 星座连线 */
     lineCount = 0;
-    if (STATE.focus < 0) {
+    // 运动参考系下不画「日心椭圆」：那时行星已经不在椭圆上了，画出来是错的
+    var showOrbits = STATE.frame === 'sun' && STATE.focus < 0 && lodInfo.galaxyMix < 0.6;
+    if (showOrbits) {
       var orbits = orbitWorldPoints();
+      var offw = world.offset;
       for (var i = 0; i < orbits.length; i++) {
         var pts = orbits[i];
         var col = [0.43, 0.66, 0.72, 0.17];
         for (var k = 0; k + 1 < pts.length / 3; k++) {
           pushLine(
-            [pts[k * 3], pts[k * 3 + 1], pts[k * 3 + 2]],
-            [pts[k * 3 + 3], pts[k * 3 + 4], pts[k * 3 + 5]],
-            col
+            [pts[k * 3] - offw[0], pts[k * 3 + 1] - offw[1], pts[k * 3 + 2] - offw[2]],
+            [pts[k * 3 + 3] - offw[0], pts[k * 3 + 4] - offw[1], pts[k * 3 + 5] - offw[2]],
+            col, col
           );
         }
       }
     }
+
+    if (STATE.frame !== 'sun' && lodInfo.galaxyMix < 0.75 && !SHOT_TRAILS_OFF) {
+      // 轨迹时间窗：至少 3 年，时间倍率大时按 1.2 秒的模拟时间自动放宽
+      STATE.trailSpanYears = Math.max(3, Math.abs(STATE.yearsPerSecond) * 1.2);
+      var tr = buildTrails();
+      // 线宽：WebGL 只有 1px，复制一条偏移线凑出 ~2.2px 的观感
+      var tw = 1.1 / core.w;
+      var sc = [0.98, 0.80, 0.38];
+      for (var s = 0; s + 1 < tr.sun.length; s++) {
+        var a0 = s / tr.sun.length;
+        var a1 = (s + 1) / tr.sun.length;
+        var ca = 0.12 + 0.78 * a0;
+        var cb = 0.12 + 0.78 * a1;
+        pushLine(tr.sun[s], tr.sun[s + 1], [sc[0], sc[1], sc[2], ca], [sc[0], sc[1], sc[2], cb], -tw, 0);
+        pushLine(tr.sun[s], tr.sun[s + 1], [sc[0], sc[1], sc[2], ca], [sc[0], sc[1], sc[2], cb], tw, 0);
+      }
+      // 行星的螺旋
+      for (var pi = 0; pi < tr.planets.length; pi++) {
+        var c0 = trailColorFor[pi + 1] || [0.6, 0.6, 0.6];
+        var arr = tr.planets[pi];
+        for (var s2 = 0; s2 + 1 < arr.length; s2++) {
+          var t0 = s2 / arr.length;
+          var t1v = (s2 + 1) / arr.length;
+          var pa0 = 0.06 + 0.80 * t0;
+          var pa1 = 0.06 + 0.80 * t1v;
+          pushLine(arr[s2], arr[s2 + 1], [c0[0], c0[1], c0[2], pa0], [c0[0], c0[1], c0[2], pa1], -tw, 0);
+          pushLine(arr[s2], arr[s2 + 1], [c0[0], c0[1], c0[2], pa0], [c0[0], c0[1], c0[2], pa1], tw, 0);
+        }
+      }
+    }
+
     if (STATE.constellations && STATE.bgOn) {
       var segs = constellationSegments();
-      for (var s = 0; s < segs.length; s++) {
-        projectSkyPair(segs[s][0], segs[s][1], null, [0.42, 0.6, 0.68, 0.22]);
-      }
+      for (var sg = 0; sg < segs.length; sg++) projectSkyPair(segs[sg][0], segs[sg][1], [0.42, 0.6, 0.68, 0.22]);
     }
     renderer.setLines(lineCount > 0 ? lineScratch.subarray(0, lineCount * 7) : null);
 
-    // 细节层级
+    /* 细节层级 */
     var detail = 0;
-    var focusIdx = STATE.focus >= 0 ? STATE.focus : -1;
-    var refBody = focusIdx >= 0 ? list[focusIdx] : null;
+    var refBody = STATE.focus >= 0 ? list[STATE.focus] : null;
     if (!refBody) {
       var bestD = 1e18;
       for (var bi = 0; bi < 9; bi++) {
         var d2 = dist2(list[bi].pos);
-        if (d2 < bestD) {
-          bestD = d2;
-          refBody = list[bi];
-        }
+        if (d2 < bestD) { bestD = d2; refBody = list[bi]; }
       }
     }
     if (refBody && refBody.geomRadius > 0) {
@@ -5683,9 +6957,18 @@ void main() {
     }
     detail *= QUALITY[STATE.quality].detailScale;
 
+    /* 自动曝光：进入特写时 0.6 秒过渡（shot 模式直接到位，保证两次截图一致） */
+    var targetExpo = STATE.focus === 0 ? 0.80 : STATE.focus >= 0 ? 1.0 : 0.95;
+    if (SHOT) expoSmooth = targetExpo;
+    else expoSmooth += (targetExpo - expoSmooth) * (1 - Math.exp(-dt / 300));
+
     renderer.render({
       pixelWidth: core.pxW,
       pixelHeight: core.pxH,
+      sceneWidth: core.sceneW,
+      sceneHeight: core.sceneH,
+      ss: core.ss,
+      debugView: STATE.debugView,
       pxScale: core.dpr,
       camPos: cam.position(),
       camBasis: cam.basis(),
@@ -5698,16 +6981,23 @@ void main() {
       starBright: STATE.starBright,
       milkyGain: 0.075,
       starGain: 36 + STATE.starBright * 180,
-      exposure: 0.95,
-      bloomGain: 0.5,
+      exposure: expoSmooth * POST.exposure,
+      bloomGain: 0.5 * POST.bloom,
       bloomThreshold: 0.95,
       bloomPasses: QUALITY[STATE.quality].bloomPasses,
-      grain: QUALITY[STATE.quality].grain,
+      grain: QUALITY[STATE.quality].grain * POST.grain,
       vignette: 0.32,
+      aberration: 0.0016 * POST.aberration,
       frameIndex: SHOT ? 0 : frames,
       linesOn: true,
       eclToGal: eclToGal,
       skyObjCount: skyList.length,
+      nearMix: lodInfo.nearMix,
+      galaxyMix: lodInfo.galaxyMix,
+      galaxyCam: galaxyCamera(),
+      sunGalAngle: STATE.frame === 'sun' ? 0 : (-simYears() * (2 * Math.PI)) / MOTION.sun.galactic.periodYr,
+      psf: QUALITY[STATE.quality].psf,
+      octaveCap: QUALITY[STATE.quality].octaves,
     });
 
     if (!window.__HELIOS_READY && frames >= (SHOT ? 6 : 2)) {
@@ -5717,15 +7007,110 @@ void main() {
     }
 
     if (frames === 2 && !SHOT) ui.hideLoader();
+    if (STATE.pendingPng) flushPng();
+    if (needReadout || frames % 20 === 0) {
+      needReadout = false;
+      updateReadouts();
+      updateTelemetry(dt);
+    }
     requestAnimationFrame(render);
   }
 
+  var SHOT_TRAILS_OFF = false;
+
   function dist2(p) {
     var c = cam.position();
-    var dx = p[0] - c[0],
-      dy = p[1] - c[1],
-      dz = p[2] - c[2];
+    var dx = p[0] - c[0], dy = p[1] - c[1], dz = p[2] - c[2];
     return dx * dx + dy * dy + dz * dz;
+  }
+
+  /** 银河视图的虚拟机位：由相机 yaw/pitch 与对数距离映射 */
+  function galaxyCamera() {
+    var l1 = overviewDistance();
+    var t = Math.log(Math.max(cam.dist, 1)) - Math.log(l1 * 900);
+    var span = Math.log(l1 * 12000) - Math.log(l1 * 900);
+    var z = Math.max(0, Math.min(1, t / span));
+    // 距离 90 kpc → 34 kpc；仰角 34° → 12°
+    var distKpc = 90 - 56 * z;
+    var elev = (34 - 22 * z) * DEG;
+    var azim = cam.yaw;
+    return new Float32Array([distKpc, azim, elev]);
+  }
+
+  /* ---- 里程表读数 ------------------------------------------------------- */
+  function readoutModel() {
+    var years = simYears();
+    var v = M.velocityKms(years);
+    var odo = M.odometer(years);
+    var g = MOTION.sun.galactic;
+    return {
+      date: simDateLabel(STATE.jd),
+      jd: planetJd(),
+      frame: STATE.frame,
+      frameLabel: MOTION.frames.filter(function (f) { return f.id === STATE.frame; })[0].label,
+      gcSpeed: v.gcSpeed,
+      gcSpeedCirc: v.circ,
+      cmbSpeed: v.cmbSpeed,
+      rGcLy: g.radiusLy,
+      rGcKpc: g.radiusKpc,
+      arcDeg: odo.degAbs,
+      arcLy: odo.arcLy,
+      trailGain: STATE.trailGain,
+      trailSpan: STATE.trailSpanYears,
+      truePitchAu: g.speedKms * MOTION.units.auPerYearPerKms,
+      lod: STATE.lod,
+      yearsPerSecond: STATE.yearsPerSecond,
+      planetLocked: false,
+    };
+  }
+
+  var fpsAcc = 0;
+  var fpsN = 0;
+  var fpsVal = 0;
+
+  function updateTelemetry(dt) {
+    if (!SHOT) {
+      fpsAcc += dt;
+      fpsN++;
+      if (fpsN >= 20) {
+        fpsVal = 1000 / (fpsAcc / fpsN);
+        fpsAcc = 0;
+        fpsN = 0;
+      }
+    }
+    ui.setTelemetry({
+      fps: SHOT ? 0 : fpsVal,
+      frame: frames,
+      quality: { standard: '标准', high: '高', cinematic: '电影级' }[STATE.quality] || STATE.quality,
+      render: core.sceneW + '×' + core.sceneH + (core.ss > 1.01 ? ' ×' + core.ss.toFixed(2) : ''),
+      lod: STATE.lod,
+      dpr: core.dpr,
+    });
+  }
+
+  function updateReadouts() {
+    var m = readoutModel();
+    // 悬停/聚焦天体的日心距与地心距
+    var target = STATE.hover >= 0 ? STATE.hover : STATE.focus;
+    if (target >= 0) {
+      var b = bodies[target];
+      var p = world.auPos ? world.auPos[target] : null;
+      var earth = world.auPos ? world.auPos[3] : null;
+      var parts = [b.nameZh + ' · ' + b.nameEn];
+      if (p && earth) {
+        var rr = Math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
+        parts.push('距日 ' + (b.typeId === 0 ? '—' : rr.toFixed(3) + ' AU'));
+        if (b.typeId !== 0) {
+          var dx = p[0] - earth[0], dy = p[1] - earth[1], dz = p[2] - earth[2];
+          parts.push('距地 ' + Math.sqrt(dx * dx + dy * dy + dz * dz).toFixed(3) + ' AU');
+        }
+      }
+      m.hoverText = parts.join('  ·  ');
+    } else {
+      m.hoverText = '';
+    }
+    ui.setReadouts(m);
+    ui.setPlanetLocked(m.planetLocked);
   }
 
   /* ---- 状态切换 --------------------------------------------------------- */
@@ -5742,7 +7127,6 @@ void main() {
     }
     ui.setScale(STATE.scale, note);
 
-    // true 档给一条明确的提示：这一档是真的什么都没放大
     var warn = document.getElementById('trueWarning');
     if (warn) {
       if (STATE.scale === 'true') {
@@ -5752,10 +7136,7 @@ void main() {
         var sunPx = (radiusWorld(meta[0].radiusAU) / dist) * pxPerRad;
         var earthPx = (radiusWorld(meta[3].radiusAU) / dist) * pxPerRad;
         var el = document.getElementById('truePixels');
-        if (el) {
-          el.textContent =
-            '这一机位下：太阳半径 ' + sunPx.toFixed(3) + ' 像素，地球半径 ' + earthPx.toFixed(4) + ' 像素';
-        }
+        if (el) el.textContent = '这一机位下：太阳半径 ' + sunPx.toFixed(3) + ' 像素，地球半径 ' + earthPx.toFixed(4) + ' 像素';
         warn.removeAttribute('hidden');
       } else {
         warn.setAttribute('hidden', '');
@@ -5764,57 +7145,39 @@ void main() {
   }
 
   function overviewState() {
-    return {
-      target: [0, 0, 0],
-      dist: overviewDistance(),
-      yaw: cam.yaw,
-      pitch: cam.pitch,
-    };
+    return { target: world.sunPos.slice(), dist: overviewDistance(), yaw: cam.yaw, pitch: cam.pitch };
   }
 
-  app.focusBody = function (i, opts) {
-    if (i < 0 || i >= bodies.length) return;
-    var wasOverview = STATE.focus < 0;
-    var entering = STATE.focus !== i;
-    if (entering) STATE.lastFocusEl = document.activeElement;
-    if (wasOverview) {
-      // 记住全景的机位，退出特写时原样还回去
-      STATE.overviewCam = { yaw: cam.yaw, pitch: cam.pitch, target: [0, 0, 0] };
-    }
-    STATE.focus = i;
-    STATE.hover = -1;
-    ui.setHover(-1);
-    ui.setActive(i);
-    ui.showPanel(bodies[i]);
-    ui.setBackVisible(true);
-    ui.setMastheadTucked(true);
-    ui.setHint('拖拽环绕 · 滚轮继续放大 · Esc 返回全景 · ← → 切换天体');
+  /**
+   * 让天体圆面占满视口的 coverage（0–1）：按相机 FOV 与画面长宽比算，
+   * 取横竖两边里更窄的那一边做约束，所以竖屏手机上也不会把行星切掉。
+   */
+  function fitDistance(Rworld, coverage) {
+    var halfV = (cam.fovDeg * Math.PI) / 360;
+    var aspect = (core.w || 16) / (core.h || 9);
+    var halfH = Math.atan(Math.tan(halfV) * aspect);
+    var lim = Math.min(halfV, halfH) * Math.max(0.05, Math.min(1, coverage));
+    return Rworld / Math.max(0.06, Math.sin(lim));
+  }
 
+  /** 特写里「这颗天体」的有效半径：带环的按环外缘算 */
+  function framingRadius(i) {
     var R = world.planetR[i] || world.sunR;
-    var pos = (world.planetPos[i] || [0, 0, 0]).slice(0, 3);
-    if (STATE.focus === 0) pos = [0, 0, 0];
-    var dist = R * (opts && opts.close ? 1.35 : closeUpDistance(i));
-    var ang = focusCameraAngles(i, pos);
-
-    cam.flyTo(
-      { target: pos, dist: dist, yaw: ang.yaw, pitch: ang.pitch },
-      opts && opts.instant ? 0 : FLIGHT_MS
-    );
-    syncUrl();
-    ui.setSrLine('已进入' + bodies[i].nameZh + '特写。按 Esc 返回全景。');
-  };
-
-  // 取景距离：有环的天体要把环也装进去
-  function closeUpDistance(i) {
-    var R = world.planetR[i] || world.sunR;
-    if (i === 0) return R * 4.2;
     var b = bodies[i];
-    if (b.rings) return R * Math.max(3.6, b.rings.outer * 2.95);
-    return R * 4.1;
+    if (b && b.rings && i !== 0) return R * Math.max(1, b.rings.outer * 1.05);
+    return R;
   }
 
-  /* 镜头方位：既让主面被太阳照亮，又把这块天体的「招牌特征」转过来。
-     例如木星会把大红斑所在的经度摆到画面中间，而不会一直背对着人。 */
+  function closeUpDistance(i) {
+    var b = bodies[i];
+    return fitDistance(framingRadius(i), b && b.rings && i !== 0 ? 0.74 : 0.64);
+  }
+
+  /** 最近观察距离：仍然能看到整个圆面和一圈环，不是贴到云层上 */
+  function closestDistance(i) {
+    return fitDistance(framingRadius(i), 0.92);
+  }
+
   function cross3(a, b) {
     return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   }
@@ -5823,20 +7186,17 @@ void main() {
     return [v[0] / l, v[1] / l, v[2] / l];
   }
   function axialNorthVec(tiltDeg, node) {
-    var t = (tiltDeg * Math.PI) / 180;
+    var t = tiltDeg * DEG;
     return [Math.sin(t) * Math.cos(node), Math.sin(t) * Math.sin(node), Math.cos(t)];
   }
 
   function heroWorldDir(i, m) {
     var b = bodies[i];
     if (!b.hero) return null;
-    var spin = spinAngle(m.rotHours, STATE.jd);
-    var lon = b.hero.lon,
-      lat = b.hero.lat;
+    var spin = spinAngle(m.rotHours, planetJd());
+    var lon = b.hero.lon, lat = b.hero.lat;
     var v = [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
-    // 世界→本地是 rotZ(spin)·frameᵀ·d，反过来就是 frame·rotZ(−spin)·l
-    var c = Math.cos(-spin),
-      s = Math.sin(-spin);
+    var c = Math.cos(-spin), s = Math.sin(-spin);
     var l0 = [c * v[0] - s * v[1], s * v[0] + c * v[1], v[2]];
     var up = axialNorthVec(m.tilt, m.node);
     var helper = Math.abs(up[2]) > 0.94 ? [1, 0, 0] : [0, 0, 1];
@@ -5855,7 +7215,6 @@ void main() {
     var rig = Math.sqrt(pos[0] * pos[0] + pos[1] * pos[1] + pos[2] * pos[2]) || 1e-9;
     var sunYaw = Math.atan2(-pos[1] / rr, -pos[0] / rr);
     var sunPitch = Math.asin(-pos[2] / rig);
-    // 偏 30° 左右：既看得见晨昏线，主面又是亮的
     var yaw = sunYaw + 0.55;
     var pitch = sunPitch + 0.2;
     var m = meta[i];
@@ -5873,10 +7232,52 @@ void main() {
     return { yaw: yaw, pitch: pitch };
   }
 
+  /** 竖屏手机上信息面板是底部抽屉，特写时把天体往上抬一点，别被抽屉压住 */
+  function focusLift() {
+    if (core.h <= core.w * 1.15) return 0;
+    return 0.30 * cam.dist * cam.tanHalf();
+  }
+
+  function liftTarget(pos, dist, out) {
+    var b = cam.basis();
+    var k = core.h <= core.w * 1.15 ? 0 : 0.30 * dist * cam.tanHalf();
+    out[0] = pos[0] - b[3] * k;
+    out[1] = pos[1] - b[4] * k;
+    out[2] = pos[2] - b[5] * k;
+    return out;
+  }
+
+  app.focusBody = function (i, opts) {
+    if (i < 0 || i >= bodies.length) return;
+    var wasOverview = STATE.focus < 0;
+    var entering = STATE.focus !== i;
+    if (entering) STATE.lastFocusEl = document.activeElement;
+    if (wasOverview) STATE.overviewCam = { yaw: cam.yaw, pitch: cam.pitch, target: cam.target.slice() };
+    STATE.focus = i;
+    STATE.hover = -1;
+    document.body.classList.add('is-focus');
+    ui.setHover(-1);
+    ui.setActive(i);
+    ui.showPanel(bodies[i]);
+    ui.setBackVisible(true);
+    ui.setMastheadTucked(true);
+    ui.setHint('拖拽环绕 · 滚轮继续放大 · Esc 返回全景 · ← → 切换天体');
+
+    var R = world.planetR[i] || world.sunR;
+    var pos = (world.planetPos[i] || [0, 0, 0]).slice(0, 3);
+    var dist = opts && opts.close ? closestDistance(i) : closeUpDistance(i);
+    var ang = focusCameraAngles(i, pos);
+    var tgt = liftTarget(pos, dist, [0, 0, 0]);
+    cam.flyTo({ target: tgt, dist: dist, yaw: ang.yaw, pitch: ang.pitch }, opts && opts.instant ? 0 : FLIGHT_MS + SETTLE_MS);
+    syncUrl();
+    ui.setSrLine('已进入' + bodies[i].nameZh + '特写。按 Esc 返回全景。');
+  };
+
   app.exitFocus = function (opts) {
     if (STATE.focus < 0) return;
     STATE.focus = -1;
     STATE.hover = -1;
+    document.body.classList.remove('is-focus');
     ui.setHover(-1);
     ui.setActive(-1);
     ui.hidePanel();
@@ -5885,12 +7286,9 @@ void main() {
     ui.setHint('点击天体进入特写 · 拖拽旋转 · 滚轮缩放 · Esc 返回');
     var saved = STATE.overviewCam;
     var s = overviewState();
-    if (saved) {
-      s.yaw = saved.yaw;
-      s.pitch = saved.pitch;
-    }
+    if (saved) { s.yaw = saved.yaw; s.pitch = saved.pitch; }
     STATE.overviewCam = null;
-    cam.flyTo({ target: s.target, dist: s.dist }, opts && opts.instant ? 0 : FLIGHT_MS);
+    cam.flyTo({ target: s.target, dist: s.dist }, opts && opts.instant ? 0 : FLIGHT_MS + SETTLE_MS);
     if (STATE.lastFocusEl && STATE.lastFocusEl.focus) STATE.lastFocusEl.focus();
     else canvas.focus();
     syncUrl();
@@ -5902,7 +7300,7 @@ void main() {
     STATE.hover = i;
     ui.setHover(i);
     canvas.classList.toggle('is-hot', i >= 0);
-    updateReadout();
+    updateReadouts();
   };
 
   app.setScale = function (id) {
@@ -5910,29 +7308,120 @@ void main() {
     STATE.scale = id;
     applyScaleNote();
     orbitCache.jd = -1;
+    trailCache.key = '';
     assembleWorld(STATE.jd);
     if (STATE.focus >= 0) {
-      var R = world.planetR[STATE.focus] || world.sunR;
-      var pos = STATE.focus === 0 ? [0, 0, 0] : world.planetPos[STATE.focus].slice(0, 3);
+      var pos = STATE.focus === 0 ? world.sunPos.slice() : world.planetPos[STATE.focus].slice(0, 3);
       var ang = focusCameraAngles(STATE.focus, pos);
-      cam.flyTo({ target: pos, dist: closeUpDistance(STATE.focus), yaw: ang.yaw, pitch: ang.pitch }, FLIGHT_MS);
+      cam.flyTo({ target: pos, dist: closeUpDistance(STATE.focus), yaw: ang.yaw, pitch: ang.pitch }, SHOT ? 0 : FLIGHT_MS);
     } else {
-      cam.flyTo(overviewState(), FLIGHT_MS);
+      cam.flyTo(overviewState(), SHOT ? 0 : FLIGHT_MS);
     }
     syncUrl();
   };
 
-  app.setSpeed = function (id) {
-    var found = null;
-    window.HELIOS_UI.SPEEDS.forEach(function (s) {
-      if (s.id === id) found = s;
-    });
-    if (!found) return;
-    STATE.speedDays = found.days;
-    STATE.playing = found.days > 0;
-    ui.setSpeed(id);
+  app.setFrame = function (id) {
+    if (['sun', 'galactic', 'cmb'].indexOf(id) < 0 || STATE.frame === id) return;
+    STATE.frame = id;
+    STATE.epochYears = simYears(); // 新参考系从当前时刻起算，渲染坐标始终是小数字
+    trailCache.key = '';
+    orbitCache.jd = -1;
+    ui.setFrame(id, frameNote());
+    assembleWorld(STATE.jd);
+    if (STATE.focus < 0) {
+      var l1 = overviewDistance();
+      var dist = id === 'sun' ? l1 : Math.min(cam.dist, trailFraming() * 1.6);
+      cam.flyTo({ target: world.sunPos.slice(0, 3), dist: dist, yaw: cam.yaw, pitch: cam.pitch }, 700);
+    }
+    // 切到运动参考系时把时间放到「1 秒 = 1 年」并开始播放，否则看不出在动
+    if (id !== 'sun' && STATE.yearsPerSecond < 0.5) {
+      STATE.yearsPerSecond = 1;
+      STATE.playing = true;
+      ui.setTimeStep('year');
+    }
+    updateReadouts();
     syncUrl();
   };
+
+  function frameNote() {
+    var f = MOTION.frames.filter(function (x) { return x.id === STATE.frame; })[0];
+    if (STATE.frame === 'sun') return f.desc;
+    return f.desc + ' · 轨迹已放大 ×' + STATE.trailGain + '，真实螺距见下方插图';
+  }
+
+  app.cycleFrame = function () {
+    var order = ['sun', 'galactic', 'cmb'];
+    app.setFrame(order[(order.indexOf(STATE.frame) + 1) % 3]);
+  };
+
+  app.setTimeStep = function (id) {
+    var step = timeStepById(id);
+    STATE.yearsPerSecond = step.yearsPerSecond;
+    STATE.playing = true;
+    ui.setTimeStep(id);
+    updateReadouts();
+    syncUrl();
+  };
+
+  app.togglePlay = function () {
+    if (STATE.playing) {
+      app.pause();
+    } else {
+      if (STATE.yearsPerSecond === 0) {
+        STATE.yearsPerSecond = 1 / 365.25;
+        ui.setTimeStep('day');
+      }
+      STATE.playing = true;
+    }
+  };
+
+  app.pause = function () {
+    STATE.playing = false;
+    ui.setTimeStep('paused');
+  };
+
+  app.goToday = function () {
+    STATE.jd = TODAY_JD;
+    STATE.epochYears = simYears();
+    trailCache.key = '';
+    orbitCache.jd = -1;
+    ui.setDate(A.dateFromJd(planetJd()));
+    ui.setDateNote('JD ' + planetJd().toFixed(2));
+    assembleWorld(STATE.jd);
+    if (STATE.focus >= 0) {
+      var pos = STATE.focus === 0 ? world.sunPos.slice() : world.planetPos[STATE.focus].slice(0, 3);
+      cam.target = pos;
+    } else {
+      cam.target = world.sunPos.slice();
+    }
+    updateReadouts();
+    syncUrl();
+  };
+
+  app.setTrailGain = function (g) {
+    var before = (world.offset || [0, 0, 0]).slice();
+    STATE.trailGain = g;
+    STATE.epochYears = simYears(); // 放大因子变了，位移从零重新累，避免整体跳一下
+    cam.target[0] += before[0];
+    cam.target[1] += before[1];
+    cam.target[2] += before[2];
+    trailCache.key = '';
+    orbitCache.jd = -1;
+    ui.setTrailGain(g, trailCaptionModel());
+    ui.setFrame(STATE.frame, frameNote());
+    updateReadouts();
+  };
+
+  function trailCaptionModel() {
+    var pitch = MOTION.sun.galactic.speedKms * MOTION.units.auPerYearPerKms;
+    return {
+      gain: STATE.trailGain,
+      truePitchAu: pitch,
+      shownPitchAu: pitch / STATE.trailGain,
+      spanYears: STATE.trailSpanYears,
+      orbitAu: 1,
+    };
+  }
 
   app.setQuality = function (id) {
     if (!QUALITY[id]) return;
@@ -5945,6 +7434,45 @@ void main() {
     STATE.starBright = Math.max(0, Math.min(1, v));
     ui.setStarBrightness(STATE.starBright);
   };
+
+  app.setPostParam = function (key, v) {
+    if (!(key in POST)) return;
+    POST[key] = Math.max(0, v);
+  };
+
+  app.setDebugView = function (n) {
+    STATE.debugView = n | 0;
+    ui.setDebugView(STATE.debugView);
+  };
+
+  app.resetParams = function () {
+    POST = Object.assign({}, POST_DEFAULTS);
+    Object.keys(POST_DEFAULTS).forEach(function (k) { ui.setPostSlider(k, POST[k]); });
+    app.setStarBrightness(0.55);
+    app.setDebugView(0);
+    app.setQuality(defaultQuality());
+  };
+
+  /** 存图：在渲染回调里取，才能拿到当前帧（WebGL 画布不会保留缓冲） */
+  app.savePng = function () {
+    STATE.pendingPng = true;
+  };
+
+  function flushPng() {
+    STATE.pendingPng = false;
+    try {
+      var url = canvas.toDataURL('image/png');
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'helios-' + simDateLabel(STATE.jd).replace(/[^\d-]/g, '') + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      ui.setSrLine('已保存 PNG');
+    } catch (e) {
+      ui.setSrLine('这个浏览器不允许存图');
+    }
+  }
 
   app.toggleBackground = function () {
     STATE.bgOn = !STATE.bgOn;
@@ -5973,31 +7501,22 @@ void main() {
   app.setDateString = function (s) {
     var jd = dateStringToJd(s);
     if (jd === null) {
-      ui.setDate(A.dateFromJd(STATE.jd));
+      ui.setDate(A.dateFromJd(planetJd()));
       return;
     }
     STATE.jd = jd;
     orbitCache.jd = -1;
-    ui.setDate(A.dateFromJd(jd));
-    ui.setDateNote('JD ' + jd.toFixed(2));
+    trailCache.key = '';
+    ui.setDate(A.dateFromJd(planetJd()));
+    ui.setDateNote('JD ' + planetJd().toFixed(2));
     assembleWorld(STATE.jd);
     if (STATE.focus >= 0) {
-      var pos = STATE.focus === 0 ? [0, 0, 0] : world.planetPos[STATE.focus];
-      cam.target = pos.slice();
+      cam.target = (STATE.focus === 0 ? world.sunPos : world.planetPos[STATE.focus]).slice(0, 3);
+    } else {
+      cam.target = world.sunPos.slice();
     }
+    updateReadouts();
     syncUrl();
-    updateReadout();
-  };
-
-  app.setPlaying = function (on) {
-    STATE.playing = on;
-    if (!on) {
-      STATE.speedDays = 0;
-      ui.setSpeed('pause');
-    } else if (STATE.speedDays === 0) {
-      STATE.speedDays = 1;
-      ui.setSpeed('day');
-    }
   };
 
   app.stepBody = function (dir) {
@@ -6009,29 +7528,6 @@ void main() {
     app.focusBody(next);
   };
 
-  function updateReadout() {
-    var target = STATE.hover >= 0 ? STATE.hover : STATE.focus;
-    if (target < 0) {
-      ui.setReadout('');
-      return;
-    }
-    var b = bodies[target];
-    var p = world.auPos ? world.auPos[target] : null;
-    var earth = world.auPos ? world.auPos[3] : null;
-    var parts = [b.nameZh + ' · ' + b.nameEn];
-    if (p && earth) {
-      var r = Math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
-      parts.push('距日 ' + (b.typeId === 0 ? '—' : r.toFixed(3) + ' AU'));
-      if (b.typeId !== 0) {
-        var dx = p[0] - earth[0],
-          dy = p[1] - earth[1],
-          dz = p[2] - earth[2];
-        parts.push('距地 ' + Math.sqrt(dx * dx + dy * dy + dz * dz).toFixed(3) + ' AU');
-      }
-    }
-    ui.setReadout(parts.join('  ·  '));
-  }
-
   /* ---- URL -------------------------------------------------------------- */
   var urlTimer = 0;
   function syncUrl() {
@@ -6041,13 +7537,13 @@ void main() {
       urlTimer = 0;
       var parts = [];
       if (STATE.focus >= 0) parts.push('body=' + bodies[STATE.focus].id);
-      parts.push('date=' + jdToDateString(STATE.jd));
+      var label = simDateLabel(STATE.jd);
+      parts.push('date=' + (label.indexOf('-') === 4 ? label : jdToDateString(planetJd())));
       parts.push('scale=' + STATE.scale);
+      if (STATE.frame !== 'sun') parts.push('frame=' + STATE.frame);
       try {
         history.replaceState(null, '', location.pathname + location.search + '#' + parts.join('&'));
-      } catch (e) {
-        /* file:// 下某些浏览器会拒绝，无所谓 */
-      }
+      } catch (e) { /* file:// 下个别浏览器会拒绝 */ }
     }, 220);
   }
 
@@ -6056,19 +7552,8 @@ void main() {
 
   canvas.addEventListener('pointerdown', function (e) {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    try {
-      canvas.setPointerCapture(e.pointerId);
-    } catch (err) {
-      /* 合成事件或已释放的指针，忽略 */
-    }
-    drag = {
-      x: e.clientX,
-      y: e.clientY,
-      lx: e.clientX,
-      ly: e.clientY,
-      moved: 0,
-      t: performance.now(),
-    };
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件 */ }
+    drag = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: 0, t: performance.now() };
     canvas.classList.add('is-dragging');
   });
 
@@ -6076,10 +7561,7 @@ void main() {
     var rect = canvas.getBoundingClientRect();
     var px = e.clientX - rect.left;
     var py = e.clientY - rect.top;
-    if (e.pointerType === 'mouse' || drag) {
-      var hit = pickAt(px, py);
-      app.setHover(hit);
-    }
+    if (e.pointerType === 'mouse' || drag) app.setHover(pickAt(px, py));
     if (!drag) return;
     var dx = e.clientX - drag.lx;
     var dy = e.clientY - drag.ly;
@@ -6087,7 +7569,7 @@ void main() {
     drag.ly = e.clientY;
     drag.moved += Math.abs(dx) + Math.abs(dy);
     cam.yaw -= dx * 0.005;
-    cam.pitch = Math.max(-80 * (Math.PI / 180), Math.min(80 * (Math.PI / 180), cam.pitch + dy * 0.004));
+    cam.pitch = Math.max(-80 * DEG, Math.min(80 * DEG, cam.pitch + dy * 0.004));
     cam.flight = null;
   });
 
@@ -6104,13 +7586,8 @@ void main() {
   }
 
   canvas.addEventListener('pointerup', endDrag);
-  canvas.addEventListener('pointercancel', function () {
-    drag = null;
-    canvas.classList.remove('is-dragging');
-  });
-  canvas.addEventListener('pointerleave', function () {
-    if (!drag) app.setHover(-1);
-  });
+  canvas.addEventListener('pointercancel', function () { drag = null; canvas.classList.remove('is-dragging'); });
+  canvas.addEventListener('pointerleave', function () { if (!drag) app.setHover(-1); });
 
   function handleClick(px, py) {
     var hit = pickAt(px, py);
@@ -6125,12 +7602,11 @@ void main() {
   canvas.addEventListener('dblclick', function (e) {
     var rect = canvas.getBoundingClientRect();
     var hit = pickAt(e.clientX - rect.left, e.clientY - rect.top);
-    if (hit >= 0) {
-      app.focusBody(hit, { close: true });
-    }
+    if (hit >= 0) app.focusBody(hit, { close: true });
   });
 
   function pickAt(px, py) {
+    if (STATE.lod > 1) return -1;
     var items = [];
     for (var i = 0; i < 9; i++) {
       var p = world.planetPos[i];
@@ -6141,56 +7617,37 @@ void main() {
     return got ? got.id : -1;
   }
 
-  canvas.addEventListener(
-    'wheel',
-    function (e) {
-      e.preventDefault();
-      var k = Math.exp(e.deltaY * 0.0012);
-      var before = cam.dist;
-      var lo = STATE.focus >= 0 ? (world.planetR[STATE.focus] || world.sunR) * 1.06 : overviewDistance() * 0.02;
-      var hi = STATE.focus >= 0 ? (world.planetR[STATE.focus] || world.sunR) * 46 : overviewDistance() * 2.4;
-      cam.dist = Math.max(lo, Math.min(hi, cam.dist * k));
-      if (cam.dist !== before) cam.flight = null;
-    },
-    { passive: false }
-  );
+  canvas.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var k = Math.exp(e.deltaY * 0.0012);
+    var l1 = overviewDistance();
+    var lo = STATE.focus >= 0 ? fitDistance(framingRadius(STATE.focus), 0.985) : l1 * 0.02;
+    var hi = STATE.focus >= 0 ? fitDistance(framingRadius(STATE.focus), 0.05) : l1 * 12000;
+    cam.dist = Math.max(lo, Math.min(hi, cam.dist * k));
+    cam.flight = null;
+  }, { passive: false });
 
-  // 双指捏合
   var pinch = null;
-  canvas.addEventListener(
-    'touchstart',
-    function (e) {
-      if (e.touches.length === 2) {
-        pinch = {
-          d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY),
-          dist: cam.dist,
-        };
-        drag = null;
-      }
-    },
-    { passive: true }
-  );
-  canvas.addEventListener(
-    'touchmove',
-    function (e) {
-      if (pinch && e.touches.length === 2) {
-        e.preventDefault();
-        var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-        cam.dist = pinch.dist * (pinch.d / Math.max(d, 1));
-        cam.flight = null;
-      }
-    },
-    { passive: false }
-  );
-  canvas.addEventListener('touchend', function () {
-    pinch = null;
-  });
+  canvas.addEventListener('touchstart', function (e) {
+    if (e.touches.length === 2) {
+      pinch = {
+        d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY),
+        dist: cam.dist,
+      };
+      drag = null;
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', function (e) {
+    if (pinch && e.touches.length === 2) {
+      e.preventDefault();
+      var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      cam.dist = pinch.dist * (pinch.d / Math.max(d, 1));
+      cam.flight = null;
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchend', function () { pinch = null; });
 
   window.addEventListener('resize', resize);
-
-  // 标签页隐藏时 requestAnimationFrame 本来就会停；这里额外把时间基准归零，
-  // 免得切回来时第一帧 dt 过大把镜头飞行动画跳过去。（不要再调一次 rAF，
-  // 否则会出现两条循环，每帧跑两遍。）
   document.addEventListener('visibilitychange', function () {
     lastT = document.hidden ? 0 : performance.now();
   });
@@ -6201,10 +7658,7 @@ void main() {
       return;
     }
     if (STATE.helpOpen) {
-      if (e.key === 'Escape' || e.key === '?') {
-        e.preventDefault();
-        app.closeHelp();
-      }
+      if (e.key === 'Escape' || e.key === '?') { e.preventDefault(); app.closeHelp(); }
       return;
     }
     var handled = true;
@@ -6217,10 +7671,12 @@ void main() {
     } else if (e.key === 'Escape') {
       app.exitFocus();
     } else if (e.key === ' ') {
-      app.setPlaying(!STATE.playing);
+      app.togglePlay();
     } else if (e.key === 's' || e.key === 'S') {
       var order = ['orrery', 'distance', 'true'];
       app.setScale(order[(order.indexOf(STATE.scale) + 1) % 3]);
+    } else if (e.key === 'f' || e.key === 'F') {
+      app.cycleFrame();
     } else if (e.key === 'b' || e.key === 'B') {
       app.toggleBackground();
     } else if (e.key === 'h' || e.key === 'H') {
@@ -6241,34 +7697,25 @@ void main() {
     var ld = document.getElementById('loader');
     if (ld) ld.style.display = 'none';
   }
-  ui.setDate(A.dateFromJd(STATE.jd));
-  ui.setDateNote('JD ' + STATE.jd.toFixed(2));
+  ui.setDate(A.dateFromJd(planetJd()));
+  ui.setDateNote('JD ' + planetJd().toFixed(2));
   ui.setStarBrightness(STATE.starBright);
   ui.setBackground(STATE.bgOn);
   ui.setConstellations(STATE.constellations);
   ui.setQuality(STATE.quality);
   ui.setHudVisible(STATE.hudVisible);
-
-  if (SHOT) {
-    ui.setSpeed('pause');
-  } else {
-    ui.setSpeed('pause');
-    STATE.playing = false;
-    STATE.speedDays = 0;
-  }
+  ui.setFrame(STATE.frame, frameNote());
+  ui.setTrailGain(STATE.trailGain, trailCaptionModel());
+  ui.setTimeStep('paused');
+  ui.setPlaying(false);
 
   assembleWorld(STATE.jd);
 
   if (STATE.focus >= 0) {
-    var fr = world.planetR[STATE.focus] || world.sunR;
-    var fpos = STATE.focus === 0 ? [0, 0, 0] : world.planetPos[STATE.focus].slice(0, 3);
+    var fpos = STATE.focus === 0 ? world.sunPos.slice() : world.planetPos[STATE.focus].slice(0, 3);
     var fang = focusCameraAngles(STATE.focus, fpos);
-    cam.setImmediate({
-      target: fpos,
-      dist: closeUpDistance(STATE.focus),
-      yaw: fang.yaw,
-      pitch: fang.pitch,
-    });
+    cam.setImmediate({ target: liftTarget(fpos, closeUpDistance(STATE.focus), [0, 0, 0]), dist: closeUpDistance(STATE.focus), yaw: fang.yaw, pitch: fang.pitch });
+    document.body.classList.add('is-focus');
     ui.setActive(STATE.focus);
     ui.showPanel(bodies[STATE.focus]);
     ui.setBackVisible(true);
@@ -6279,27 +7726,38 @@ void main() {
     panelEl.classList.add('no-anim');
   } else {
     var ov = overviewState();
+    ov.dist = (STATE.frame === 'sun' ? overviewDistance() : trailFraming()) * initZoom;
     cam.setImmediate(ov);
   }
 
   ui.setLoader('正在解算轨道…');
-  updateReadout();
+  updateReadouts();
+  updateTelemetry(16);
+  requestAnimationFrame(render);
 
-  // 给 QA 与调试用的只读入口（不参与渲染逻辑）
   window.HELIOS_APP = {
     state: STATE,
     cam: cam,
     world: world,
     bodies: bodies,
     meta: meta,
+    motion: MOTION,
     focusBody: app.focusBody,
     exitFocus: app.exitFocus,
     setScale: app.setScale,
-    setSpeed: app.setSpeed,
+    setFrame: app.setFrame,
+    setTimeStep: app.setTimeStep,
+    setTrailGain: app.setTrailGain,
+    pause: app.pause,
+    goToday: app.goToday,
+    togglePlay: app.togglePlay,
     setDateString: app.setDateString,
     setHover: app.setHover,
     openHelp: app.openHelp,
     closeHelp: app.closeHelp,
+    openPanel: function (i) { app.focusBody(i); },
+    readouts: readoutModel,
+    trails: function () { return buildTrails(); },
     demo: function (jd) {
       var out = {};
       for (var i = 1; i < bodies.length; i++) {
@@ -6309,11 +7767,11 @@ void main() {
       return out;
     },
     starCount: renderer.starCount,
+    nearStarCount: renderer.nearStarCount,
     floatTargets: renderer.floatOK,
   };
-
-  requestAnimationFrame(render);
 })();
+
 
 </script>
 </body>

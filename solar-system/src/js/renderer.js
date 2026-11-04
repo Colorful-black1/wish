@@ -97,18 +97,19 @@
     var colorType = floatOK ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
 
     /* ---- 程序 ---- */
-    var sceneProg, starProg, lineProg, brightProg, blurProg, compProg;
+    var sceneProg, starProg, lineProg, brightProg, blurProg, copyProg, compProg;
     var errors = [];
     try {
       sceneProg = program(
         gl,
         S['sceneVert'],
-        S['common'] + S['sceneDecl'] + S['surface'] + S['sky'] + S['sceneBody']
+        S['common'] + S['sceneDecl'] + S['surface'] + S['sky'] + S['galaxy'] + S['sceneBody']
       );
       starProg = program(gl, S['starVert'], S['starFrag']);
       lineProg = program(gl, S['lineVert'], S['lineFrag']);
       brightProg = program(gl, S['sceneVert'], S['brightFrag']);
       blurProg = program(gl, S['sceneVert'], S['blurFrag']);
+      copyProg = program(gl, S['sceneVert'], S['copyFrag']);
       compProg = program(gl, S['sceneVert'], S['compositeFrag']);
     } catch (e) {
       errors.push(String(e && e.message ? e.message : e));
@@ -118,15 +119,23 @@
     var sceneU = locs(gl, sceneProg, [
       'uRes', 'uCamPos', 'uCamBasis', 'uTanHalfFov', 'uAspect', 'uDetail', 'uTime',
       'uBgOn', 'uBodyCount', 'uHover',
-      'uBodyPos', 'uBodyAxes', 'uBodyColA', 'uBodyColB', 'uBodyColC', 'uBodyColD',
+      'uBodyPos', 'uBodyAxes', 'uBodyColA', 'uBodyColB', 'uBodyColC', 'uBodyColD', 'uBodyPar',
       'uRingGeom', 'uRingGeom2', 'uRingExtra', 'uRingColor',
       'uEclToGal', 'uStarBright', 'uMilkyGain', 'uSkyObjCount',
       'uSkyObjDir', 'uSkyObjAxis', 'uSkyObjSize', 'uSkyObjPa', 'uSkyObjBright', 'uSkyObjKind',
+      'uGalaxyMix', 'uGalaxyCam', 'uSunGalAngle', 'uNearMix', 'uOctaveCap',
     ]);
-    var starU = locs(gl, starProg, ['uCamBasis', 'uTanHalfFov', 'uAspect', 'uRes', 'uGain', 'uMinPx', 'uPxScale', 'uSpike']);
+    var starU = locs(gl, starProg, [
+      'uCamBasis', 'uTanHalfFov', 'uAspect', 'uRes', 'uGain', 'uMinPx', 'uPxScale', 'uSpike',
+      'uMode', 'uCamPos', 'uNearMix', 'uStretch',
+    ]);
     var brightU = locs(gl, brightProg, ['uScene', 'uTexel', 'uThreshold', 'uKnee']);
     var blurU = locs(gl, blurProg, ['uSource', 'uDirection', 'uSigma']);
-    var compU = locs(gl, compProg, ['uScene', 'uBloom', 'uExposure', 'uBloomGain', 'uGrain', 'uVignette', 'uFrame']);
+    var copyU = locs(gl, copyProg, ['uSource', 'uTexel']);
+    var compU = locs(gl, compProg, [
+      'uScene', 'uBloom', 'uBloomWide', 'uExposure', 'uBloomGain', 'uGrain', 'uVignette', 'uAberration', 'uFrame',
+      'uSceneTexel', 'uSS', 'uDebug',
+    ]);
 
     /* ---- 全屏四边形（无顶点缓冲，用 gl_VertexID） ---- */
     var emptyVao = gl.createVertexArray();
@@ -178,6 +187,60 @@
       gl.bindVertexArray(null);
     })();
 
+    /* ---- L2 近邻恒星（带真实距离） ---- */
+    var nearCount = 0;
+    var nearVao = gl.createVertexArray();
+    var nearBuf = gl.createBuffer();
+    (function buildNearStars() {
+      var N = window.HELIOS_STARS_NEAR;
+      if (!N || !N.b64) return;
+      var bin = atob(N.b64);
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      var f32 = new Float32Array(bytes.buffer, 0, N.n * 5);
+      // 交错：dir(3) color(4) mag(1) pos(3) = 11 floats
+      var data = new Float32Array(N.n * 11);
+      for (var k = 0; k < N.n; k++) {
+        var px = f32[k * 5], py = f32[k * 5 + 1], pz = f32[k * 5 + 2];
+        var mag = f32[k * 5 + 3], ci = f32[k * 5 + 4];
+        var len = Math.hypot(px, py, pz) || 1;
+        var rgb = blackbodyRGB(bvToKelvin(ci));
+        var flux = Math.pow(10, -0.4 * (mag + 1.44));
+        var o = k * 11;
+        data[o] = px / len;
+        data[o + 1] = py / len;
+        data[o + 2] = pz / len;
+        data[o + 3] = rgb[0];
+        data[o + 4] = rgb[1];
+        data[o + 5] = rgb[2];
+        data[o + 6] = flux;
+        data[o + 7] = mag;
+        data[o + 8] = px;
+        data[o + 9] = py;
+        data[o + 10] = pz;
+      }
+      nearCount = N.n;
+      gl.bindVertexArray(nearVao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, nearBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      var stride = 44;
+      var aDir = gl.getAttribLocation(starProg, 'aDir');
+      var aColor = gl.getAttribLocation(starProg, 'aColor');
+      var aMag = gl.getAttribLocation(starProg, 'aMag');
+      var aPos = gl.getAttribLocation(starProg, 'aPos');
+      gl.enableVertexAttribArray(aDir);
+      gl.vertexAttribPointer(aDir, 3, gl.FLOAT, false, stride, 0);
+      gl.enableVertexAttribArray(aColor);
+      gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, stride, 12);
+      gl.enableVertexAttribArray(aMag);
+      gl.vertexAttribPointer(aMag, 1, gl.FLOAT, false, stride, 28);
+      if (aPos >= 0) {
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, stride, 32);
+      }
+      gl.bindVertexArray(null);
+    })();
+
     /* ---- 线段（轨道 / 星座），每帧更新 ---- */
     var lineVao = gl.createVertexArray();
     var lineBuf = gl.createBuffer();
@@ -218,6 +281,8 @@
     var sceneTarget = null;
     var bloomA = null;
     var bloomB = null;
+    var bloomW = null;
+    var bloomX = null;
 
     function ensureTargets(w, h) {
       if (sceneTarget && sceneTarget.w === w && sceneTarget.h === h) return;
@@ -226,19 +291,18 @@
         gl.deleteTexture(sceneTarget.tex);
         if (sceneTarget.depth) gl.deleteRenderbuffer(sceneTarget.depth);
       }
-      if (bloomA) {
-        gl.deleteFramebuffer(bloomA.fbo);
-        gl.deleteTexture(bloomA.tex);
-      }
-      if (bloomB) {
-        gl.deleteFramebuffer(bloomB.fbo);
-        gl.deleteTexture(bloomB.tex);
-      }
+      [bloomA, bloomB, bloomW, bloomX].forEach(function (t) {
+        if (t) { gl.deleteFramebuffer(t.fbo); gl.deleteTexture(t.tex); }
+      });
       sceneTarget = makeTarget(w, h, true);
       var bw = Math.max(1, w >> 2);
       var bh = Math.max(1, h >> 2);
       bloomA = makeTarget(bw, bh, false);
       bloomB = makeTarget(bw, bh, false);
+      var ww = Math.max(1, w >> 3);
+      var wh = Math.max(1, h >> 3);
+      bloomW = makeTarget(ww, wh, false);
+      bloomX = makeTarget(ww, wh, false);
     }
 
     /* ---- 缓冲 ---- */
@@ -248,6 +312,7 @@
     var bodyColB = new Float32Array(MAXB * 4);
     var bodyColC = new Float32Array(MAXB * 4);
     var bodyColD = new Float32Array(MAXB * 4);
+    var bodyPar = new Float32Array(MAXB * 4);
     var ringGeom = new Float32Array(MAXR * 4);
     var ringGeom2 = new Float32Array(MAXR * 4);
     var ringExtra = new Float32Array(MAXR * 4);
@@ -264,6 +329,7 @@
       gl: gl,
       ok: true,
       starCount: starCount,
+      nearStarCount: nearCount,
       starIndex: starIndex,
       floatOK: floatOK,
       drawCalls: 0,
@@ -290,13 +356,15 @@
         var w = st.pixelWidth;
         var h = st.pixelHeight;
         if (!w || !h) return;
-        ensureTargets(w, h);
+        var sw = st.sceneWidth || w;
+        var sh = st.sceneHeight || h;
+        ensureTargets(sw, sh);
 
-        var aspect = w / h;
+        var aspect = sw / sh;
         var pxScale = st.pxScale || 1;
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget.fbo);
-        gl.viewport(0, 0, w, h);
+        gl.viewport(0, 0, sw, sh);
         gl.disable(gl.BLEND);
         gl.depthMask(true);
         gl.clearColor(0, 0, 0, 1);
@@ -308,7 +376,7 @@
         gl.depthFunc(gl.LEQUAL);
         gl.useProgram(sceneProg);
         gl.bindVertexArray(emptyVao);
-        gl.uniform2f(sceneU.uRes, w, h);
+        gl.uniform2f(sceneU.uRes, sw, sh);
         gl.uniform3fv(sceneU.uCamPos, st.camPos);
         gl.uniformMatrix3fv(sceneU.uCamBasis, false, st.camBasis);
         gl.uniform1f(sceneU.uTanHalfFov, st.tanHalf);
@@ -324,6 +392,7 @@
         gl.uniform4fv(sceneU.uBodyColB, bodyColB);
         gl.uniform4fv(sceneU.uBodyColC, bodyColC);
         gl.uniform4fv(sceneU.uBodyColD, bodyColD);
+        gl.uniform4fv(sceneU.uBodyPar, bodyPar);
         gl.uniform4fv(sceneU.uRingGeom, ringGeom);
         gl.uniform4fv(sceneU.uRingGeom2, ringGeom2);
         gl.uniform4fv(sceneU.uRingExtra, ringExtra);
@@ -338,25 +407,41 @@
         gl.uniform1fv(sceneU.uSkyObjPa, skyPa);
         gl.uniform1fv(sceneU.uSkyObjBright, skyBright);
         gl.uniform1iv(sceneU.uSkyObjKind, skyKind);
+        gl.uniform1f(sceneU.uGalaxyMix, st.galaxyMix || 0);
+        gl.uniform3fv(sceneU.uGalaxyCam, st.galaxyCam || [30, 0, 0.4]);
+        gl.uniform1f(sceneU.uSunGalAngle, st.sunGalAngle || 0);
+        gl.uniform1f(sceneU.uNearMix, st.nearMix || 0);
+        gl.uniform1i(sceneU.uOctaveCap, st.octaveCap || 7);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         api.drawCalls = 1;
 
         /* ---- 星点 ---- */
+        gl.useProgram(starProg);
+        gl.uniformMatrix3fv(starU.uCamBasis, false, st.camBasis);
+        gl.uniform1f(starU.uTanHalfFov, st.tanHalf);
+        gl.uniform1f(starU.uAspect, aspect);
+        gl.uniform2f(starU.uRes, sw, sh);
+        gl.uniform1f(starU.uGain, st.starGain);
+        gl.uniform1f(starU.uMinPx, 1.0);
+        gl.uniform1f(starU.uPxScale, pxScale);
+        gl.uniform1f(starU.uSpike, 1.0);
+        gl.uniform3fv(starU.uCamPos, st.camPos);
+        gl.uniform1f(starU.uNearMix, st.nearMix || 0);
+        gl.uniform1f(starU.uStretch, 0.0);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE);
+        gl.depthMask(false);
+
         if (st.bgOn && starCount) {
-          gl.useProgram(starProg);
           gl.bindVertexArray(starVao);
-          gl.uniformMatrix3fv(starU.uCamBasis, false, st.camBasis);
-          gl.uniform1f(starU.uTanHalfFov, st.tanHalf);
-          gl.uniform1f(starU.uAspect, aspect);
-          gl.uniform2f(starU.uRes, w, h);
-          gl.uniform1f(starU.uGain, st.starGain);
-          gl.uniform1f(starU.uMinPx, 1.0);
-          gl.uniform1f(starU.uPxScale, pxScale);
-          gl.uniform1f(starU.uSpike, 1.0);
-          gl.enable(gl.BLEND);
-          gl.blendFunc(gl.ONE, gl.ONE);
-          gl.depthMask(false);
+          gl.uniform1f(starU.uMode, 0.0);
           gl.drawArrays(gl.POINTS, 0, starCount);
+          api.drawCalls++;
+        }
+        if (st.bgOn && nearCount && (st.nearMix || 0) > 0.002) {
+          gl.bindVertexArray(nearVao);
+          gl.uniform1f(starU.uMode, 1.0);
+          gl.drawArrays(gl.POINTS, 0, nearCount);
           api.drawCalls++;
         }
 
@@ -397,7 +482,6 @@
         var passes = st.bloomPasses;
         for (var p = 0; p < passes; p++) {
           var sigma = 2.2 + p * 1.1;
-          // 横向
           gl.bindFramebuffer(gl.FRAMEBUFFER, bloomB.fbo);
           gl.viewport(0, 0, bw, bh);
           gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
@@ -405,7 +489,6 @@
           gl.uniform2f(blurU.uDirection, 1 / bw, 0);
           gl.uniform1f(blurU.uSigma, sigma);
           gl.drawArrays(gl.TRIANGLES, 0, 3);
-          // 纵向
           gl.bindFramebuffer(gl.FRAMEBUFFER, bloomA.fbo);
           gl.bindTexture(gl.TEXTURE_2D, bloomB.tex);
           gl.uniform2f(blurU.uDirection, 0, 1 / bh);
@@ -414,10 +497,39 @@
           api.drawCalls += 2;
         }
 
+        /* ---- 第二级（更宽、1/8 分辨率）---- */
+        gl.useProgram(copyProg);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, bloomW.fbo);
+        gl.viewport(0, 0, bloomW.w, bloomW.h);
+        gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
+        gl.uniform1i(copyU.uSource, 0);
+        gl.uniform2f(copyU.uTexel, 1 / bw, 1 / bh);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+        gl.useProgram(blurProg);
+        for (var p2 = 0; p2 < 2; p2++) {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, bloomX.fbo);
+          gl.viewport(0, 0, bloomW.w, bloomW.h);
+          gl.bindTexture(gl.TEXTURE_2D, bloomW.tex);
+          gl.uniform1i(blurU.uSource, 0);
+          gl.uniform2f(blurU.uDirection, 1 / bloomW.w, 0);
+          gl.uniform1f(blurU.uSigma, 3.0 + p2 * 2.0);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, bloomW.fbo);
+          gl.bindTexture(gl.TEXTURE_2D, bloomX.tex);
+          gl.uniform2f(blurU.uDirection, 0, 1 / bloomW.h);
+          gl.uniform1f(blurU.uSigma, 3.0 + p2 * 2.0);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
+        api.drawCalls += 5;
+
         /* ---- 合成到画布 ---- */
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, w, h);
         gl.useProgram(compProg);
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, bloomW.tex);
+        gl.uniform1i(compU.uBloomWide, 2);
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
         gl.uniform1i(compU.uBloom, 1);
@@ -428,7 +540,11 @@
         gl.uniform1f(compU.uBloomGain, st.bloomGain);
         gl.uniform1f(compU.uGrain, st.grain);
         gl.uniform1f(compU.uVignette, st.vignette);
+        gl.uniform1f(compU.uAberration, st.aberration === undefined ? 0.0016 : st.aberration);
         gl.uniform1f(compU.uFrame, st.frameIndex);
+        gl.uniform2f(compU.uSceneTexel, 1 / sw, 1 / sh);
+        gl.uniform1f(compU.uSS, st.ss || 1);
+        gl.uniform1i(compU.uDebug, st.debugView || 0);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         api.drawCalls++;
         gl.bindVertexArray(null);
@@ -468,6 +584,10 @@
           bodyColD[i * 4 + 1] = b.atmoColor[1];
           bodyColD[i * 4 + 2] = b.atmoColor[2];
           bodyColD[i * 4 + 3] = 0;
+          bodyPar[i * 4] = b.mie || 0;
+          bodyPar[i * 4 + 1] = b.albedo === undefined ? 1 : b.albedo;
+          bodyPar[i * 4 + 2] = 0;
+          bodyPar[i * 4 + 3] = 0;
         }
       },
 
