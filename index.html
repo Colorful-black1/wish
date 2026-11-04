@@ -23,6 +23,8 @@
         --line-strong: rgba(236, 231, 219, 0.2);
         --gold: #c9a96a;
         --gold-soft: rgba(201, 169, 106, 0.14);
+        --learn: #7fb0c4;
+        --learn-soft: rgba(127, 176, 196, 0.12);
         --card: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012));
         --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", "STSong", serif;
         --sans: "Inter Tight", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
@@ -281,6 +283,72 @@
         font-size: 13px;
       }
 
+      /* ---------------------------------------------------------------- 分类 */
+
+      .cat + .cat {
+        margin-top: clamp(30px, 4.5vh, 56px);
+      }
+
+      .cat__head {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        grid-template-areas:
+          "tag title count"
+          "note note note";
+        align-items: center;
+        gap: 8px 14px;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .cat__tag {
+        grid-area: tag;
+        padding: 4px 11px;
+        border: 1px solid currentColor;
+        border-radius: 999px;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        white-space: nowrap;
+      }
+
+      .cat__tag--learn {
+        color: var(--learn);
+        background: var(--learn-soft);
+      }
+
+      .cat__tag--play {
+        color: var(--gold);
+        background: var(--gold-soft);
+      }
+
+      .cat__head h3 {
+        grid-area: title;
+        margin: 0;
+        font-family: var(--serif);
+        font-size: clamp(16px, 1.7vw, 19px);
+        font-weight: 600;
+        letter-spacing: 0.05em;
+      }
+
+      .cat__note {
+        grid-area: note;
+        margin: 0;
+        color: var(--faint);
+        font-size: 12.5px;
+      }
+
+      .cat__count {
+        grid-area: count;
+        justify-self: end;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        color: var(--faint);
+        white-space: nowrap;
+      }
+
       .grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -380,7 +448,7 @@
         color: var(--gold);
       }
 
-      .card h3 {
+      .card h4 {
         margin: 0;
         font-family: var(--serif);
         font-size: clamp(21px, 2.2vw, 26px);
@@ -632,133 +700,154 @@
       <section class="works" id="works" aria-labelledby="works-title">
         <div class="works__head">
           <h2 id="works-title">许愿清单</h2>
-          <p>四种口味：一座深空档案，一台检索控制台，一间推理实验室，一张 Milvus 执行追踪图。</p>
+          <p>按用途分两类：拿来学的，和拿来玩的。</p>
         </div>
 
-        <div class="grid">
-          <a class="card" href="奥特曼发展史/index.html">
-            <figure class="card__shot">
-              <img
-                src="assets/ultraman.webp"
-                alt="奥特曼宇宙编年史首页：深蓝星云背景上，初代奥特曼的银色与红色身影立在光之国圆环前"
-                width="1280"
-                height="727"
-                loading="lazy"
-                decoding="async"
-              />
-            </figure>
-            <div class="card__body">
-              <div class="card__meta"><span>01 / archive</span><span>单文件网站</span></div>
-              <h3>奥特曼宇宙编年史</h3>
-              <p>
-                以「数字博物馆」的口气重述奥特曼宇宙：54 部作品、38 位战士、31 条宇宙事件，还把缺失的角色视觉用原创 SVG 补上。
-              </p>
-              <ul class="tags">
-                <li>单文件 2.1 MB</li>
-                <li>零依赖</li>
-                <li>角色 SVG 原创</li>
-              </ul>
-              <span class="card__cta">
-                打开成品
-                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                  <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-            </div>
-          </a>
+        <section class="cat" aria-labelledby="cat-learn">
+          <header class="cat__head">
+            <span class="cat__tag cat__tag--learn">学习</span>
+            <h3 id="cat-learn">把系统拆开看清楚</h3>
+            <p class="cat__note">检索、推理、向量库 —— 每一页的数字都是页面里真算的。</p>
+            <span class="cat__count" data-cat-count></span>
+          </header>
 
-          <a class="card" href="rag-viz/index.html">
-            <figure class="card__shot">
-              <img
-                src="assets/rag-viz.webp"
-                alt="RAG 全链路交互式拆解页面：左侧九站流程，中间三维语义空间与召回结果"
-                width="1280"
-                height="800"
-                loading="lazy"
-                decoding="async"
-              />
-            </figure>
-            <div class="card__body">
-              <div class="card__meta"><span>02 / console</span><span>纯静态单页</span></div>
-              <h3>RAG 全链路 · 交互式拆解</h3>
-              <p>
-                从解析到引用校验共 9 站。分块、BM25、HNSW、RRF 与重排全是页面里真算的，参数一拖，数字和排名跟着变。
-              </p>
-              <ul class="tags">
-                <li>9 站全链路</li>
-                <li>无构建步骤</li>
-                <li>真算不画</li>
-              </ul>
-              <span class="card__cta">
-                打开成品
-                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                  <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-            </div>
-          </a>
+          <div class="grid">
+            <a class="card" href="rag-viz/index.html">
+              <figure class="card__shot">
+                <img
+                  src="assets/rag-viz.webp"
+                  alt="RAG 全链路交互式拆解页面：左侧九站流程，中间三维语义空间与召回结果"
+                  width="1280"
+                  height="800"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </figure>
+              <div class="card__body">
+                <div class="card__meta"><span>01 / console</span><span>纯静态单页</span></div>
+                <h4>RAG 全链路 · 交互式拆解</h4>
+                <p>
+                  从解析到引用校验共 9 站。分块、BM25、HNSW、RRF 与重排全是页面里真算的，参数一拖，数字和排名跟着变。
+                </p>
+                <ul class="tags">
+                  <li>9 站全链路</li>
+                  <li>无构建步骤</li>
+                  <li>真算不画</li>
+                </ul>
+                <span class="card__cta">
+                  打开成品
+                  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+              </div>
+            </a>
 
-          <a class="card" href="LLM执行流程/index.html">
-            <figure class="card__shot">
-              <img
-                src="assets/llm-lab.webp"
-                alt="LLM 推理实验室：深色 3D 场景中的 Transformer 拆解塔与十三站流水线，右侧为阶段原理面板"
-                width="1280"
-                height="800"
-                decoding="async"
-              />
-            </figure>
-            <div class="card__body">
-              <div class="card__meta"><span>03 / lab</span><span>3D 单文件</span></div>
-              <h3>LLM 推理实验室</h3>
-              <p>
-                13 站从 Prompt 走到 token 返回：分词、嵌入、注意力、logits、采样与自回归都是可点开的 3D 模块；注意力权重和采样在本地真算，不调用任何 API。
-              </p>
-              <ul class="tags">
-                <li>13 站流水线</li>
-                <li>Transformer 拆解</li>
-                <li>Three.js 内联</li>
-              </ul>
-              <span class="card__cta">
-                打开成品
-                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                  <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-            </div>
-          </a>
+            <a class="card" href="LLM执行流程/index.html">
+              <figure class="card__shot">
+                <img
+                  src="assets/llm-lab.webp"
+                  alt="LLM 推理实验室：深色 3D 场景中的 Transformer 拆解塔与十三站流水线，右侧为阶段原理面板"
+                  width="1280"
+                  height="800"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </figure>
+              <div class="card__body">
+                <div class="card__meta"><span>02 / lab</span><span>3D 单文件</span></div>
+                <h4>LLM 推理实验室</h4>
+                <p>
+                  13 站从 Prompt 走到 token 返回：分词、嵌入、注意力、logits、采样与自回归都是可点开的 3D 模块；注意力权重和采样在本地真算，不调用任何 API。
+                </p>
+                <ul class="tags">
+                  <li>13 站流水线</li>
+                  <li>Transformer 拆解</li>
+                  <li>Three.js 内联</li>
+                </ul>
+                <span class="card__cta">
+                  打开成品
+                  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+              </div>
+            </a>
 
-          <a class="card" href="milvus/index.html">
-            <figure class="card__shot">
-              <img
-                src="assets/milvus-rag.webp"
-                alt="Milvus × RAG 执行追踪页：浅色蓝图纸上，一条查询穿过十站的标题与两条泳道架构图"
-                width="1280"
-                height="800"
-                loading="lazy"
-                decoding="async"
-              />
-            </figure>
-            <div class="card__body">
-              <div class="card__meta"><span>04 / trace</span><span>十站单文件</span></div>
-              <h3>Milvus × RAG 执行链路</h3>
-              <p>
-                从一句提问到 LLM 手里的带引用上下文：写入五站、查询五站，每站都能改参数。HNSW/IVF、BM25、三级归并、pre/post 过滤与融合都是页面里真算的。
-              </p>
-              <ul class="tags">
-                <li>十站 · 两泳道</li>
-                <li>真算 + 示意分栏</li>
-                <li>零外部请求</li>
-              </ul>
-              <span class="card__cta">
-                打开成品
-                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                  <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-            </div>
-          </a>
-        </div>
+            <a class="card" href="milvus/index.html">
+              <figure class="card__shot">
+                <img
+                  src="assets/milvus-rag.webp"
+                  alt="Milvus × RAG 执行追踪页：浅色蓝图纸上，一条查询穿过十站的标题与两条泳道架构图"
+                  width="1280"
+                  height="800"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </figure>
+              <div class="card__body">
+                <div class="card__meta"><span>03 / trace</span><span>十站单文件</span></div>
+                <h4>Milvus × RAG 执行链路</h4>
+                <p>
+                  从一句提问到 LLM 手里的带引用上下文：写入五站、查询五站，每站都能改参数。HNSW/IVF、BM25、三级归并、pre/post 过滤与融合都是页面里真算的。
+                </p>
+                <ul class="tags">
+                  <li>十站 · 两泳道</li>
+                  <li>真算 + 示意分栏</li>
+                  <li>零外部请求</li>
+                </ul>
+                <span class="card__cta">
+                  打开成品
+                  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+              </div>
+            </a>
+          </div>
+        </section>
+
+        <section class="cat" aria-labelledby="cat-play">
+          <header class="cat__head">
+            <span class="cat__tag cat__tag--play">娱乐</span>
+            <h3 id="cat-play">幻想世界与奇观</h3>
+            <p class="cat__note">不为了解决问题，只为了造一个能走进去的世界。</p>
+            <span class="cat__count" data-cat-count></span>
+          </header>
+
+          <div class="grid">
+            <a class="card" href="奥特曼发展史/index.html">
+              <figure class="card__shot">
+                <img
+                  src="assets/ultraman.webp"
+                  alt="奥特曼宇宙编年史首页：深蓝星云背景上，初代奥特曼的银色与红色身影立在光之国圆环前"
+                  width="1280"
+                  height="727"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </figure>
+              <div class="card__body">
+                <div class="card__meta"><span>01 / archive</span><span>单文件网站</span></div>
+                <h4>奥特曼宇宙编年史</h4>
+                <p>
+                  以「数字博物馆」的口气重述奥特曼宇宙：54 部作品、38 位战士、31 条宇宙事件，还把缺失的角色视觉用原创 SVG 补上。
+                </p>
+                <ul class="tags">
+                  <li>单文件 2.1 MB</li>
+                  <li>零依赖</li>
+                  <li>角色 SVG 原创</li>
+                </ul>
+                <span class="card__cta">
+                  打开成品
+                  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+              </div>
+            </a>
+          </div>
+        </section>
       </section>
 
       <section class="how" id="how" aria-labelledby="how-title">
@@ -807,6 +896,13 @@
         const cards = document.querySelectorAll(".grid .card");
         const el = document.getElementById("stat-works");
         if (el && cards.length) el.textContent = String(cards.length).padStart(2, "0");
+
+        // 每个分类的条目数也从卡片数量算，不写死。
+        document.querySelectorAll(".cat").forEach((cat) => {
+          const n = cat.querySelectorAll(".grid .card").length;
+          const badge = cat.querySelector("[data-cat-count]");
+          if (badge) badge.textContent = String(n).padStart(2, "0") + " 个";
+        });
       })();
     </script>
   </body>
