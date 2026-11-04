@@ -13,7 +13,7 @@ const CHROME = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Pro
 const PORT = 9700 + Math.floor(Math.random() * 200);
 const profile = path.join(ROOT, '.chrome-quick-' + PORT);
 const url = 'file:///' + path.join(ROOT, 'index.html').replace(/\\/g, '/');
-const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--hide-scrollbars', '--force-device-scale-factor=1', '--allow-file-access-from-files', `--user-data-dir=${profile}`, `--remote-debugging-port=${PORT}`, `--window-size=${W},${H}`, 'about:blank'], { stdio: 'ignore' });
+const chrome = spawn(CHROME, ['--headless=new', '--enable-gpu', '--use-gl=angle', '--use-angle=d3d11', '--disable-gpu-sandbox', '--ignore-gpu-blocklist', '--disable-software-rasterizer', '--no-first-run', '--hide-scrollbars', '--force-device-scale-factor=1', '--allow-file-access-from-files', `--user-data-dir=${profile}`, `--remote-debugging-port=${PORT}`, `--window-size=${W},${H}`, 'about:blank'], { stdio: 'ignore' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let wsUrl = null;

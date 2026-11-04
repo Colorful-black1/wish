@@ -24,7 +24,15 @@ if (!CHROME) {
 
 const PORT = 9400 + Math.floor(Math.random() * 300);
 const profile = path.join(ROOT, '.chrome-qa');
-fs.rmSync(profile, { recursive: true, force: true });
+try {
+  fs.rmSync(profile, { recursive: true, force: true });
+} catch (e) {
+  /* 上一次的 Chrome 还没退干净，换一个目录名继续 */
+  console.warn('profile cleanup skipped:', e.code);
+}
+
+/* 只允许 GPU：不再提供 SwiftShader 回退。 */
+const GPU_ARGS = ['--enable-gpu', '--use-gl=angle', '--use-angle=d3d11', '--disable-gpu-sandbox', '--ignore-gpu-blocklist', '--disable-software-rasterizer'];
 
 const chrome = spawn(
   CHROME,
@@ -36,8 +44,7 @@ const chrome = spawn(
     '--hide-scrollbars',
     '--mute-audio',
     '--allow-file-access-from-files',
-    '--enable-unsafe-swiftshader',
-    '--use-angle=swiftshader',
+    ...GPU_ARGS,
     '--force-device-scale-factor=1',
     `--user-data-dir=${profile}`,
     `--remote-debugging-port=${PORT}`,
@@ -131,7 +138,12 @@ sessionId = sid;
 await send('Page.enable');
 await send('Runtime.enable');
 await send('Log.enable');
-await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+await send('Emulation.setDeviceMetricsOverride', {
+  width: Number(process.env.SMOKE_W || 1440),
+  height: Number(process.env.SMOKE_H || 900),
+  deviceScaleFactor: Number(process.env.SMOKE_DPR || 1),
+  mobile: false,
+});
 
 const base = pathToFileURL(path.join(ROOT, 'index.html')).href;
 let idx = 0;
@@ -164,6 +176,34 @@ for (const QUERY of QUERIES) {
       };
     })()`);
     console.log('    probe:', JSON.stringify(probe));
+  }
+  const dbg = await evaluate(`window.HELIOS_DEBUG || null`);
+  if (dbg) console.log('    debug:', JSON.stringify(dbg));
+  if (process.env.SMOKE_EVAL) {
+    const val = await evaluate(process.env.SMOKE_EVAL);
+    console.log('    eval:', JSON.stringify(val));
+  }
+  if (process.env.SMOKE_DOM) {
+    const dom = await evaluate(`(() => {
+      const out = [];
+      const pts = [[0.62,0.62],[0.8,0.7],[0.9,0.8],[0.5,0.5],[0.75,0.9]];
+      for (const [fx, fy] of pts) {
+        const x = Math.round(innerWidth * fx), y = Math.round(innerHeight * fy);
+        const els = document.elementsFromPoint(x, y).map((e) => e.id || e.className || e.tagName).slice(0, 4);
+        out.push({ at: [x, y], els });
+      }
+      const rects = {};
+      for (const id of ['gl','stage','panel','hud','trailInset','console','readout','trueWarning','hint','odometer']) {
+        const e = document.getElementById(id);
+        if (!e) continue;
+        const r = e.getBoundingClientRect();
+        const cs = getComputedStyle(e);
+        rects[id] = { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height),
+          hidden: e.hasAttribute('hidden'), display: cs.display, bg: cs.backgroundColor, op: cs.opacity, bf: cs.backdropFilter || cs.webkitBackdropFilter };
+      }
+      return { vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio, canvasCss: [document.getElementById('gl').clientWidth, document.getElementById('gl').clientHeight], canvasBuf: [document.getElementById('gl').width, document.getElementById('gl').height], pts: out, rects };
+    })()`);
+    console.log('    dom:', JSON.stringify(dom));
   }
 
   await sleep(420);
