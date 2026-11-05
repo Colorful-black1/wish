@@ -1,0 +1,75 @@
+{
+  "builtAt": "2026-11-05T13:29:47.780Z",
+  "bytes": 3332085,
+  "kb": 3254,
+  "withinBudget": true,
+  "withinHardLimit": true,
+  "remoteRefs": [],
+  "budget": [
+    {
+      "name": "index.html 总体积",
+      "bytes": 3332085,
+      "cap": 4194304,
+      "ratio": 0.794
+    },
+    {
+      "name": "three + addons（产物内）",
+      "bytes": 616848,
+      "cap": 614400,
+      "ratio": 1.004
+    },
+    {
+      "name": "Draco wrapper + wasm（base64）",
+      "bytes": 334504,
+      "cap": 327680,
+      "ratio": 1.021
+    },
+    {
+      "name": "ferrari.glb（base64）",
+      "bytes": 2242096,
+      "cap": 2411724.8,
+      "ratio": 0.93
+    },
+    {
+      "name": "应用代码 + 样式 + AO",
+      "bytes": 101974,
+      "cap": 409600,
+      "ratio": 0.249
+    }
+  ],
+  "packages": {
+    "virtual": 2585686,
+    "three/core": 529323,
+    "src": 92888,
+    "three/addons": 87525
+  },
+  "assets": {
+    "glb": 1681572,
+    "ao": 21407,
+    "wasm": 192420,
+    "wrapper": 58456
+  },
+  "inlined": [
+    {
+      "type": "css",
+      "href": "src/css/base.css",
+      "bytes": 5589
+    },
+    {
+      "type": "css",
+      "href": "src/css/hud.css",
+      "bytes": 15624
+    },
+    {
+      "type": "css",
+      "href": "src/css/panels.css",
+      "bytes": 9263
+    },
+    {
+      "type": "js",
+      "href": "src/js/app.js",
+      "bytes": 3295434
+    }
+  ],
+  "esbuildMs": 154
+}

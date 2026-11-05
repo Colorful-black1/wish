@@ -1,0 +1,831 @@
+{
+  "startedAt": "2026-11-05T13:29:47.863Z",
+  "url": "file:///E:/Codeing/ai-workspace/wish/supercar/index.html",
+  "gpu": {
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "vendor": "Google Inc. (NVIDIA)",
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "webgl2": true
+  },
+  "checks": [
+    {
+      "id": "gpu.hardware",
+      "ok": true,
+      "detail": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)｜WebGL 2.0 (OpenGL ES 3.0 Chromium)"
+    },
+    {
+      "id": "page.title",
+      "ok": true,
+      "detail": "SUPERCAR · Ferrari 458 Italia 实时展厅"
+    },
+    {
+      "id": "ui.specRows",
+      "ok": true,
+      "detail": "参数行 16 / 数据 16"
+    },
+    {
+      "id": "ui.views",
+      "ok": true,
+      "detail": "视角按钮 7"
+    },
+    {
+      "id": "ui.scenes",
+      "ok": true,
+      "detail": "环境按钮 5"
+    },
+    {
+      "id": "ui.lights",
+      "ok": true,
+      "detail": "灯光开关 7"
+    },
+    {
+      "id": "ui.paints",
+      "ok": true,
+      "detail": "车漆色板 12 / 数据 12"
+    },
+    {
+      "id": "runtime.noExternal",
+      "ok": true,
+      "detail": "运行时外部资源 0 个"
+    },
+    {
+      "id": "audio.defaultMuted",
+      "ok": true,
+      "detail": "引擎声默认静音、未创建 AudioContext"
+    },
+    {
+      "id": "url.hash",
+      "ok": true,
+      "detail": "#paint=rosso-corsa&finish=metallic&caliper=red&rim=silver&interior=nero&scene=studio&view=front45&trim=1&lights=drl%2Ctail"
+    },
+    {
+      "id": "view.front",
+      "ok": true,
+      "detail": "单帧最大位移 0.151 m（占全程 2.2%），峰值速度 28.18 m/s"
+    },
+    {
+      "id": "view.rear",
+      "ok": true,
+      "detail": "单帧最大位移 0.202 m（占全程 1.1%），峰值速度 40.59 m/s"
+    },
+    {
+      "id": "view.side",
+      "ok": true,
+      "detail": "单帧最大位移 0.193 m（占全程 1.5%），峰值速度 32.11 m/s"
+    },
+    {
+      "id": "view.front45",
+      "ok": true,
+      "detail": "单帧最大位移 0.15 m（占全程 2.1%），峰值速度 29.7 m/s"
+    },
+    {
+      "id": "view.rear45",
+      "ok": true,
+      "detail": "单帧最大位移 0.201 m（占全程 1.1%），峰值速度 38.18 m/s"
+    },
+    {
+      "id": "view.top",
+      "ok": true,
+      "detail": "单帧最大位移 0.154 m（占全程 1.4%），峰值速度 29.57 m/s"
+    },
+    {
+      "id": "view.interior",
+      "ok": true,
+      "detail": "进入驾驶舱 mode=cockpit"
+    },
+    {
+      "id": "scene.studio",
+      "ok": true,
+      "detail": "env=9fdb0587 exposure=1.02 fog=0.028"
+    },
+    {
+      "id": "scene.garage",
+      "ok": true,
+      "detail": "env=5ceb4dac exposure=1.06 fog=0.024"
+    },
+    {
+      "id": "scene.night",
+      "ok": true,
+      "detail": "env=b39679fe exposure=1.16 fog=0.008"
+    },
+    {
+      "id": "scene.mountain",
+      "ok": true,
+      "detail": "env=d6b3ce4c exposure=1 fog=0.0055"
+    },
+    {
+      "id": "scene.track",
+      "ok": true,
+      "detail": "env=e6411127 exposure=1.04 fog=0.0045"
+    },
+    {
+      "id": "scene.envDistinct",
+      "ok": true,
+      "detail": "5 套 IBL 互不相同（5）"
+    },
+    {
+      "id": "scene.pixels",
+      "ok": true,
+      "detail": "studio↔night 像素变化 62.8%"
+    },
+    {
+      "id": "scene.floor",
+      "ok": true,
+      "detail": "地面均值 43.93,44.04,44.7 → 17.1,21.09,26.58"
+    },
+    {
+      "id": "paint.presets12",
+      "ok": true,
+      "detail": "12/12 颜色与色板一致"
+    },
+    {
+      "id": "paint.customHex",
+      "ok": true,
+      "detail": "自定义 HEX #7a5cff → 材质 7a5cff"
+    },
+    {
+      "id": "paint.rgbSliders",
+      "ok": true,
+      "detail": "RGB 三滑块拖动 → 材质 0c5cff，HEX 框 #0C5CFF"
+    },
+    {
+      "id": "paint.finishes5",
+      "ok": true,
+      "detail": "5 档材质，粗糙度取值 5 种"
+    },
+    {
+      "id": "paint.pixels",
+      "ok": true,
+      "detail": "nardo ↔ carbon 像素变化 5.9%"
+    },
+    {
+      "id": "caliper.isolated",
+      "ok": true,
+      "detail": "车身 d40000→d40000｜轮辋 c9ccd0→c9ccd0｜卡钳 c4161c→e8b21a"
+    },
+    {
+      "id": "caliper.pixels",
+      "ok": true,
+      "detail": "卡钳改色像素变化 0.76%（局部）"
+    },
+    {
+      "id": "interior.groups",
+      "ok": true,
+      "detail": "皮革 / 深色饰件 / 地毯三组换色生效，方向盘组可见"
+    },
+    {
+      "id": "cockpit.enter",
+      "ok": true,
+      "detail": "mode=cockpit fov=65 屏幕补建=true"
+    },
+    {
+      "id": "cockpit.exitEsc",
+      "ok": true,
+      "detail": "Esc 退出 → exterior"
+    },
+    {
+      "id": "lights.states",
+      "ok": true,
+      "detail": "近光 2.4 / 远光 4.2"
+    },
+    {
+      "id": "lights.tail",
+      "ok": true,
+      "detail": "尾灯 1.7 / 刹车 5.2"
+    },
+    {
+      "id": "lights.spot",
+      "ok": true,
+      "detail": "近光聚光灯 9"
+    },
+    {
+      "id": "lights.blink",
+      "ok": true,
+      "detail": "转向灯闪烁采样 0.2 / 0.2 / 0.2 / 4.4 / 4.4 / 4.4"
+    },
+    {
+      "id": "lights.count7",
+      "ok": true,
+      "detail": "7 个开关全部可独立切换"
+    },
+    {
+      "id": "pick.part",
+      "ok": true,
+      "detail": "中心射线命中 tire_2 → 分组 tire"
+    },
+    {
+      "id": "pick.card",
+      "ok": true,
+      "detail": "部件卡「轮胎」"
+    },
+    {
+      "id": "controls.handback",
+      "ok": true,
+      "detail": "切视角后 enabled=true，聚焦部件后 enabled=true"
+    },
+    {
+      "id": "controls.drag",
+      "ok": true,
+      "detail": "连续 3 次拖动位移：7.13 m / 7.13 m / 7.13 m"
+    },
+    {
+      "id": "controls.dragNoPick",
+      "ok": true,
+      "detail": "拖动没有误触发部件选择（0 次误选）"
+    },
+    {
+      "id": "perf.fps1080p",
+      "ok": true,
+      "detail": "最佳 180.1 fps / 中位 180 / 最差 180 @1920×1080，drawcall 126，三角面 702858"
+    },
+    {
+      "id": "mobile.390",
+      "ok": true,
+      "detail": "scrollWidth 390 / innerWidth 390"
+    },
+    {
+      "id": "mobile.drawer",
+      "ok": true,
+      "detail": "面板抽屉 true，无横向溢出 true"
+    },
+    {
+      "id": "console.clean",
+      "ok": true,
+      "detail": "console 0 / page 0"
+    },
+    {
+      "id": "network.clean",
+      "ok": true,
+      "detail": "失败请求 0"
+    }
+  ],
+  "consoleErrors": [],
+  "failedRequests": [],
+  "pageErrors": [],
+  "base": {
+    "title": "SUPERCAR · Ferrari 458 Italia 实时展厅",
+    "canvas": {
+      "w": 1440,
+      "h": 900
+    },
+    "specRows": 16,
+    "specData": 16,
+    "paints": 12,
+    "paintData": 12,
+    "scenes": 5,
+    "views": 7,
+    "lights": 7,
+    "parts": 12,
+    "external": [],
+    "audioCtx": false,
+    "sound": false,
+    "hash": "#paint=rosso-corsa&finish=metallic&caliper=red&rim=silver&interior=nero&scene=studio&view=front45&trim=1&lights=drl%2Ctail"
+  },
+  "views": {
+    "front": {
+      "view": "front",
+      "frames": 361,
+      "maxSpeed": 28.18,
+      "maxJump": 0.151,
+      "travel": 6.97,
+      "jumpRatio": 0.022,
+      "mode": "exterior",
+      "pos": [
+        0,
+        1.2738,
+        -9.2192
+      ],
+      "target": [
+        0,
+        0.62,
+        0
+      ],
+      "fov": 38,
+      "moving": false
+    },
+    "rear": {
+      "view": "rear",
+      "frames": 361,
+      "maxSpeed": 40.59,
+      "maxJump": 0.202,
+      "travel": 18.43,
+      "jumpRatio": 0.011,
+      "mode": "exterior",
+      "pos": [
+        0,
+        1.3598,
+        9.2126
+      ],
+      "target": [
+        0,
+        0.62,
+        0
+      ],
+      "fov": 38,
+      "moving": false
+    },
+    "side": {
+      "view": "side",
+      "frames": 361,
+      "maxSpeed": 32.11,
+      "maxJump": 0.193,
+      "travel": 13.03,
+      "jumpRatio": 0.015,
+      "mode": "exterior",
+      "pos": [
+        -9.2192,
+        1.2738,
+        0
+      ],
+      "target": [
+        0,
+        0.62,
+        0
+      ],
+      "fov": 38,
+      "moving": false
+    },
+    "front45": {
+      "view": "front45",
+      "frames": 361,
+      "maxSpeed": 29.7,
+      "maxJump": 0.15,
+      "travel": 7.15,
+      "jumpRatio": 0.021,
+      "mode": "exterior",
+      "pos": [
+        -6.3938,
+        1.9498,
+        -6.5359
+      ],
+      "target": [
+        0,
+        0.6,
+        0
+      ],
+      "fov": 38,
+      "moving": false
+    },
+    "rear45": {
+      "view": "rear45",
+      "frames": 361,
+      "maxSpeed": 38.18,
+      "maxJump": 0.201,
+      "travel": 18.27,
+      "jumpRatio": 0.011,
+      "mode": "exterior",
+      "pos": [
+        6.5253,
+        2.0469,
+        6.3834
+      ],
+      "target": [
+        0,
+        0.6,
+        0
+      ],
+      "fov": 38,
+      "moving": false
+    },
+    "top": {
+      "view": "top",
+      "frames": 361,
+      "maxSpeed": 29.57,
+      "maxJump": 0.154,
+      "travel": 10.72,
+      "jumpRatio": 0.014,
+      "mode": "exterior",
+      "pos": [
+        0.0117,
+        9.4732,
+        2.2142
+      ],
+      "target": [
+        0,
+        0.5,
+        0
+      ],
+      "fov": 38,
+      "moving": false
+    },
+    "interior": {
+      "view": "interior",
+      "frames": 360,
+      "maxSpeed": 23.16,
+      "maxJump": 0.132,
+      "travel": 8.6,
+      "jumpRatio": 0.015,
+      "mode": "cockpit",
+      "pos": [
+        -0.3359,
+        1.1093,
+        0.2341
+      ],
+      "target": [
+        0,
+        0.5,
+        0
+      ],
+      "fov": 65,
+      "moving": false
+    }
+  },
+  "scenes": {
+    "studio": {
+      "scene": "studio",
+      "exposure": 1.02,
+      "envUuid": "9fdb0587-3c01-4cc1-8214-816a4e079747",
+      "fogDensity": 0.028,
+      "bloom": 0.26,
+      "keyIntensity": 2.9,
+      "backdrop": 2
+    },
+    "garage": {
+      "scene": "garage",
+      "exposure": 1.06,
+      "envUuid": "5ceb4dac-3781-4c6c-837d-bdf28ff4f1e9",
+      "fogDensity": 0.024,
+      "bloom": 0.22,
+      "keyIntensity": 2.4,
+      "backdrop": 11
+    },
+    "night": {
+      "scene": "night",
+      "exposure": 1.16,
+      "envUuid": "b39679fe-c64a-4519-ab7d-acc04ff1c043",
+      "fogDensity": 0.008,
+      "bloom": 0.52,
+      "keyIntensity": 1.5,
+      "backdrop": 49
+    },
+    "mountain": {
+      "scene": "mountain",
+      "exposure": 1,
+      "envUuid": "d6b3ce4c-d85d-49fa-8df5-9fb6e770d948",
+      "fogDensity": 0.0055,
+      "bloom": 0.18,
+      "keyIntensity": 3.4,
+      "backdrop": 4
+    },
+    "track": {
+      "scene": "track",
+      "exposure": 1.04,
+      "envUuid": "e6411127-8db2-437e-9869-215b0f009e17",
+      "fogDensity": 0.0045,
+      "bloom": 0.2,
+      "keyIntensity": 2.6,
+      "backdrop": 26
+    }
+  },
+  "sceneDiff": {
+    "changedRatio": 0.6282,
+    "floorStudio": [
+      43.93,
+      44.04,
+      44.7
+    ],
+    "floorNight": [
+      17.1,
+      21.09,
+      26.58
+    ]
+  },
+  "paint": {
+    "presets": {
+      "racing-red": {
+        "id": "racing-red",
+        "want": "c8102e",
+        "got": "c8102e"
+      },
+      "rosso-corsa": {
+        "id": "rosso-corsa",
+        "want": "d40000",
+        "got": "d40000"
+      },
+      "lambo-yellow": {
+        "id": "lambo-yellow",
+        "want": "f2c200",
+        "got": "f2c200"
+      },
+      "pearl-white": {
+        "id": "pearl-white",
+        "want": "f1efe8",
+        "got": "f1efe8"
+      },
+      "matte-black": {
+        "id": "matte-black",
+        "want": "141414",
+        "got": "141414"
+      },
+      "metallic-silver": {
+        "id": "metallic-silver",
+        "want": "b8bec4",
+        "got": "b8bec4"
+      },
+      "midnight-blue": {
+        "id": "midnight-blue",
+        "want": "152449",
+        "got": "152449"
+      },
+      "racing-green": {
+        "id": "racing-green",
+        "want": "123f2b",
+        "got": "123f2b"
+      },
+      "orange": {
+        "id": "orange",
+        "want": "ff6a13",
+        "got": "ff6a13"
+      },
+      "nardo-grey": {
+        "id": "nardo-grey",
+        "want": "8b9095",
+        "got": "8b9095"
+      },
+      "miami-blue": {
+        "id": "miami-blue",
+        "want": "2ba3cc",
+        "got": "2ba3cc"
+      },
+      "custom": {
+        "id": "custom",
+        "want": "7a5cff",
+        "got": "7a5cff"
+      }
+    },
+    "finishes": {
+      "metallic": {
+        "id": "metallic",
+        "metalness": 0.82,
+        "roughness": 0.34,
+        "clearcoat": 0.85,
+        "hasMap": false,
+        "hasNormal": true,
+        "wantMap": false
+      },
+      "pearl": {
+        "id": "pearl",
+        "metalness": 0.4,
+        "roughness": 0.26,
+        "clearcoat": 1,
+        "hasMap": false,
+        "hasNormal": true,
+        "wantMap": false
+      },
+      "matte": {
+        "id": "matte",
+        "metalness": 0.62,
+        "roughness": 0.74,
+        "clearcoat": 0.12,
+        "hasMap": false,
+        "hasNormal": true,
+        "wantMap": false
+      },
+      "gloss": {
+        "id": "gloss",
+        "metalness": 0.18,
+        "roughness": 0.12,
+        "clearcoat": 1,
+        "hasMap": false,
+        "hasNormal": true,
+        "wantMap": false
+      },
+      "carbon": {
+        "id": "carbon",
+        "metalness": 0.42,
+        "roughness": 0.3,
+        "clearcoat": 1,
+        "hasMap": true,
+        "hasNormal": false,
+        "wantMap": true
+      }
+    }
+  },
+  "customHex": {
+    "got": "7a5cff",
+    "want": "7a5cff",
+    "paint": "custom",
+    "custom": "#7a5cff",
+    "hash": "#paint=custom&hex=7a5cff&finish=metallic&caliper=red&rim=silver&interior=nero&scene=studio&view=front45&trim=1&lights=drl%2Ctail"
+  },
+  "rgb": {
+    "count": 3,
+    "hex": "0c5cff",
+    "state": "#0c5cff",
+    "input": "#0C5CFF"
+  },
+  "caliper": {
+    "before": {
+      "body": "d40000",
+      "rim": "c9ccd0",
+      "caliper": "c4161c"
+    },
+    "after": {
+      "body": "d40000",
+      "rim": "c9ccd0",
+      "caliper": "e8b21a"
+    }
+  },
+  "caliperDiff": {
+    "ratio": 0.0076,
+    "bbox": [
+      412,
+      27,
+      1357,
+      675
+    ]
+  },
+  "interior": [
+    {
+      "id": "nero",
+      "leather": "1c1c1f",
+      "wantLeather": "1c1c1f",
+      "dark": "141416",
+      "wantDark": "141416",
+      "carpet": "1a1a1c",
+      "wantCarpet": "1a1a1c",
+      "steeringVisible": true
+    },
+    {
+      "id": "cuoio",
+      "leather": "7a4a28",
+      "wantLeather": "7a4a28",
+      "dark": "18140f",
+      "wantDark": "18140f",
+      "carpet": "2a2119",
+      "wantCarpet": "2a2119",
+      "steeringVisible": true
+    },
+    {
+      "id": "alcantara",
+      "leather": "26262a",
+      "wantLeather": "26262a",
+      "dark": "101012",
+      "wantDark": "101012",
+      "carpet": "191919",
+      "wantCarpet": "191919",
+      "steeringVisible": true
+    }
+  ],
+  "cockpit": {
+    "mode": "cockpit",
+    "pos": [
+      -0.336,
+      1.109,
+      0.234
+    ],
+    "fov": 65,
+    "screens": true,
+    "noteVisible": "1"
+  },
+  "lights": {
+    "off": {
+      "head": 0,
+      "led": 0,
+      "tail": 0,
+      "spots": 0
+    },
+    "on": {
+      "drl": {
+        "state": true,
+        "head": 0,
+        "led": 2.6,
+        "tail": 0,
+        "spots": 0
+      },
+      "low": {
+        "state": true,
+        "head": 2.4,
+        "led": 0,
+        "tail": 0,
+        "spots": 9
+      },
+      "high": {
+        "state": true,
+        "head": 4.2,
+        "led": 0,
+        "tail": 0,
+        "spots": 16
+      },
+      "tail": {
+        "state": true,
+        "head": 0,
+        "led": 0,
+        "tail": 1.7,
+        "spots": 0
+      },
+      "brake": {
+        "state": true,
+        "head": 0,
+        "led": 0,
+        "tail": 5.2,
+        "spots": 0
+      },
+      "turn": {
+        "state": true,
+        "head": 0,
+        "led": 4.4,
+        "tail": 0,
+        "spots": 0
+      },
+      "hazard": {
+        "state": true,
+        "head": 0,
+        "led": 5,
+        "tail": 0,
+        "spots": 0
+      }
+    },
+    "blink": [
+      0.2,
+      0.2,
+      0.2,
+      4.4,
+      4.4,
+      4.4
+    ]
+  },
+  "pick": {
+    "hit": true,
+    "part": "tire",
+    "name": "tire_2"
+  },
+  "handback": {
+    "afterView": {
+      "enabled": true,
+      "moving": false
+    },
+    "afterFocus": {
+      "enabled": true,
+      "moving": false
+    },
+    "pos": [
+      -11.8753,
+      1.5403,
+      0.0016
+    ]
+  },
+  "drag": [
+    {
+      "round": 1,
+      "moved": 7.13,
+      "card": false,
+      "enabled": true
+    },
+    {
+      "round": 2,
+      "moved": 7.13,
+      "card": false,
+      "enabled": true
+    },
+    {
+      "round": 3,
+      "moved": 7.13,
+      "card": false,
+      "enabled": true
+    }
+  ],
+  "perf": {
+    "runs": [
+      {
+        "frames": 360,
+        "ms": 2000,
+        "fps": 180
+      },
+      {
+        "frames": 361,
+        "ms": 2005,
+        "fps": 180.1
+      },
+      {
+        "frames": 361,
+        "ms": 2005,
+        "fps": 180
+      }
+    ],
+    "best": 180.1,
+    "median": 180,
+    "worst": 180,
+    "drawCalls": 126,
+    "triangles": 702858,
+    "pixelRatio": 1
+  },
+  "mobile": {
+    "innerW": 390,
+    "innerH": 844,
+    "scrollW": 390,
+    "scrollH": 844,
+    "hasHorizontalOverflow": false,
+    "railOpen": false,
+    "panelVisible": "0",
+    "fps": 180
+  },
+  "mobilePanel": {
+    "open": true,
+    "overflow": false,
+    "swatches": 0
+  },
+  "failures": [],
+  "ok": true,
+  "finishedAt": "2026-11-05T13:30:54.273Z"
+}

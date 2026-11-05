@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>SUPERCAR · Ferrari 458 Italia 实时展厅</title>
+    <meta
+      name="description"
+      content="Ferrari 458 Italia 的实时 3D 展厅：360° 环绕、7 个预设视角、5 套程序化环境、车漆/卡钳/轮辋/内饰配置、灯光控制与第一人称驾驶舱。零外部请求，双击即可打开。"
+    />
+    <meta name="color-scheme" content="dark" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23040506'/%3E%3Cpath d='M7 21c2.6-.6 4.2-2.4 5.6-5.2C14 13 15.6 10.6 18.4 10c2.2-.5 4.4.5 5.4 2.2' stroke='%23d8342a' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='9.5' cy='22' r='2' fill='%23ece9e4'/%3E%3Ccircle cx='23' cy='22' r='2' fill='%23ece9e4'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="src/css/base.css" />
+    <link rel="stylesheet" href="src/css/hud.css" />
+    <link rel="stylesheet" href="src/css/panels.css" />
+  </head>
+
+  <body>
+    <a class="sr-only" href="#panelBody">跳到参数面板</a>
+
+    <div class="boot" id="boot">
+      <div class="boot__mark" aria-hidden="true"></div>
+      <h1>SUPERCAR</h1>
+      <p>real-time showroom</p>
+      <div class="boot__bar" aria-hidden="true"><i></i></div>
+      <span class="boot__text" id="bootText">正在建立渲染器…</span>
+    </div>
+
+    <div class="stage">
+      <canvas id="view" aria-label="3D 车辆展示区：拖动旋转，滚轮缩放"></canvas>
+      <div class="stage__scrim-top" aria-hidden="true"></div>
+      <div class="stage__scrim-bottom" aria-hidden="true"></div>
+      <div class="stage__vig" aria-hidden="true"></div>
+      <div class="stage__grain" aria-hidden="true"></div>
+    </div>
+
+    <header class="topbar">
+      <a class="brand" href="../index.html" aria-label="返回许愿清单">
+        <span class="brand__glyph" aria-hidden="true">◆</span>
+        <span class="brand__text">
+          <span class="brand__en">SUPERCAR</span>
+          <span class="brand__cn">Collection · 3D Showroom</span>
+        </span>
+      </a>
+
+      <nav class="nav" id="nav" aria-label="视图模式">
+        <button type="button" data-mode="exterior" class="is-on">EXTERIOR</button>
+        <button type="button" data-mode="interior">INTERIOR</button>
+        <button type="button" data-mode="customize">CUSTOMIZE</button>
+        <button type="button" data-mode="details">DETAILS</button>
+      </nav>
+
+      <div class="topbar__right">
+        <span class="topbar__badge"><i aria-hidden="true"></i>本地渲染 · 零外部请求</span>
+        <button type="button" class="icon-btn" id="btnQuality" aria-label="切换画质">
+          <span aria-hidden="true">◐</span><span class="icon-btn__label">自动</span>
+        </button>
+        <button type="button" class="icon-btn" id="btnSound" aria-label="切换引擎声" aria-pressed="false">
+          <span aria-hidden="true">♪</span><span class="icon-btn__label">静音</span>
+        </button>
+        <span class="fps" id="fps">— FPS</span>
+        <button type="button" class="icon-btn" id="btnHelp" aria-label="帮助与说明">?</button>
+        <div class="topbar__mobile">
+          <button type="button" class="icon-btn" id="btnRail" aria-label="车型列表">☰</button>
+          <button type="button" class="icon-btn" id="btnPanel" aria-label="参数面板">≡</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="hero" aria-hidden="true">
+      <span class="hero__brand" id="carBrand">Ferrari</span>
+      <h1 class="hero__name" id="carName">458 Italia</h1>
+      <span class="hero__scene" id="sceneName">LUXURY STUDIO</span>
+    </div>
+
+    <aside class="rail" id="rail" aria-label="车型列表"></aside>
+
+    <aside class="panel" id="panel" aria-label="车辆参数与配置"></aside>
+
+    <footer class="dock" id="dock" aria-label="视角、环境与操作"></footer>
+
+    <div class="part-label" id="partLabel" aria-hidden="true"></div>
+    <div class="cockpit-note" id="cockpitNote">
+      <span class="cockpit-note__dot" aria-hidden="true"></span>
+      第一人称驾驶舱 · 仪表与中控屏为程序化补建（模型无此网格）
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="modal" id="help" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="modal__card">
+        <button type="button" class="icon-btn modal__close" aria-label="关闭帮助" data-close-help>×</button>
+        <h2 id="helpTitle">怎么玩</h2>
+        <p class="modal__sub">实时 3D 展厅 · 鼠标与键盘</p>
+        <div class="modal__grid">
+          <span>拖动</span><span>环绕整车，滚轮缩放（对数步进）</span>
+          <span>单击部件</span><span>镜头飞向该材质组并显示说明</span>
+          <span>双击部件</span><span>重点观察模式，Esc 退出</span>
+          <span><kbd>1</kbd>–<kbd>7</kbd></span><span>切换七个预设视角（7 = 驾驶舱）</span>
+          <span><kbd>C</kbd></span><span>进出驾驶舱</span>
+          <span><kbd>R</kbd></span><span>复位视角</span>
+          <span><kbd>M</kbd></span><span>切换展示环境</span>
+          <span><kbd>L</kbd></span><span>灯光全开 / 全关</span>
+          <span><kbd>S</kbd></span><span>引擎声开关（默认静音）</span>
+          <span><kbd>Esc</kbd></span><span>退出驾驶舱 / 关闭部件信息</span>
+        </div>
+        <p class="modal__note">
+          说明：车身是 three.js 示例里的整片钣金网格（Ferrari 458 Italia，作者 vicent091036），没有分件，
+          因此只能整体观察；仪表与中控屏为程序化补建。所有参数来自 research/SOURCES.md 记录的公开资料，
+          未核实的项标注「未核实」。本页整幅画面为实时渲染，不是渲染图或影片。
+        </p>
+      </div>
+    </div>
+
+    <script type="module" src="src/js/app.js"></script>
+  </body>
+</html>

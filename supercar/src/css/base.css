@@ -1,0 +1,310 @@
+/* base.css — 设计令牌、重置、排版、通用控件 */
+
+:root {
+  --bg: #040506;
+  --bg-1: #08090b;
+  --bg-2: #0c0e11;
+  --fg: #ece9e4;
+  --fg-1: #b9b6b1;
+  --fg-2: #85837f;
+  --fg-3: #56585a;
+  --line: rgba(255, 255, 255, 0.075);
+  --line-2: rgba(255, 255, 255, 0.14);
+  --accent: #d8342a;
+  --accent-2: #ff5a44;
+  --gold: #c8a86a;
+  --glass: rgba(9, 10, 12, 0.66);
+  --glass-2: rgba(12, 14, 16, 0.86);
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --topbar: 64px;
+  --rail-w: 248px;
+  --panel-w: 336px;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  overflow: hidden;
+  background: var(--bg);
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: var(--fg);
+  background: var(--bg);
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+dl,
+dd,
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--gold);
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 滚动条 */
+.rail__list,
+.panel__body,
+.rail__favs {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.rail__list::-webkit-scrollbar,
+.panel__body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.rail__list::-webkit-scrollbar-thumb,
+.panel__body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 99px;
+}
+
+/* ---------- 通用控件 ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--fg);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition: background 0.22s var(--ease), border-color 0.22s var(--ease), transform 0.18s var(--ease);
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn--accent {
+  background: linear-gradient(180deg, #e2443a, #b7221a);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 22px rgba(216, 52, 42, 0.28);
+}
+
+.btn--accent:hover {
+  background: linear-gradient(180deg, #f0524a, #c62b21);
+}
+
+.btn--sm {
+  height: 30px;
+  padding: 0 11px;
+  font-size: 11.5px;
+}
+
+.btn--wide {
+  width: 100%;
+  justify-content: center;
+}
+
+.btn.is-on {
+  border-color: rgba(216, 52, 42, 0.6);
+  background: rgba(216, 52, 42, 0.16);
+}
+
+.btn__icon {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  color: var(--fg-1);
+  font-size: 12px;
+  transition: color 0.2s var(--ease), background 0.2s var(--ease), border-color 0.2s;
+}
+
+.icon-btn:hover {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.icon-btn.is-on {
+  color: var(--gold);
+  border-color: rgba(200, 168, 106, 0.35);
+  background: rgba(200, 168, 106, 0.1);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg-1);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  transition: color 0.2s var(--ease), background 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.chip:hover {
+  color: var(--fg);
+  border-color: var(--line-2);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.chip.is-on {
+  color: #fff;
+  border-color: rgba(216, 52, 42, 0.55);
+  background: rgba(216, 52, 42, 0.18);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.input {
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line-2);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--fg);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex: 0 0 42px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: rgba(255, 255, 255, 0.06);
+  transition: background 0.24s var(--ease), border-color 0.24s var(--ease);
+}
+
+.switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #cfcfcf;
+  transition: transform 0.24s var(--ease), background 0.24s var(--ease);
+}
+
+.switch.is-on {
+  background: rgba(216, 52, 42, 0.35);
+  border-color: rgba(216, 52, 42, 0.55);
+}
+
+.switch.is-on .switch__knob {
+  transform: translateX(18px);
+  background: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

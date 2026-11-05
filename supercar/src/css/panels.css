@@ -1,0 +1,537 @@
+/* panels.css — 右侧参数 / 配置 / 灯光面板 */
+
+.panel {
+  position: fixed;
+  z-index: 35;
+  right: 18px;
+  top: calc(var(--topbar) + 16px);
+  bottom: 108px;
+  width: var(--panel-w);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(120%);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: transform 0.4s var(--ease), opacity 0.3s;
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 10px 10px 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel__tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.panel__tab {
+  position: relative;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  transition: color 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.panel__tab:hover {
+  color: var(--fg-1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.panel__tab.is-on {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.panel__body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.panel__section {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.panel__p {
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: var(--fg-2);
+}
+
+/* ---------- 车型标题 ---------- */
+
+.spec-head {
+  padding: 2px 2px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.spec-head__brand {
+  font-size: 9.5px;
+  letter-spacing: 0.3em;
+  color: var(--fg-3);
+}
+
+.spec-head__name {
+  font-size: 25px;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  color: #f2efe9;
+}
+
+.spec-head__tag {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--fg-3);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- 参数表 ---------- */
+
+.spec {
+  display: flex;
+  flex-direction: column;
+}
+
+.spec__row {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.spec__row:last-child {
+  border-bottom: 0;
+}
+
+.spec dt {
+  font-size: 11px;
+  color: var(--fg-3);
+  letter-spacing: 0.03em;
+  padding-top: 1px;
+}
+
+.spec dd {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.spec__value {
+  font-size: 12.5px;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.spec__note {
+  font-size: 10px;
+  color: var(--fg-3);
+  line-height: 1.4;
+}
+
+/* ---------- 说明卡 ---------- */
+
+.note-card {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.note-card h4 {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+
+.note-card p {
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: var(--fg-2);
+}
+
+.note-card code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  color: var(--fg-1);
+}
+
+.note-card--dim h4 {
+  color: var(--fg-3);
+}
+
+.note-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.note-list li {
+  position: relative;
+  padding-left: 12px;
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+.note-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 4px;
+  height: 1px;
+  background: var(--accent);
+}
+
+/* ---------- 部件卡 ---------- */
+
+.pcard {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(216, 52, 42, 0.35);
+  background: linear-gradient(180deg, rgba(216, 52, 42, 0.14), rgba(216, 52, 42, 0.04));
+}
+
+.pcard__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pcard__cap {
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.pcard h3 {
+  font-size: 16px;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.pcard__desc {
+  margin-top: 8px;
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: var(--fg-1);
+}
+
+.pcard__note {
+  margin-top: 8px;
+  font-size: 10.5px;
+  color: var(--fg-3);
+}
+
+/* ---------- 配置块 ---------- */
+
+.cfg {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.cfg--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.cfg--tight {
+  gap: 8px;
+}
+
+.cfg__title {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.cfg__hint {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--fg-3);
+}
+
+/* 色板 */
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.025);
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.swatch:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.swatch.is-on {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.swatch__dot {
+  display: block;
+  width: 100%;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--sw, #333);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.swatch--custom .swatch__dot {
+  background: conic-gradient(from 210deg, #ff3b30, #ffcc00, #34c759, #32ade6, #af52de, #ff3b30);
+}
+
+.swatch__name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9.5px;
+  color: var(--fg-3);
+  letter-spacing: 0.02em;
+}
+
+.swatch.is-on .swatch__name {
+  color: var(--fg-1);
+}
+
+.custom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-row__label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--fg-3);
+}
+
+.custom-row .input {
+  width: 96px;
+  text-transform: uppercase;
+}
+
+.color-dot {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* RGB 通道滑块 */
+.rgb-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rgb {
+  display: grid;
+  grid-template-columns: 12px 1fr 30px;
+  align-items: center;
+  gap: 8px;
+}
+
+.rgb__ch {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: var(--fg-3);
+}
+
+.rgb__range {
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.rgb__val {
+  font-size: 10px;
+  text-align: right;
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 圆点色板 */
+.dots {
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--sw);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 3px 10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+
+.dot:hover {
+  transform: translateY(-2px);
+}
+
+.dot.is-on {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--fg), 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* 列表行 */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  text-align: left;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.list-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.list-row.is-on {
+  border-color: rgba(216, 52, 42, 0.4);
+  background: rgba(216, 52, 42, 0.1);
+}
+
+.list-row__swatch {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, var(--a) 0 55%, var(--b) 55% 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  position: relative;
+}
+
+.list-row__swatch::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.list-row__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.list-row__name {
+  font-size: 12.5px;
+  color: var(--fg);
+}
+
+.list-row__sub {
+  font-size: 10px;
+  color: var(--fg-3);
+  letter-spacing: 0.04em;
+}
+
+.list-row__state {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.list-row--light.is-on .list-row__state {
+  color: var(--accent-2);
+}
+
+.lamp-glyph {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.18), transparent 70%);
+}
+
+.list-row--light.is-on .lamp-glyph {
+  border-color: rgba(255, 214, 140, 0.7);
+  background: radial-gradient(circle at 50% 40%, #ffe6b8, rgba(255, 200, 120, 0.25) 60%, transparent 75%);
+  box-shadow: 0 0 12px rgba(255, 200, 120, 0.35);
+}
+
+@media (max-width: 900px) {
+  .panel {
+    left: auto;
+    right: 0;
+    top: var(--topbar);
+    bottom: 70px;
+    width: var(--panel-w);
+    border-radius: 14px 0 0 0;
+    transform: translateX(105%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  body.panel-open .panel {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .panel__section {
+    padding-bottom: 90px;
+  }
+}

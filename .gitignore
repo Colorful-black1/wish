@@ -27,3 +27,7 @@ desktop.ini
 # 日志与临时文件
 *.log
 *.tmp
+
+# supercar 抓取的原始网页存档（约 10 MB，可按 research/SOURCES.md 里的链接重新抓取）
+supercar/research/raw/
+

@@ -1,0 +1,16 @@
+﻿{
+  "name": "supercar-experience",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Single-file 3D supercar showroom (build tooling only; no runtime deps).",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "qa": "node tools/qa.mjs",
+    "serve": "node tools/serve.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "three": "0.180.0"
+  }
+}
