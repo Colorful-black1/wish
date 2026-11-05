@@ -678,6 +678,55 @@
 
 /* ------------------------------------------------------------------ 窄屏 */
 
+/* 特写时把控制台让到左边：右侧整条被信息面板占着，否则参数就改不了了 */
+@media (min-width: 861px) {
+  body.is-focus .console {
+    right: auto;
+    left: var(--pad);
+    max-height: calc(100% - var(--pad) * 2 - 214px);
+  }
+}
+
+/* 自定义时间倍率 */
+.rate-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+
+.rate-row input {
+  width: 58px;
+  padding: 3px 5px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-align: right;
+}
+
+.rate-row select {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 4px;
+  border: 1px solid var(--line);
+  background: rgba(8, 11, 16, 0.9);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.rate-row input:focus-visible,
+.rate-row select:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 1px;
+}
+
 @media (max-width: 860px) {
   /* 窄屏特写时把控制台让出来：手机上一屏就那么点地方，行星优先 */
   body.is-focus .console {

@@ -1,6 +1,6 @@
 {
   "title": "HELIOS / 太阳系观测台",
-  "generatedAt": "2026-11-04T16:08:42.911Z",
+  "generatedAt": "2026-11-04T16:52:31.633Z",
   "url": "file:///E:/Codeing/ai-workspace/wish/solar-system/index.html",
   "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
   "checks": [
@@ -74,10 +74,10 @@
       "name": "三种尺度模式画面互不相同",
       "pass": true,
       "detail": {
-        "overview": "dc3ead4c1e55c381",
-        "scale-orrery": "c602da4e860d9cbc",
-        "scale-distance": "64f161b107ef7dc6",
-        "scale-true": "7907a3d5d5d78be2",
+        "overview": "1ca2eeb86e6d26d0",
+        "scale-orrery": "72b547d895a28820",
+        "scale-distance": "4b5ea5bf254e5198",
+        "scale-true": "bcd3b61a68e391c8",
         "closeup-sun": "df697344c877c0fc",
         "closeup-mercury": "1266c8d8a485656e",
         "closeup-venus": "752b7c632489134e",
@@ -87,9 +87,9 @@
         "closeup-saturn": "b27a43a0778b4002",
         "closeup-uranus": "7402d1d7cd509973",
         "closeup-neptune": "2cc7369be63443be",
-        "mobile": "16f4caa9ffb25a27",
-        "mobileCloseup": "275afaacca6ead50",
-        "uiOn": "5c6961f761e274c2"
+        "mobile": "d9b6e83061cbe464",
+        "mobileCloseup": "799cd11973a23242",
+        "uiOn": "eba16bc83d534188"
       }
     },
     {
@@ -157,6 +157,35 @@
       }
     },
     {
+      "name": "特写时不再绘制轨道线",
+      "pass": true,
+      "detail": {
+        "overviewLines": 3520,
+        "focusLines": 0,
+        "consoleUsable": true,
+        "consoleLeft": 26,
+        "vw": 1440
+      }
+    },
+    {
+      "name": "特写时控制台仍留在画面里（参数可改）",
+      "pass": true,
+      "detail": {
+        "left": 26,
+        "vw": 1440,
+        "usable": true
+      }
+    },
+    {
+      "name": "时间倍率可自定义（1 秒 = N 个单位）",
+      "pass": true,
+      "detail": {
+        "a": 0.00821355,
+        "b": 2000000,
+        "hasInput": true
+      }
+    },
+    {
       "name": "四个运动读数与 research/motion-sources.md 一致",
       "pass": true,
       "detail": {
@@ -193,7 +222,7 @@
         "planets": 8,
         "samples": 96,
         "span": 3,
-        "drift": 4.001586266544761,
+        "drift": 3.9795233230050058,
         "sunFrameOffset": 0,
         "glOn": 8
       }
@@ -202,18 +231,18 @@
       "name": "三种参考系画面互不相同",
       "pass": true,
       "detail": {
-        "sun": "61c8b89dcf778d7a",
-        "galactic": "1c61d6b0507ef403",
-        "cmb": "d2f7b6907f5fefc5"
+        "sun": "894aacc12a2dc37a",
+        "galactic": "422066345dc7cdfe",
+        "cmb": "8bc3bfa721916198"
       }
     },
     {
       "name": "1 亿年/秒下银弧与时刻都在推进",
       "pass": true,
       "detail": {
-        "beforeArc": 0.00005178693028749397,
-        "afterArc": 603.1200517951812,
-        "before": "2034-07-11",
+        "beforeArc": 0.000051556830287509406,
+        "afterArc": 602.2950515568313,
+        "before": "2034-05-16",
         "after": "公元 4.02 亿年"
       }
     },
@@ -259,9 +288,9 @@
       "name": "1080p 下标准档 ≥ 55 fps（真机 GPU）",
       "pass": true,
       "detail": {
-        "standard": 183.5,
-        "high": 182.1,
-        "cinematic": 186.2
+        "standard": 184.8,
+        "high": 180.5,
+        "cinematic": 149.7
       }
     },
     {
@@ -307,10 +336,10 @@
   "pageErrors": [],
   "hasHorizontalOverflow": false,
   "shots": {
-    "overview": "dc3ead4c1e55c381",
-    "scale-orrery": "c602da4e860d9cbc",
-    "scale-distance": "64f161b107ef7dc6",
-    "scale-true": "7907a3d5d5d78be2",
+    "overview": "1ca2eeb86e6d26d0",
+    "scale-orrery": "72b547d895a28820",
+    "scale-distance": "4b5ea5bf254e5198",
+    "scale-true": "bcd3b61a68e391c8",
     "closeup-sun": "df697344c877c0fc",
     "closeup-mercury": "1266c8d8a485656e",
     "closeup-venus": "752b7c632489134e",
@@ -320,15 +349,15 @@
     "closeup-saturn": "b27a43a0778b4002",
     "closeup-uranus": "7402d1d7cd509973",
     "closeup-neptune": "2cc7369be63443be",
-    "mobile": "16f4caa9ffb25a27",
-    "mobileCloseup": "275afaacca6ead50",
-    "uiOn": "5c6961f761e274c2"
+    "mobile": "d9b6e83061cbe464",
+    "mobileCloseup": "799cd11973a23242",
+    "uiOn": "eba16bc83d534188"
   },
   "shotBytes": {
-    "01-overview.png": 992596,
-    "scale-orrery.png": 847727,
-    "scale-distance.png": 837900,
-    "scale-true.png": 836257,
+    "01-overview.png": 988568,
+    "scale-orrery.png": 863132,
+    "scale-distance.png": 854010,
+    "scale-true.png": 851933,
     "closeup-sun.png": 1307191,
     "closeup-sun-again.png": 1307191,
     "closeup-mercury.png": 1096490,
@@ -351,16 +380,16 @@
     "date-2026-07-15.png": 1005224,
     "bg-on.png": 1018253,
     "bg-off.png": 549751,
-    "frame-sun.png": 992743,
-    "frame-galactic.png": 1015489,
-    "frame-cmb.png": 991505,
+    "frame-sun.png": 989517,
+    "frame-galactic.png": 1012639,
+    "frame-cmb.png": 989365,
     "lod-1.png": 1005729,
     "lod-12.png": 980952,
     "lod-400.png": 980683,
     "lod-3000.png": 1211206,
-    "mobile-390.png": 275568,
-    "mobile-closeup.png": 177644,
-    "05-ui-on.png": 1026252
+    "mobile-390.png": 275983,
+    "mobile-closeup.png": 174957,
+    "05-ui-on.png": 991604
   },
   "boot": {
     "webgl2": true,
@@ -392,13 +421,13 @@
     "cmbErr": 0.11,
     "steps": 6
   },
-  "frameTimeMs": 5.1,
+  "frameTimeMs": 4.9,
   "frameTimeNote": "真机 GPU（ANGLE/D3D11）实测，1080p 级画面",
   "perf1080": {
-    "standard": 5.45,
-    "high": 5.49,
-    "cinematic": 5.37
+    "standard": 5.41,
+    "high": 5.54,
+    "cinematic": 6.68
   },
-  "passed": 34,
+  "passed": 37,
   "failed": 0
 }

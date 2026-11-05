@@ -6,7 +6,7 @@
   Planet positions: JPL "Approximate Positions of the Planets" Table 1 + Kepler solver.
   Star field: HYG Database v4.0, V ≤ 6.5, 8,920 stars (CC BY-SA 4.0), inlined here.
   All surfaces, the Sun, the Milky Way and the galaxies are generated procedurally in WebGL2.
-  Built 2026-11-04T16:08:42.187Z · 385.0 KB
+  Built 2026-11-04T16:56:27.138Z · 387.9 KB
 -->
 <html lang="zh-CN">
 <head>
@@ -980,6 +980,55 @@ code {
 
 /* ------------------------------------------------------------------ 窄屏 */
 
+/* 特写时把控制台让到左边：右侧整条被信息面板占着，否则参数就改不了了 */
+@media (min-width: 861px) {
+  body.is-focus .console {
+    right: auto;
+    left: var(--pad);
+    max-height: calc(100% - var(--pad) * 2 - 214px);
+  }
+}
+
+/* 自定义时间倍率 */
+.rate-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+
+.rate-row input {
+  width: 58px;
+  padding: 3px 5px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-align: right;
+}
+
+.rate-row select {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 4px;
+  border: 1px solid var(--line);
+  background: rgba(8, 11, 16, 0.9);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.rate-row input:focus-visible,
+.rate-row select:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 1px;
+}
+
 @media (max-width: 860px) {
   /* 窄屏特写时把控制台让出来：手机上一屏就那么点地方，行星优先 */
   body.is-focus .console {
@@ -1493,6 +1542,11 @@ body.no-ui .overlay {
       <div class="console-block">
         <span class="field-label" id="timeLabel">时间倍率</span>
         <div class="segmented segmented--grid" id="timeGroup" role="group" aria-labelledby="timeLabel"></div>
+        <label class="rate-row" for="customRate">
+          <span>1 秒 =</span>
+          <input type="number" id="customRate" min="0.001" max="100000" step="any" value="1" inputmode="decimal" aria-label="时间倍率数值">
+          <select id="customUnit" aria-label="时间倍率单位"></select>
+        </label>
         <button type="button" class="text-btn" id="btnToday">回到今天</button>
       </div>
 
@@ -5017,9 +5071,16 @@ void main() {
       floatOK: floatOK,
       drawCalls: 0,
 
+      /* 当前真正送去绘制的线段顶点数（0 = 这一帧没有画线） */
+      lineVertices: function () {
+        return api._lineCount || 0;
+      },
+
       setLines: function (arr) {
         if (!arr || !arr.length) {
+          // 必须把绘制计数清零，否则上一帧的轨道线会用旧顶点继续画在特写里
           lineCapacity = 0;
+          api._lineCount = 0;
           return;
         }
         gl.bindVertexArray(lineVao);
@@ -5675,6 +5736,29 @@ void main() {
     });
 
     $('btnToday').addEventListener('click', function () { app.goToday(); });
+
+    /* 自定义时间倍率：1 秒 = N 个<单位> */
+    var rateInput = $('customRate');
+    var rateUnit = $('customUnit');
+    MOTION.timeSteps.forEach(function (s) {
+      var o = document.createElement('option');
+      o.value = s.id;
+      o.textContent = s.label.replace(/^1\s+/, '');
+      rateUnit.appendChild(o);
+    });
+    rateUnit.value = 'year';
+    function applyRate() {
+      var v = Number(rateInput.value);
+      if (!isFinite(v) || v <= 0) return;
+      app.setRate(v, rateUnit.value);
+    }
+    rateInput.addEventListener('change', applyRate);
+    rateUnit.addEventListener('change', applyRate);
+
+    ui.setCustomRate = function (value, unitId) {
+      if (value !== null && value !== undefined) rateInput.value = String(value);
+      if (unitId) rateUnit.value = unitId;
+    };
 
     var trailHost = $('trailGainGroup');
     var trailBtns = [];
@@ -7359,6 +7443,19 @@ void main() {
     STATE.yearsPerSecond = step.yearsPerSecond;
     STATE.playing = true;
     ui.setTimeStep(id);
+    ui.setCustomRate(1, id);
+    updateReadouts();
+    syncUrl();
+  };
+
+  /** 自定义倍率：1 秒 = value 个 unit（unit 是 MOTION.timeSteps 里的档位 id） */
+  app.setRate = function (value, unitId) {
+    var v = Number(value);
+    if (!isFinite(v) || v <= 0) return;
+    var step = timeStepById(unitId);
+    STATE.yearsPerSecond = v * step.yearsPerSecond;
+    STATE.playing = true;
+    ui.setTimeStep(null);
     updateReadouts();
     syncUrl();
   };
@@ -7747,6 +7844,7 @@ void main() {
     setScale: app.setScale,
     setFrame: app.setFrame,
     setTimeStep: app.setTimeStep,
+    setRate: app.setRate,
     setTrailGain: app.setTrailGain,
     pause: app.pause,
     goToday: app.goToday,
@@ -7769,6 +7867,7 @@ void main() {
     starCount: renderer.starCount,
     nearStarCount: renderer.nearStarCount,
     floatTargets: renderer.floatOK,
+    lineVertices: renderer.lineVertices,
   };
 })();
 

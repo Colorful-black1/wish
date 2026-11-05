@@ -1313,6 +1313,19 @@
     STATE.yearsPerSecond = step.yearsPerSecond;
     STATE.playing = true;
     ui.setTimeStep(id);
+    ui.setCustomRate(1, id);
+    updateReadouts();
+    syncUrl();
+  };
+
+  /** 自定义倍率：1 秒 = value 个 unit（unit 是 MOTION.timeSteps 里的档位 id） */
+  app.setRate = function (value, unitId) {
+    var v = Number(value);
+    if (!isFinite(v) || v <= 0) return;
+    var step = timeStepById(unitId);
+    STATE.yearsPerSecond = v * step.yearsPerSecond;
+    STATE.playing = true;
+    ui.setTimeStep(null);
     updateReadouts();
     syncUrl();
   };
@@ -1701,6 +1714,7 @@
     setScale: app.setScale,
     setFrame: app.setFrame,
     setTimeStep: app.setTimeStep,
+    setRate: app.setRate,
     setTrailGain: app.setTrailGain,
     pause: app.pause,
     goToday: app.goToday,
@@ -1723,6 +1737,7 @@
     starCount: renderer.starCount,
     nearStarCount: renderer.nearStarCount,
     floatTargets: renderer.floatOK,
+    lineVertices: renderer.lineVertices,
   };
 })();
 

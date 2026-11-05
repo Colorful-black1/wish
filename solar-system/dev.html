@@ -33,6 +33,11 @@
       <div class="console-block">
         <span class="field-label" id="timeLabel">时间倍率</span>
         <div class="segmented segmented--grid" id="timeGroup" role="group" aria-labelledby="timeLabel"></div>
+        <label class="rate-row" for="customRate">
+          <span>1 秒 =</span>
+          <input type="number" id="customRate" min="0.001" max="100000" step="any" value="1" inputmode="decimal" aria-label="时间倍率数值">
+          <select id="customUnit" aria-label="时间倍率单位"></select>
+        </label>
         <button type="button" class="text-btn" id="btnToday">回到今天</button>
       </div>
 

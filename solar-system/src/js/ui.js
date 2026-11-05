@@ -104,6 +104,29 @@
 
     $('btnToday').addEventListener('click', function () { app.goToday(); });
 
+    /* 自定义时间倍率：1 秒 = N 个<单位> */
+    var rateInput = $('customRate');
+    var rateUnit = $('customUnit');
+    MOTION.timeSteps.forEach(function (s) {
+      var o = document.createElement('option');
+      o.value = s.id;
+      o.textContent = s.label.replace(/^1\s+/, '');
+      rateUnit.appendChild(o);
+    });
+    rateUnit.value = 'year';
+    function applyRate() {
+      var v = Number(rateInput.value);
+      if (!isFinite(v) || v <= 0) return;
+      app.setRate(v, rateUnit.value);
+    }
+    rateInput.addEventListener('change', applyRate);
+    rateUnit.addEventListener('change', applyRate);
+
+    ui.setCustomRate = function (value, unitId) {
+      if (value !== null && value !== undefined) rateInput.value = String(value);
+      if (unitId) rateUnit.value = unitId;
+    };
+
     var trailHost = $('trailGainGroup');
     var trailBtns = [];
     MOTION.trailGains.forEach(function (g) {

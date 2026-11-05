@@ -425,6 +425,46 @@ check(
   restored
 );
 
+/* 特写：轨道线必须停画、控制台必须还能用、时间倍率必须可自定义 */
+const focusState = await evaluate(`(async () => {
+  const app = window.HELIOS_APP;
+  app.exitFocus && app.state.focus >= 0 && app.exitFocus({ instant: true });
+  await new Promise((r) => setTimeout(r, 260));
+  const overviewLines = app.lineVertices();
+  app.focusBody(3, { instant: true });
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const focusLines = app.lineVertices();
+  const c = document.getElementById('console');
+  const box = c.getBoundingClientRect();
+  const cs = getComputedStyle(c);
+  const consoleUsable = cs.display !== 'none' && Number(cs.opacity) > 0.5 && box.width > 0;
+  const consoleLeft = Math.round(box.left);
+  const vw = window.innerWidth;
+  app.exitFocus({ instant: true });
+  return { overviewLines, focusLines, consoleUsable, consoleLeft, vw };
+})()`);
+check('特写时不再绘制轨道线', focusState.overviewLines > 0 && focusState.focusLines === 0, focusState);
+check(
+  '特写时控制台仍留在画面里（参数可改）',
+  focusState.consoleUsable && focusState.consoleLeft < focusState.vw / 2,
+  { left: focusState.consoleLeft, vw: focusState.vw, usable: focusState.consoleUsable }
+);
+
+const rateState = await evaluate(`(() => {
+  const app = window.HELIOS_APP;
+  app.setRate(3, 'day');
+  const a = app.state.yearsPerSecond;
+  app.setRate(2, 'myr');
+  const b = app.state.yearsPerSecond;
+  app.pause();
+  return { a: +a.toFixed(8), b: +b.toFixed(8), hasInput: !!document.getElementById('customRate') };
+})()`);
+check(
+  '时间倍率可自定义（1 秒 = N 个单位）',
+  rateState.hasInput && Math.abs(rateState.a - 3 / 365.25) < 1e-8 && rateState.b === 2e6,
+  rateState
+);
+
 /* ═══════════════ v2：四层运动、参考系、LOD、时间倍率 ═══════════════ */
 
 /* 四个运动数字必须与 research/motion-sources.md 一致 */

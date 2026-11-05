@@ -334,9 +334,16 @@
       floatOK: floatOK,
       drawCalls: 0,
 
+      /* 当前真正送去绘制的线段顶点数（0 = 这一帧没有画线） */
+      lineVertices: function () {
+        return api._lineCount || 0;
+      },
+
       setLines: function (arr) {
         if (!arr || !arr.length) {
+          // 必须把绘制计数清零，否则上一帧的轨道线会用旧顶点继续画在特写里
           lineCapacity = 0;
+          api._lineCount = 0;
           return;
         }
         gl.bindVertexArray(lineVao);
