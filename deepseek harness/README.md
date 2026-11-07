@@ -78,8 +78,9 @@ node tools/generate-docs.mjs                        # 重新生成 SOURCE_INDEX 
 
 ```text
 deepseek harness/
-├── prompt.md                 # 第一版许愿原文（保持原样）
-├── prompt/二次改造.md         # 3D 实验室的增量需求
+├── prompt/
+│   ├── prompt.md             # 第一版许愿原文（保持原样）
+│   └── 二次改造.md            # 3D 实验室的增量需求
 ├── README.md                 # 本文件
 ├── index.html                # 构建产物（不手改）
 ├── dev.html                  # 开发入口
