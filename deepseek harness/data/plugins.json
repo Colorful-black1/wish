@@ -1,0 +1,108 @@
+{
+  "title": "插件系统",
+  "subtitle": "Cordis 没有特权内核：产品 = profile + bundle + patch 叠出来的插件树。",
+  "intro": "一个运行的 dsh 是一棵插件树。profile 决定叠哪些 bundle，bundle 提供一组带 id 的配置行，patch 按 id 覆盖或插入。插件注册的一切（服务、工具、事件监听、UI 槽位）都是可撤销副作用。",
+  "layers": [
+    {
+      "id": "profile",
+      "name": "Profile",
+      "what": "具名组装：bundle 列表 + 自己的 cordis.patch.yml + 安装的树外插件。",
+      "where": "$DSH_HOME/profiles/<name>/",
+      "ref": "packages/boot/app-boot/src/profile.ts:728",
+      "order": 1
+    },
+    {
+      "id": "bundle",
+      "name": "Bundle",
+      "what": "Cordis 配置项与挂载代码的分发格式；自身可被上层 patch，所以插入的内容永远可覆盖。",
+      "where": "packages/bundle/*/cordis.patch.yml",
+      "ref": "packages/bundle/base/cordis.patch.yml:1",
+      "order": 2
+    },
+    {
+      "id": "patch",
+      "name": "Patch",
+      "what": "按 id 定位一行并替换整份 config；`insert` 才是新增。没有 merge。",
+      "where": "profile/cordis.patch.yml、$DSH_HOME/cordis.patch.yml、--patch 文件",
+      "ref": "packages/boot/app-boot/src/index.ts:536",
+      "order": 3
+    },
+    {
+      "id": "preset",
+      "name": "Preset",
+      "what": "Agent 级组合：在目标行声明的 config.plugins 内应用同样的 patch 操作，服务行可用 isolate realm 拥有独立实例。",
+      "where": "packages/preset/agent-preset-registry",
+      "ref": "packages/preset/agent-preset-registry/src/types.ts:66",
+      "order": 4
+    },
+    {
+      "id": "plugin-manager",
+      "name": "Plugin Manager",
+      "what": "运行时启停/安装/卸载插件；改动立即生效，并广播 plugin-manager/* 事件。",
+      "where": "packages/boot/plugin-manager",
+      "ref": "packages/boot/plugin-manager/src/types.ts:424",
+      "order": 5
+    }
+  ],
+  "bundleCounts": [
+    { "bundle": "@deepseek-ai/dsh-base", "short": "base", "rows": 99, "profiles": ["web", "headless", "sdk", "acp"], "role": "共享第一层：模型、工具、持久化、沙箱、设置、凭据、遥测" },
+    { "bundle": "@deepseek-ai/dsh-web-app", "short": "web-app", "rows": 97, "profiles": ["web"], "role": "浏览器应用：webserver、gateway、session-controller、全部 client-ui-*" },
+    { "bundle": "@deepseek-ai/dsh-headless", "short": "headless", "rows": 2, "profiles": ["headless"], "role": "一次性 runner，无 Host/HTTP/浏览器" },
+    { "bundle": "@deepseek-ai/dsh-sdk-app", "short": "sdk-app", "rows": 14, "profiles": ["sdk"], "role": "JSON-RPC 服务器与 SDK 专用行（office、schedule、present 等）" },
+    { "bundle": "@deepseek-ai/dsh-acp-app", "short": "acp-app", "rows": 2, "profiles": ["acp"], "role": "ACP 服务器" },
+    { "bundle": "@deepseek-ai/dsh-sdk-minimal", "short": "sdk-minimal", "rows": 37, "profiles": ["sdk-minimal"], "role": "独立显式配置树，不应用 base" }
+  ],
+  "highlights": [
+    { "group": "会话与持久化", "rows": ["session", "session-log-deepseek", "session-persistence-jsonl", "session-projection", "session-query-sqlite"] },
+    { "group": "模型", "rows": ["llm", "llm-deepseek", "llm-pi-ai", "llm-retry", "deepseek-llm-api-extensions"] },
+    { "group": "Agent", "rows": ["agent", "agent-loop", "agent-default-model", "system-prompt", "compaction-basic"] },
+    { "group": "工具与执行", "rows": ["tools", "tool-executor-native", "tool-fs", "tool-fs-search", "tool-bash", "tool-pwsh", "tool-jobs", "tool-web"] },
+    { "group": "安全", "rows": ["sandbox", "sandbox-policy", "bash-sandbox", "pwsh-sandbox", "approval", "permission"] },
+    { "group": "扩展", "rows": ["subagent", "tool-subagent", "tool-subagent-control", "skill", "tool-skill", "mcp-resources"] },
+    { "group": "Web 专属", "rows": ["webserver", "api-gateway", "session-controller", "ui-conversation", "ui-chat", "ui-layout", "ui-sidebar"] }
+  ],
+  "lifecycle": [
+    {
+      "id": "p1",
+      "title": "Profile 解析",
+      "detail": "读取 profile 目录与 package.json 的 `dsh.profile.bundles`，得到有序 bundle 列表；每次启动重写空根配置。",
+      "ref": "apps/cli/src/profile-boot.ts:194"
+    },
+    {
+      "id": "p2",
+      "title": "Patch 叠层",
+      "detail": "bundle 层 → profile patch → home patch → --patch；同 id 后者覆盖前者。",
+      "ref": "apps/cli/src/profile-boot.ts:224"
+    },
+    {
+      "id": "p3",
+      "title": "Loader 挂载",
+      "detail": "条目并发挂载；插件 `inject` 的服务就绪后才 apply。行顺序不表达加载顺序。",
+      "ref": "packages/boot/app-boot/src/index.ts:1227"
+    },
+    {
+      "id": "p4",
+      "title": "插件 apply 与注册",
+      "detail": "`ctx.plugin()` 内注册服务、工具、监听；全部绑定到该插件的 fiber，卸载时自动撤销。",
+      "ref": "vendor/cordis/src/index.ts:1"
+    },
+    {
+      "id": "p5",
+      "title": "热重载",
+      "detail": "HMR 对比新旧配置树，只重载变化条目；插件卸载 → 副作用撤销 → 新版本挂载。",
+      "ref": "packages/boot/hmr/src/index.ts:35"
+    },
+    {
+      "id": "p6",
+      "title": "运行时启停",
+      "detail": "plugin_manager 可启停/安装/卸载；新条目立即挂载，改动广播给客户端。",
+      "ref": "packages/boot/plugin-manager/src/types.ts:424"
+    }
+  ],
+  "facts": [
+    { "title": "行顺序没有加载语义", "text": "Loader 并发挂载，激活由服务可用性驱动；bundle 文件里的分组只是给人看的。" },
+    { "title": "注册即副作用", "text": "工具、事件监听、命令、UI 槽位都挂在插件 fiber 上；卸载插件 = 撤销它做过的一切。" },
+    { "title": "为什么 patch 不合并 config", "text": "替换整份 config 让每一行的最终值只有一个来源；否则多层 patch 的合并规则会变得不可推理。" },
+    { "title": "Agent 也能有独立组合", "text": "Agent preset 在单行 config.plugins 里做同样的 patch，并用 isolate realm 让该 Agent 拥有独立的服务实例。" }
+  ]
+}

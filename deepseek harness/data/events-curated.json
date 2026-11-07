@@ -1,0 +1,202 @@
+{
+  "title": "事件系统",
+  "subtitle": "三种事件域、四种分发模式。先分清「持久事实」与「实时扩展点」，再看谁触发、谁监听。",
+  "domains": [
+    {
+      "id": "session",
+      "label": "Session Events（持久）",
+      "text": "追加到日志并通过 session/event 广播的事实。重启后必须仍存在的，才用这一域。",
+      "examples": ["turn/start", "assistant/message", "tool/result", "request/header"],
+      "ref": "packages/core/session/src/types.ts:287"
+    },
+    {
+      "id": "agent",
+      "label": "Agent Events（实时）",
+      "text": "携带活跃 Agent 的进程内事件：inbox、status、pre-step、request、assistant-stream、turn-stopping。用于观察或拦截进行中的工作。",
+      "examples": ["agent/pre-step", "agent/request", "agent/assistant-stream", "agent/turn-stopping"],
+      "ref": "packages/core/agent/src/runtime-types.ts:290"
+    },
+    {
+      "id": "capability",
+      "label": "Capability Events（能力 seam）",
+      "text": "不依赖导入循环，把策略/适配器挂到某个 seam：fs/*、tools/*、telemetry/*、approval/*。插件用它扩展能力，而不是改核心。",
+      "examples": ["fs/write-intent", "tools/pre-execute", "llm/stream", "approval/request"],
+      "ref": "packages/core/tools/src/events.ts:18"
+    }
+  ],
+  "modes": [
+    { "id": "emit", "label": "emit", "text": "广播给所有监听器，返回值被忽略。用于「事情已经发生」。" },
+    { "id": "waterfall", "label": "waterfall", "text": "洋葱式：监听器必须调用 next() 才继续；可以替换参数或结果。用于策略与拦截。" },
+    { "id": "serial", "label": "serial", "text": "按序执行且没有 next()，任一监听器可以抛错停止。用于收尾检查。" },
+    { "id": "parallel", "label": "parallel", "text": "并行执行所有监听器并汇总。用于旁路副作用。" }
+  ],
+  "chains": [
+    {
+      "event": "session/event",
+      "mode": "emit",
+      "domain": "session",
+      "producer": "session",
+      "listeners": ["agent-loop", "session-persistence-jsonl", "session-projection", "session-telemetry", "session-title", "subagent", "token-meter", "workspace-changes"],
+      "desc": "每一条已提交事件都会同步广播；监听器各自隔离失败。持久化、投影、遥测、UI 都从这里分出。",
+      "payload": "(session, event: SessionEvent)",
+      "ref": "packages/core/session/src/index.ts:76"
+    },
+    {
+      "event": "agent/assistant-stream",
+      "mode": "emit",
+      "domain": "agent",
+      "producer": "agent-loop",
+      "listeners": ["headless", "session-controller"],
+      "desc": "模型输出的实时帧（start/chunk/end）。进程本地、不写日志；Web 由 session-controller 转成远程流，Headless 用来实时打印推理。",
+      "payload": "{ agent, frame }",
+      "ref": "packages/core/agent/src/runtime-types.ts:399"
+    },
+    {
+      "event": "agent/pre-step",
+      "mode": "waterfall",
+      "domain": "agent",
+      "producer": "agent-loop",
+      "listeners": ["compaction-basic", "plan-mode", "agent-instructions", "session-reference", "time-context", "subagent", "tool-skill", "repeat-tool-reminder", "action-cards"],
+      "desc": "步骤开始前的唯一决策点：接纳/改写/拒绝已领取消息，或声明新请求序列。压缩、计划模式、上下文注入都在这一层。",
+      "payload": "{ messages, turn, step, signal, modelSelection } → PreStepDecision",
+      "ref": "packages/core/agent/src/runtime-types.ts:350"
+    },
+    {
+      "event": "agent/request",
+      "mode": "waterfall",
+      "domain": "agent",
+      "producer": "agent-loop",
+      "listeners": ["llm-retry", "compaction-basic", "hooks-*"],
+      "desc": "已弃用但仍存在的请求钩子：只能改采样等控制参数，不能改 provider/model/推理强度。",
+      "payload": "{ turn, step, signal } → LlmCallConfig",
+      "ref": "packages/core/agent/src/runtime-types.ts:364"
+    },
+    {
+      "event": "agent/request-error",
+      "mode": "waterfall",
+      "domain": "agent",
+      "producer": "agent-loop",
+      "listeners": ["llm-retry", "compaction-basic", "compaction-image-offload"],
+      "desc": "模型流失败后的决策点：返回 { kind: 'retry' } 且不调用 next() 才重试；否则以 LlmError 终止轮次。",
+      "payload": "{ turn, step, provider, failure, retryPolicy } → RequestErrorAction",
+      "ref": "packages/core/agent/src/runtime-types.ts:389"
+    },
+    {
+      "event": "agent/turn-stopping",
+      "mode": "serial",
+      "domain": "agent",
+      "producer": "agent-loop",
+      "listeners": ["hooks-claude-code", "hooks-codex", "workspace-changes"],
+      "desc": "轮次即将结束时的串行检查点；监听器可以取消，从而阻止 turn/end。",
+      "payload": "{ turn, signal }",
+      "ref": "packages/core/agent/src/runtime-types.ts:417"
+    },
+    {
+      "event": "system-prompt/assemble",
+      "mode": "waterfall",
+      "domain": "capability",
+      "producer": "system-prompt",
+      "listeners": ["working-directory", "browser-use-runtime"],
+      "desc": "提示词组装的最后一道瀑布；文本结果为准。工具声明仍由 provider 所有。",
+      "payload": "(assembly, context) → PromptPresentation",
+      "ref": "packages/core/system-prompt/src/index.ts:31"
+    },
+    {
+      "event": "llm/stream",
+      "mode": "waterfall",
+      "domain": "capability",
+      "producer": "llm",
+      "listeners": ["llm-replay", "session-checkpoint-policy", "session-title"],
+      "desc": "所有模型调用都经过这里；监听器可以包装流（录放、检查点、标题生成）。",
+      "payload": "(options, next) → AsyncIterable<StreamChunk>",
+      "ref": "packages/llm/llm/src/index.ts:75"
+    },
+    {
+      "event": "tools/pre-execute",
+      "mode": "waterfall",
+      "domain": "capability",
+      "producer": "tools",
+      "listeners": ["tool-jobs", "workspace-changes", "hooks-*", "auto-review", "liveshare"],
+      "desc": "工具执行前的策略层：allow / ask / deny / cancel；ask 交给 approval seam，之后还有 guard。",
+      "payload": "(exec) → PreToolDecision",
+      "ref": "packages/core/tools/src/events.ts:18"
+    },
+    {
+      "event": "tools/execute",
+      "mode": "waterfall",
+      "domain": "capability",
+      "producer": "tools",
+      "listeners": ["timeout-policy", "session-checkpoint-policy", "browser-use-*", "computer-use-*"],
+      "desc": "包裹真正的工具体；超时、PTC 桥接、检查点都在这一层。",
+      "payload": "(exec, next) → ToolExecutionResult",
+      "ref": "packages/core/tools/src/events.ts:29"
+    },
+    {
+      "event": "tools/post-execute",
+      "mode": "waterfall",
+      "domain": "capability",
+      "producer": "tools",
+      "listeners": ["spill-policy", "repeat-tool-reminder", "tool-fs-search", "hooks-*"],
+      "desc": "结果策略：accept / block；可替换内容或附加 additionalContexts，回填下一 Step。",
+      "payload": "(exec, result) → PostToolDecision",
+      "ref": "packages/core/tools/src/events.ts:41"
+    },
+    {
+      "event": "approval/request",
+      "mode": "waterfall",
+      "domain": "capability",
+      "producer": "user-approval",
+      "listeners": ["web-server", "remotes", "acp"],
+      "desc": "把「需要审批」变成用户可回答的问题；没有通道时降级为拒绝。",
+      "payload": "ApprovalRequest → ApprovalOutcome",
+      "ref": "packages/interaction/user-approval/src/types.ts:87"
+    },
+    {
+      "event": "session/created",
+      "mode": "emit",
+      "domain": "session",
+      "producer": "session",
+      "listeners": ["session-projection", "session-controller", "session-telemetry", "agent-loop"],
+      "desc": "Session 进入 Store 并完成宣告后才发布；Agent 的 setup 在它之后、agent/created 之前运行。",
+      "payload": "Session",
+      "ref": "packages/core/session/src/index.ts:56"
+    },
+    {
+      "event": "session/disposed",
+      "mode": "emit",
+      "domain": "session",
+      "producer": "session",
+      "listeners": ["agent-loop", "session-persistence-jsonl", "session-projection-cache", "session-title"],
+      "desc": "会话被移除时发布；持久化写句柄在收尾事件提交后才关闭。",
+      "payload": "Session",
+      "ref": "packages/core/session/src/index.ts:65"
+    }
+  ],
+  "eventNotes": {
+    "turn/start": "打开轮次；即使没有 Step 也会有配对 turn/end。",
+    "turn/end": "带 TurnEndReason：completed / aborted / blocked / error / max-tokens / interrupted / forked。",
+    "step/start": "一次模型请求及其工具的开始。",
+    "step/end": "步骤边界，finally 必写。",
+    "system/message": "渲染后的系统提示词；空文本会清空历史中的提示词节点。",
+    "user/message": "用户输入、注入上下文或目标续跑轮次，靠 source 区分。",
+    "developer/message": "工具增删的开发者消息，让模型知道可见工具变化。",
+    "assistant/message": "模型输出 + 内嵌紧凑 stream + 可选 usage；中断时带 interrupted。",
+    "assistant/attempt": "没有产生可见消息的失败/重试/取消尝试，仅保留 stream。",
+    "tool/call": "模型请求的一次工具调用，arguments 是原始 JSON 字符串。",
+    "tool/result": "工具结果；失败也是结果，带 error 与 isError。",
+    "request/header": "完整请求信封，log-only，用于重建请求。",
+    "request/context": "路由与上下文窗口，变化时才写。",
+    "agent/inbox/spliced": "inbox 的规范化 splice；插入、领取、取消都走它。",
+    "compaction/start": "压缩开始；随后的 compaction/summary 与 surface replace 一起生效。",
+    "job/registered": "后台任务注册；与 job/settled 配对，进程硬退出时可能缺失。",
+    "todo/write": "待办清单写入；UI 渲染最新一条事件。",
+    "plan/mode": "计划模式状态变化。",
+    "goal/change": "目标状态变化；goal-round-driver 由它决定是否续跑。",
+    "skill": "skill 工具注入技能内容后产生的 user/message 替换目录。"
+  },
+  "facts": [
+    { "title": "别把所有事件当一种", "text": "Session Event 是持久事实；agent/* 是实时扩展点；fs/*、tools/* 是能力 seam。三者生命周期、持久性与消费方都不同。" },
+    { "title": "waterfall 必须 next()", "text": "监听器不调用 next() 就是在拦截；这也意味着「忘了 next」会静默吞掉后续监听器。" },
+    { "title": "持久事件的验收方式", "text": "任何模型可见输入都必须有对应 Session 事件；否则恢复后的历史与当时请求不一致，这正是「模型可见即已记录」。" }
+  ]
+}

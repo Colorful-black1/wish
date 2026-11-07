@@ -1,0 +1,189 @@
+{
+  "title": "场景实验室",
+  "subtitle": "八个典型任务，按源码里的真实工具与事件拆开。标注「完全支持 / 需组合 / 源码未内置」，不替源码补能力。",
+  "scenarios": [
+    {
+      "id": "A",
+      "key": "chat",
+      "title": "普通问答",
+      "example": "什么是 Java 的 HashMap？",
+      "support": "完全支持",
+      "supportNote": "不依赖任何工具；一次或多次模型请求即可完成。",
+      "tools": [],
+      "events": ["turn/start", "step/start", "assistant/message", "turn/end"],
+      "summary": "没有工具调用时，Turn 只有一个 Step：组装提示词 → 请求模型 → 结算 assistant/message → turn/end。",
+      "steps": [
+        { "title": "消息进入 Inbox", "detail": "followup() 把消息放进 next-turn 并唤醒驱动器。", "ref": "packages/core/agent-loop/src/agent.ts:179" },
+        { "title": "turn/start + 领取", "detail": "领取消息、固定模型选择；没有工具就只组装系统提示词。", "ref": "packages/core/agent-loop/src/agent.ts:336" },
+        { "title": "组装提示词", "detail": "系统提示词 section 与运行时上下文合并；工具 schema 为空或只有始终可见的工具。", "ref": "packages/core/system-prompt/src/index.ts:620" },
+        { "title": "pre-step 放行", "detail": "没有监听器拒绝，消息原样进入 Step。", "ref": "packages/core/agent-loop/src/agent.ts:296" },
+        { "title": "模型流式回答", "detail": "chunk 增量先推到前端；文本块在 live attempt 中累积。", "ref": "packages/core/agent-loop/src/agent.ts:490" },
+        { "title": "assistant/message", "detail": "结算完整消息（含内嵌 stream 与 usage），写入日志。", "ref": "packages/core/agent-loop/src/agent.ts:574" },
+        { "title": "没有工具 → 收尾", "detail": "toolCalls.length === 0 返回 completed；跑 agent/turn-stopping，写 turn/end。", "ref": "packages/core/agent-loop/src/agent.ts:587" }
+      ],
+      "branches": [],
+      "output": "前端收到最终 assistant 文本；日志中是一个 turn/start … turn/end 的完整轮次。"
+    },
+    {
+      "id": "B",
+      "key": "coding",
+      "title": "Coding",
+      "example": "帮我分析当前项目的代码结构，找出用户登录功能的实现位置；然后修复一个 Bug 并跑测试。",
+      "support": "完全支持",
+      "supportNote": "依赖 tool-fs / tool-fs-search / tool-bash（或 pwsh）与工作目录、沙箱、审批策略。",
+      "tools": ["grep", "glob", "read", "edit", "write", "bash", "pwsh", "apply_patch"],
+      "events": ["tool/call", "tools/pre-execute", "tool/result", "step/end", "step/start"],
+      "summary": "典型的「模型 → 工具 → 模型」多 Step 循环：先搜索再读文件，改完跑测试，测试失败再回到分析。",
+      "steps": [
+        { "title": "第一 Step：先规划", "detail": "模型拿到工作目录与工具 schema，决定先搜索还是先列目录。", "ref": "packages/core/agent-loop/src/agent.ts:435" },
+        { "title": "grep / glob 找登录代码", "detail": "tool-fs-search 调用打包的 ripgrep，结果作为 tool/result 回到历史。", "ref": "packages/fs/tool-fs-search/src/index.ts:1" },
+        { "title": "read 读取候选文件", "detail": "tool-fs 的 read 经过 ctx.fs；read-before-write 策略由 fs-observation-policy 决定是否启用。", "ref": "packages/fs/tool-fs/src/index.ts:1" },
+        { "title": "第二 Step：模型阅读结果", "detail": "grep/read 的 tool/result 已是历史的一部分，循环开启下一个 Step。", "ref": "packages/core/agent-loop/src/agent.ts:400" },
+        { "title": "edit / apply_patch 修改", "detail": "写入前触发 fs/edit-intent 或 fs/write-intent 瀑布，策略层可以拦截。", "ref": "packages/fs/fs/src/index.ts:74" },
+        { "title": "bash 跑测试", "detail": "命令经 ctx.shell 与沙箱；需要审批时 pre-execute 决策为 ask。", "ref": "packages/shell/tool-bash/src/index.ts:1" },
+        { "title": "测试失败 → 再循环", "detail": "失败输出是普通 tool/result（isError），模型看到后继续修改；这正是循环的意义。", "ref": "packages/core/tools/src/pipeline.ts:275" },
+        { "title": "最终总结", "detail": "模型不再调用工具，Turn 结束；文件改动已落在工作区。", "ref": "packages/core/agent-loop/src/agent.ts:422" }
+      ],
+      "branches": [
+        { "title": "权限拒绝", "detail": "pre-execute 返回 deny 或审批被拒，工具得到 isError 结果，模型需要换方案或询问用户。" },
+        { "title": "命令超时 / 后台", "detail": "长命令可用 run_in_background 转成 job，再用 job_output 取回。" }
+      ],
+      "output": "带源码定位的结论 + 实际修改 + 测试输出（如果跑过）。"
+    },
+    {
+      "id": "C",
+      "key": "files",
+      "title": "文件操作",
+      "example": "帮我读取某个目录下的文件，整理文件内容。",
+      "support": "完全支持",
+      "supportNote": "fs seam + tool-fs；路径受工作目录与沙箱策略约束。",
+      "tools": ["read", "glob", "grep", "read_image", "write"],
+      "events": ["fs/observed", "fs/write-intent", "tool/call", "tool/result"],
+      "summary": "读取不是一句 fs.readFile：路径解析、观察策略、沙箱边界、结果截断各在一层。",
+      "steps": [
+        { "title": "glob 列目录", "detail": "按模式找文件，结果有上限；超出时通过 spill 后端保存完整列表。", "ref": "packages/fs/tool-fs-search/src/index.ts:1" },
+        { "title": "路径解析与沙箱", "detail": "相对路径基于会话工作目录；写根由 sandbox policy 决定，读也可能被限制。", "ref": "packages/sandbox/sandbox-policy/src/session-mode.ts:25" },
+        { "title": "read 读取", "detail": "按行范围返回，避免一次灌爆上下文；读成功后发 fs/observed。", "ref": "packages/fs/fs/src/index.ts:92" },
+        { "title": "整理并写回", "detail": "写入经过 fs/write-intent；fs-observation-policy 若启用，会要求先读过再改。", "ref": "packages/fs/fs/src/index.ts:66" }
+      ],
+      "branches": [
+        { "title": "文件不存在 / 越界", "detail": "工具返回 isError 结果，模型可改用 glob 或询问用户，而不是让进程崩溃。" }
+      ],
+      "output": "整理后的文件内容或新文件；每次读写的意图事件都能在日志里追溯。"
+    },
+    {
+      "id": "D",
+      "key": "office",
+      "title": "办公任务",
+      "example": "分析 Excel 数据，生成一份销售分析报告，并制作 PPT。",
+      "support": "需组合：Office 技能 + LibreOffice Kit + 可选 Python 环境",
+      "supportNote": "skill-office 提供 docx / xlsx / pptx / 渲染 / 重算 / 导出 PDF 六个技能；创建技能使用 Python 库，操作技能走 Node 与 LibreOffice Kit CLI。数据计算本身由模型写脚本或直接算，源码没有内置「Excel 分析器」工具。",
+      "tools": ["skill", "bash", "read", "write", "present"],
+      "events": ["tool/result", "deliverables/presented"],
+      "summary": "办公不是单个工具，而是技能说明 + 真实文档引擎（+ 运行环境里的 Python）的组合。",
+      "steps": [
+        { "title": "加载 office 技能", "detail": "skill 工具按名字取用 SKILL.md，内容通过 agent.inject() 进入上下文。", "ref": "packages/skill/tool-skill/src/index.ts:1" },
+        { "title": "读取 Excel", "detail": "用 read 或写一段脚本（bash + python）解析表格；输出进入上下文。", "ref": "packages/skill/skill-office/README.zh.md:1" },
+        { "title": "生成报告 / 表格 / PPT", "detail": "office-xlsx / office-pptx / office-docx 技能给出对应库的用法与校验步骤。", "ref": "packages/skill/skill-office/assets/office/SKILL.md:1" },
+        { "title": "渲染与导出", "detail": "office-render / office-export-pdf / office-recalculate 通过 LibreOffice Kit 校验结果。", "ref": "packages/skill/skill-office/assets/office-render/SKILL.md:1" },
+        { "title": "交付文件", "detail": "present 工具把成品登记为 Session 交付物，Web 侧显示文件卡片。", "ref": "packages/deliverables/tool-present/src/index.ts:1" }
+      ],
+      "branches": [
+        { "title": "没有 Python / 没有 Kit", "detail": "技能加载时会校验解释器与 CLI 路径；缺失时技能注册失败或操作步骤不可用，需要有可读的错误提示。" }
+      ],
+      "output": "xlsx / docx / pptx / PDF 文件；是否真的生成取决于环境是否具备对应运行时。"
+    },
+    {
+      "id": "E",
+      "key": "web",
+      "title": "网页搜索与研究",
+      "example": "搜索某项技术的最新发展，并整理成报告。",
+      "support": "需配置 provider",
+      "supportNote": "web_search / web_fetch 只依赖 ctx.web 抽象；DeepSeek 搜索与 HTTP 抓取是随附实现，需要可用凭据与网络。",
+      "tools": ["web_search", "web_fetch"],
+      "events": ["tool/result", "step/start"],
+      "summary": "搜索也是多 Step：搜索 → 选结果 → 抓取 → 提取 → 可能再搜索一轮 → 汇总。",
+      "steps": [
+        { "title": "web_search", "detail": "工具把查询交给 ctx.web.search()；provider 选择在服务内部完成，工具 schema 不变。", "ref": "packages/web/web/src/index.ts:1" },
+        { "title": "选择并抓取", "detail": "web_fetch 拉取页面正文；HTTP provider 负责超时、大小限制与错误归一化。", "ref": "packages/web/web-fetch-http/src/index.ts:1" },
+        { "title": "多轮补充", "detail": "每轮结果作为 tool/result 进入历史，模型决定是否再搜；没有内置的「研究流程」状态机。", "ref": "packages/core/agent-loop/src/agent.ts:435" },
+        { "title": "整理与引用", "detail": "最终报告由模型生成；引用链接来自抓取结果，源码不额外生成引用索引。", "ref": "packages/web/tool-web/src/index.ts:1" }
+      ],
+      "branches": [
+        { "title": "provider 不可用", "detail": "返回结构化 WebError（可读错误文本），模型可以改抓取或告知用户，而不是抛未捕获异常。" }
+      ],
+      "output": "带来源链接的研究报告草稿。"
+    },
+    {
+      "id": "F",
+      "key": "subagent",
+      "title": "Subagent / 多 Agent",
+      "example": "分析一个大型项目，分别分析前端、后端和数据库模块，最后汇总。",
+      "support": "完全支持",
+      "supportNote": "tool-subagent 负责委派，tool-subagent-control 负责发现/通信/中断/等待；Agent Teams 额外提供共享任务板。",
+      "tools": ["subagent", "list_agents", "send_message", "wait_agent", "interrupt_agent", "team_task_*"],
+      "events": ["subagent/start", "subagent/end", "agent/created", "agent/disposed"],
+      "summary": "子 Agent 是独立 Session 上的另一个 Agent；父 Agent 通过工具拿回结果，而不是共享内存。",
+      "steps": [
+        { "title": "父 Agent 决定分工", "detail": "模型调用 subagent 工具，指定 prompt 与可选模型；工具把请求交给 ctx.subagents。", "ref": "packages/subagent/tool-subagent/src/index.ts:1" },
+        { "title": "创建子 Agent", "detail": "进程内 provider 通过 ctx.agents.create() 建子 Session；外部 provider 走 Codex / Claude Code / ACP / SDK。", "ref": "packages/subagent/subagent/src/index.ts:451" },
+        { "title": "子 Agent 独立跑循环", "detail": "子 Agent 有自己的工具、上下文与轮次；父 Agent 的日志不复制子 Session 的全部事件。", "ref": "packages/core/agent-loop/src/agent.ts:327" },
+        { "title": "父 Agent 等待 / 继续", "detail": "wait_agent 等待子 Agent 的收件箱输入；也可以先做别的，收到完成通知再取结果。", "ref": "packages/subagent/tool-subagent-control/src/index.ts:1" },
+        { "title": "汇总", "detail": "子 Agent 的最终文本作为工具结果回到父 Agent 历史，父 Agent 继续推理。", "ref": "packages/subagent/subagent/src/index.ts:451" }
+      ],
+      "branches": [
+        { "title": "Agent Teams", "detail": "在根 Session 上开启 Team 模式后，额外有 team_task_* 任务板；普通 subagent 控制工具仍负责身份、通信、中断。" },
+        { "title": "中断 / 回收", "detail": "interrupt_agent 只作用于自己拥有的后代；子 Agent 的 Session 由 agent/disposed 清理。" }
+      ],
+      "output": "父 Agent 的汇总报告；子 Session 可单独打开复查。"
+    },
+    {
+      "id": "G",
+      "key": "jobs",
+      "title": "后台任务",
+      "example": "执行一个耗时较长的批处理任务，完成后告诉我结果。",
+      "support": "完全支持",
+      "supportNote": "bash / pwsh 的 run_in_background 注册到 ctx.jobs；job_* 工具读取或终止。",
+      "tools": ["bash", "job_list", "job_output", "job_kill"],
+      "events": ["job/registered", "job/settled", "agent/inbox/inserted"],
+      "summary": "后台任务把「等待」从模型请求里拿出去：先返回 job id，完成后再用通知唤醒轮次。",
+      "steps": [
+        { "title": "启动后台命令", "detail": "tool-bash 的 run_in_background 分支把命令交给 ctx.jobs.start()，立即返回 job id。", "ref": "packages/jobs/tool-jobs/src/index.ts:1" },
+        { "title": "job/registered 落日志", "detail": "注册记录写入原属 Session；这是持久事实，重启后仍可看到曾经启动过什么。", "ref": "packages/jobs/jobs/src/types.ts:54" },
+        { "title": "轮次结束，不等任务", "detail": "模型可以继续别的步骤，或直接结束 Turn；job 仍在跑。", "ref": "packages/core/agent-loop/src/agent.ts:422" },
+        { "title": "读取输出", "detail": "job_output 按游标读取增量；job_kill 请求终止。", "ref": "packages/jobs/tool-jobs/src/index.ts:1" },
+        { "title": "完成通知", "detail": "完成时通过 agent.inject() 或后续输入唤醒模型，再总结结果。", "ref": "packages/jobs/jobs/src/types.ts:54" }
+      ],
+      "branches": [
+        { "title": "进程硬退出", "detail": "可能缺少 job/settled，文档明确要求消费方不要虚构结束时间；运行期注册表终止但记录区间不完整。" }
+      ],
+      "output": "后台任务输出；不阻塞主会话。"
+    },
+    {
+      "id": "H",
+      "key": "errors",
+      "title": "异常与中断",
+      "example": "（横切场景）请求失败、工具报错、权限拒绝、用户取消、会话恢复。",
+      "support": "完全支持（分支各不相同）",
+      "supportNote": "不是一条流程，而是循环里真实的错误处理分支；每条都落到 turn/end 的 reason。",
+      "tools": [],
+      "events": ["agent/request-error", "turn/end", "tool/result", "session/disposed"],
+      "summary": "失败分三类：模型请求失败（可重试）、工具失败（变成 isError 结果）、插件失败（结束轮次）。取消走独立路径。",
+      "steps": [
+        { "title": "模型请求失败", "detail": "适配器失败被归一化为 finish{error}；循环跑 agent/request-error 瀑布，监听器返回 retry 才重试。", "ref": "packages/core/agent-loop/src/agent.ts:548" },
+        { "title": "工具执行失败", "detail": "工具 throw 被 pipeline 捕获成 isError 结果，模型看得到错误文本并继续。", "ref": "packages/core/tools/src/pipeline.ts:280" },
+        { "title": "审批被拒", "detail": "pre-execute 返回 deny，或审批通道拒绝/取消，都转成 isError 结果。", "ref": "packages/core/tools/src/pipeline.ts:436" },
+        { "title": "用户取消", "detail": "agent.cancel() 清空 inbox（除非 keepInbox）并 abort；已流出文本以 interrupted: true 结算。", "ref": "packages/core/agent-loop/src/agent.ts:191" },
+        { "title": "插件初始化失败", "detail": "Agent 初始化有回滚保护；失败的 setup 会释放已准备资源并发出 session/disposed。", "ref": "packages/core/agent-loop/src/index.ts:110" },
+        { "title": "会话恢复", "detail": "resume 打开 JSONL、修复未闭合轮次、追加 interrupted turn/end，再从日志继续。", "ref": "packages/session/session-persistence-jsonl/src/index.ts:1" },
+        { "title": "输出不完整", "detail": "max-tokens 是粘性结束原因；中断的 attempt 保留 stream，但没有完整 assistant 消息。", "ref": "packages/core/agent-loop/src/agent.ts:584" }
+      ],
+      "branches": [
+        { "title": "网络中断", "detail": "属于模型请求失败；是否重试由适配器 retryPolicy 与 llm-retry 监听器决定。" },
+        { "title": "参数错误", "detail": "工具 schema 校验失败在 pipeline 前置阶段拒绝，不会进入工具体。" },
+        { "title": "插件卸载", "detail": "工具注册随插件副作用撤销；进行中的批次仍由选中时的执行器结算。" }
+      ],
+      "output": "turn/end 的 reason 是最终事实；日志里能区分「模型没答完」与「用户取消」。"
+    }
+  ]
+}

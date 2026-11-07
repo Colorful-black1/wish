@@ -1,0 +1,376 @@
+{
+  "generatedAt": "2026-11-07T16:38:00.796Z",
+  "url": "file:///E:/Codeing/ai-workspace/wish/deepseek%20harness/index.html",
+  "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "gpu": {
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "vendor": "Google Inc. (NVIDIA)",
+    "software": false
+  },
+  "size": {
+    "indexHtml": 796874,
+    "indexHtmlMB": 0.76
+  },
+  "stats": {
+    "nodes": 13,
+    "labEntry": true,
+    "packages": 375,
+    "events": 90,
+    "tools": 72,
+    "excerpts": 33,
+    "stations": 20,
+    "scenarios": 10,
+    "archNodes": 37,
+    "archEdges": 46
+  },
+  "checks": [
+    {
+      "name": "GPU renderer is hardware",
+      "ok": true,
+      "detail": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    {
+      "name": "13 个知识库页面",
+      "ok": true,
+      "detail": "13"
+    },
+    {
+      "name": "数据已内联（包/事件/工具/片段）",
+      "ok": true,
+      "detail": "375 包 · 90 事件 · 72 工具 · 33 片段"
+    },
+    {
+      "name": "实验室数据已内联",
+      "ok": true,
+      "detail": "20 站台 · 10 场景"
+    },
+    {
+      "name": "页面 home 渲染",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "页面 home 架构图节点",
+      "ok": true,
+      "detail": "37 节点 / 46 连线"
+    },
+    {
+      "name": "页面 stack 渲染",
+      "ok": true,
+      "detail": "技术栈全景"
+    },
+    {
+      "name": "页面 architecture 渲染",
+      "ok": true,
+      "detail": "项目架构图谱"
+    },
+    {
+      "name": "页面 architecture 架构图节点",
+      "ok": true,
+      "detail": "37 节点 / 46 连线"
+    },
+    {
+      "name": "页面 agent 渲染",
+      "ok": true,
+      "detail": "Agent 核心机制"
+    },
+    {
+      "name": "页面 loop 渲染",
+      "ok": true,
+      "detail": "Agent Loop"
+    },
+    {
+      "name": "页面 loop 架构图节点",
+      "ok": true,
+      "detail": "22 节点 / 24 连线"
+    },
+    {
+      "name": "页面 request 渲染",
+      "ok": true,
+      "detail": "用户请求完整链路"
+    },
+    {
+      "name": "页面 scenarios 渲染",
+      "ok": true,
+      "detail": "场景实验室"
+    },
+    {
+      "name": "页面 plugins 渲染",
+      "ok": true,
+      "detail": "插件系统"
+    },
+    {
+      "name": "页面 events 渲染",
+      "ok": true,
+      "detail": "事件系统"
+    },
+    {
+      "name": "页面 models 渲染",
+      "ok": true,
+      "detail": "数据结构与状态流转"
+    },
+    {
+      "name": "页面 modes 渲染",
+      "ok": true,
+      "detail": "运行模式对比"
+    },
+    {
+      "name": "页面 sources 渲染",
+      "ok": true,
+      "detail": "源码索引"
+    },
+    {
+      "name": "页面 progress 渲染",
+      "ok": true,
+      "detail": "学习进度"
+    },
+    {
+      "name": "启动流程页渲染",
+      "ok": true,
+      "detail": "9 节点 / 8 连线"
+    },
+    {
+      "name": "导航顶部出现动态实验室入口",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "动态实验室独立布局",
+      "ok": true,
+      "detail": "DeepSeek Agent Execution Lab · 侧栏 true · 顶栏隐藏 true"
+    },
+    {
+      "name": "19 个站台 + 核心 + 10 个场景",
+      "ok": true,
+      "detail": "20 标签 / 10 场景"
+    },
+    {
+      "name": "3D 画布已绘制",
+      "ok": true,
+      "detail": "1048x750 · 768 采样点"
+    },
+    {
+      "name": "教学模拟标识可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "开始执行：粒子与站台推进",
+      "ok": true,
+      "detail": "3 / 24 · Session 准入 Session Admission · 03 · Session 准入followup"
+    },
+    {
+      "name": "暂停可用",
+      "ok": true,
+      "detail": "停在第 3 步"
+    },
+    {
+      "name": "单步前进 / 后退",
+      "ok": true,
+      "detail": "2 → 3 → 2"
+    },
+    {
+      "name": "场景切换",
+      "ok": true,
+      "detail": "Coding Bug 修复 · 45 步"
+    },
+    {
+      "name": "任意任务文本进入执行",
+      "ok": true,
+      "detail": "自定义任务：检查登录失败的原因"
+    },
+    {
+      "name": "播放速度可调",
+      "ok": true,
+      "detail": "2×"
+    },
+    {
+      "name": "空格暂停 / 继续",
+      "ok": true,
+      "detail": "playing → paused → playing"
+    },
+    {
+      "name": "审批分支动画状态",
+      "ok": true,
+      "detail": "等待审批 · 审批门 Approval Gate · pipeline→approval"
+    },
+    {
+      "name": "循环回边（下一 Step → preStep）",
+      "ok": true,
+      "detail": "#17 · loop→registry · Context 构建 Context Build"
+    },
+    {
+      "name": "全屏 / 剧场模式切换",
+      "ok": true,
+      "detail": "开 true · 关 false"
+    },
+    {
+      "name": "点击站台打开详情",
+      "ok": true,
+      "detail": "LLM 请求 LLM Request"
+    },
+    {
+      "name": "数据观察器展示模拟 JSON",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "源码追踪面板",
+      "ok": true,
+      "detail": "packages/llm/llm/src/index.ts"
+    },
+    {
+      "name": "事件 / 知识库互链",
+      "ok": true,
+      "detail": "1 事件 · 3 入口"
+    },
+    {
+      "name": "实验室 → 源码知识库跳转",
+      "ok": true,
+      "detail": "LLM Runtime"
+    },
+    {
+      "name": "Agent Loop → 动态实验室",
+      "ok": true,
+      "detail": "#/execution-lab?scenario=loop · 24 步"
+    },
+    {
+      "name": "架构图节点 → 右侧详情",
+      "ok": true,
+      "detail": "Agent Loop"
+    },
+    {
+      "name": "详情包含真实代码片段",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "连线 → 关系详情",
+      "ok": true,
+      "detail": "CLI → App Boot"
+    },
+    {
+      "name": "架构图按类型过滤 / 重置",
+      "ok": true,
+      "detail": "过滤隐藏 34，重置后隐藏 0"
+    },
+    {
+      "name": "架构图搜索命中",
+      "ok": true,
+      "detail": "6 个命中"
+    },
+    {
+      "name": "Loop 自动播放推进",
+      "ok": true,
+      "detail": "2 / 23 · 唤醒驱动器"
+    },
+    {
+      "name": "Loop 暂停可用",
+      "ok": true,
+      "detail": "2 / 23"
+    },
+    {
+      "name": "请求链路步骤可点选",
+      "ok": true,
+      "detail": "20 步 · @Remote('prompt') 做内容校验"
+    },
+    {
+      "name": "按轨道过滤",
+      "ok": true,
+      "detail": "2 步（ui 轨道）"
+    },
+    {
+      "name": "场景 D 渲染与支持度标注",
+      "ok": true,
+      "detail": "办公任务 · 需组合：Office 技能 + LibreOffice Kit + 可选 Python 环境"
+    },
+    {
+      "name": "场景 → 3D 实验室入口",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "事件矩阵搜索",
+      "ok": true,
+      "detail": "1 行 / 1 链"
+    },
+    {
+      "name": "全局搜索弹出结果",
+      "ok": true,
+      "detail": "12 条"
+    },
+    {
+      "name": "主题切换",
+      "ok": true,
+      "detail": "light"
+    },
+    {
+      "name": "源码片段面板",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "学习进度写入 localStorage",
+      "ok": true,
+      "detail": "13 个已访问"
+    },
+    {
+      "name": "390px 无横向滚动",
+      "ok": true,
+      "detail": "全部通过"
+    },
+    {
+      "name": "390px 节点详情以覆盖层打开并可关闭",
+      "ok": true,
+      "detail": "打开 true · 宽度 359 · 关闭 true"
+    },
+    {
+      "name": "390px 实验室可用（无横向滚动）",
+      "ok": true,
+      "detail": "舞台 360px · 20 标签"
+    },
+    {
+      "name": "运行时零外部请求",
+      "ok": true,
+      "detail": "0 个"
+    },
+    {
+      "name": "控制台无错误",
+      "ok": true,
+      "detail": "0 console / 0 exception"
+    },
+    {
+      "name": "无失败请求",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "failedRequests": [],
+  "screenshots": [
+    "home.png",
+    "stack.png",
+    "architecture.png",
+    "agent.png",
+    "loop.png",
+    "request.png",
+    "scenarios.png",
+    "plugins.png",
+    "events.png",
+    "models.png",
+    "modes.png",
+    "sources.png",
+    "progress.png",
+    "startup.png",
+    "execution-lab.png",
+    "execution-lab-running.png",
+    "execution-lab-approval.png",
+    "execution-lab-loop.png",
+    "execution-lab-data.png",
+    "mobile-home.png",
+    "mobile-lab.png"
+  ],
+  "passed": 64,
+  "failed": 0
+}

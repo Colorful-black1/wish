@@ -1,0 +1,880 @@
+{
+  "id": "loop",
+  "title": "Agent Loop",
+  "subtitle": "一个 Turn 里可以有多个 Step：只要模型还要调工具，循环就会再请求一次模型。下面每一步都对应真实方法。",
+  "definitions": [
+    {
+      "term": "Turn（轮次）",
+      "text": "从领取第一条输入、打开 turn/start 开始，到不再欠任何工作、写入 turn/end 结束。用户看到的一次「回答」通常是一整个 Turn。",
+      "ref": "packages/core/agent-loop/src/agent.ts:327"
+    },
+    {
+      "term": "Step（步骤）",
+      "text": "一次模型请求 + 它请求的工具执行。一个 Step 只有一个 assistant/message；要再问模型，就进入下一个 Step。",
+      "ref": "packages/core/agent-loop/src/agent.ts:435"
+    },
+    {
+      "term": "为什么会有多个 Step",
+      "text": "模型返回 tool-call 时，循环执行工具、把 tool/result 写进日志，然后回到领取阶段开启下一个 Step，让模型带着工具结果继续推理。",
+      "ref": "packages/core/agent-loop/src/agent.ts:395"
+    },
+    {
+      "term": "谁来判定「做完了」",
+      "text": "循环不做语义判断：模型不再返回 tool-call、且 inbox 里没有新输入，就结束 Turn。是否「任务完成」由模型自己决定是否停止调用工具。",
+      "ref": "packages/core/agent-loop/src/agent.ts:395"
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "id": "inbox",
+        "label": "Inbox",
+        "sub": "消息入队",
+        "kind": "step",
+        "layer": "input",
+        "x": 40,
+        "y": 30
+      },
+      {
+        "id": "wake",
+        "label": "wakeDriver",
+        "sub": "启动驱动器",
+        "kind": "step",
+        "layer": "input",
+        "x": 250,
+        "y": 30
+      },
+      {
+        "id": "turnStart",
+        "label": "turn/start",
+        "sub": "打开轮次",
+        "kind": "event",
+        "layer": "turn",
+        "x": 460,
+        "y": 30
+      },
+      {
+        "id": "claim",
+        "label": "claim",
+        "sub": "领取输入 + 模型选择",
+        "kind": "step",
+        "layer": "turn",
+        "x": 670,
+        "y": 30
+      },
+      {
+        "id": "assemble",
+        "label": "assemble",
+        "sub": "提示词 + 工具 schema",
+        "kind": "step",
+        "layer": "turn",
+        "x": 880,
+        "y": 30
+      },
+      {
+        "id": "preStep",
+        "label": "agent/pre-step",
+        "sub": "waterfall 决策",
+        "kind": "event",
+        "layer": "turn",
+        "x": 1090,
+        "y": 30
+      },
+      {
+        "id": "stepStart",
+        "label": "step/start",
+        "sub": "打开步骤",
+        "kind": "event",
+        "layer": "prepare",
+        "x": 1090,
+        "y": 140
+      },
+      {
+        "id": "request",
+        "label": "agent/request",
+        "sub": "prepareCall 绑定适配器",
+        "kind": "event",
+        "layer": "prepare",
+        "x": 880,
+        "y": 140
+      },
+      {
+        "id": "commitPrompt",
+        "label": "system/user",
+        "sub": "提交提示词与输入",
+        "kind": "event",
+        "layer": "prepare",
+        "x": 670,
+        "y": 140
+      },
+      {
+        "id": "header",
+        "label": "request/header",
+        "sub": "冻结请求",
+        "kind": "event",
+        "layer": "prepare",
+        "x": 460,
+        "y": 140
+      },
+      {
+        "id": "stream",
+        "label": "llm.stream",
+        "sub": "llm/stream 瀑布",
+        "kind": "event",
+        "layer": "stream",
+        "x": 250,
+        "y": 140
+      },
+      {
+        "id": "chunks",
+        "label": "chunks",
+        "sub": "text / tool-call delta",
+        "kind": "step",
+        "layer": "stream",
+        "x": 40,
+        "y": 140
+      },
+      {
+        "id": "assistant",
+        "label": "assistant/message",
+        "sub": "结算模型输出",
+        "kind": "event",
+        "layer": "stream",
+        "x": 40,
+        "y": 250
+      },
+      {
+        "id": "toolCheck",
+        "label": "tool-call?",
+        "sub": "是否请求工具",
+        "kind": "decision",
+        "layer": "stream",
+        "x": 250,
+        "y": 250
+      },
+      {
+        "id": "tools",
+        "label": "tools.execute",
+        "sub": "受守卫批次",
+        "kind": "step",
+        "layer": "tools",
+        "x": 460,
+        "y": 250
+      },
+      {
+        "id": "pipeline",
+        "label": "Tool Pipeline",
+        "sub": "pre → execute → post",
+        "kind": "step",
+        "layer": "tools",
+        "x": 670,
+        "y": 250
+      },
+      {
+        "id": "toolResult",
+        "label": "tool/result",
+        "sub": "结果进日志",
+        "kind": "event",
+        "layer": "tools",
+        "x": 880,
+        "y": 250
+      },
+      {
+        "id": "stepEnd",
+        "label": "step/end",
+        "sub": "关闭步骤",
+        "kind": "event",
+        "layer": "close",
+        "x": 1090,
+        "y": 250
+      },
+      {
+        "id": "more",
+        "label": "还有欠账?",
+        "sub": "工具或新输入",
+        "kind": "decision",
+        "layer": "close",
+        "x": 1090,
+        "y": 360
+      },
+      {
+        "id": "turnStop",
+        "label": "agent/turn-stopping",
+        "sub": "serial 收尾",
+        "kind": "event",
+        "layer": "close",
+        "x": 880,
+        "y": 360
+      },
+      {
+        "id": "turnEnd",
+        "label": "turn/end",
+        "sub": "关闭轮次",
+        "kind": "event",
+        "layer": "close",
+        "x": 670,
+        "y": 360
+      },
+      {
+        "id": "failed",
+        "label": "error / cancel",
+        "sub": "终止轮次",
+        "kind": "error",
+        "layer": "close",
+        "x": 460,
+        "y": 360
+      }
+    ],
+    "edges": [
+      {
+        "from": "inbox",
+        "to": "wake",
+        "kind": "call",
+        "label": "followup()"
+      },
+      {
+        "from": "wake",
+        "to": "turnStart",
+        "kind": "call",
+        "label": "kick()"
+      },
+      {
+        "from": "turnStart",
+        "to": "claim",
+        "kind": "call",
+        "label": "preStep('next-turn')"
+      },
+      {
+        "from": "claim",
+        "to": "assemble",
+        "kind": "call",
+        "label": "tools.resolve + systemPrompt.assemble"
+      },
+      {
+        "from": "assemble",
+        "to": "preStep",
+        "kind": "event",
+        "label": "waterfall"
+      },
+      {
+        "from": "preStep",
+        "to": "stepStart",
+        "kind": "call",
+        "label": "enter"
+      },
+      {
+        "from": "stepStart",
+        "to": "request",
+        "kind": "event",
+        "label": "prepareRequest()"
+      },
+      {
+        "from": "request",
+        "to": "commitPrompt",
+        "kind": "call",
+        "label": "prepareCall()"
+      },
+      {
+        "from": "commitPrompt",
+        "to": "header",
+        "kind": "event",
+        "label": "system/message · user/message"
+      },
+      {
+        "from": "header",
+        "to": "stream",
+        "kind": "call",
+        "label": "buildRequest()"
+      },
+      {
+        "from": "stream",
+        "to": "chunks",
+        "kind": "data",
+        "label": "for await chunk"
+      },
+      {
+        "from": "chunks",
+        "to": "assistant",
+        "kind": "event",
+        "label": "live.finish()"
+      },
+      {
+        "from": "assistant",
+        "to": "toolCheck",
+        "kind": "call",
+        "label": "filter(tool-call)"
+      },
+      {
+        "from": "toolCheck",
+        "to": "tools",
+        "kind": "branch",
+        "label": "有工具调用"
+      },
+      {
+        "from": "toolCheck",
+        "to": "stepEnd",
+        "kind": "branch",
+        "label": "没有 → completed"
+      },
+      {
+        "from": "tools",
+        "to": "pipeline",
+        "kind": "call",
+        "label": "prepare / dispatch / post"
+      },
+      {
+        "from": "pipeline",
+        "to": "toolResult",
+        "kind": "event",
+        "label": "tool/result"
+      },
+      {
+        "from": "toolResult",
+        "to": "stepEnd",
+        "kind": "data",
+        "label": "结果进入历史"
+      },
+      {
+        "from": "stepEnd",
+        "to": "more",
+        "kind": "decision",
+        "label": "有欠账?"
+      },
+      {
+        "from": "more",
+        "to": "claim",
+        "kind": "loop",
+        "label": "下一 Step（回环）"
+      },
+      {
+        "from": "more",
+        "to": "turnStop",
+        "kind": "branch",
+        "label": "没有欠账"
+      },
+      {
+        "from": "turnStop",
+        "to": "turnEnd",
+        "kind": "call",
+        "label": "serial"
+      },
+      {
+        "from": "request",
+        "to": "failed",
+        "kind": "error",
+        "label": "取消 / 失败"
+      },
+      {
+        "from": "stream",
+        "to": "failed",
+        "kind": "error",
+        "label": "请求错误（可重试）"
+      }
+    ],
+    "layers": [
+      {
+        "id": "input",
+        "label": "输入"
+      },
+      {
+        "id": "turn",
+        "label": "轮次"
+      },
+      {
+        "id": "prepare",
+        "label": "准备请求"
+      },
+      {
+        "id": "stream",
+        "label": "流式响应"
+      },
+      {
+        "id": "tools",
+        "label": "工具"
+      },
+      {
+        "id": "close",
+        "label": "收束"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "id": "l1",
+      "phase": "输入",
+      "title": "消息进入 Inbox",
+      "node": "inbox",
+      "code": "commands-prompt",
+      "detail": "Session Controller 校验并构造 UserMessage 后调用 `agent.followup()`；它其实是 `send(message, 'next-turn', true)`，把消息 splice 进持久化的 inbox 投影，并请求唤醒。`steer()` 则进 `next-step`，会让当前 Step 结束后插队。",
+      "input": "SessionPromptRequest { sessionId, mode, content }",
+      "output": "inbox['next-turn'] 中的一条 UserMessage",
+      "event": "agent/inbox/inserted",
+      "files": [
+        {
+          "path": "packages/api/session-controller/src/commands.ts",
+          "line": 373,
+          "symbol": "agent.followup()"
+        },
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 170,
+          "symbol": "send()"
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "phase": "输入",
+      "title": "唤醒驱动器",
+      "node": "wake",
+      "code": "agent-wake",
+      "detail": "空闲时 `wakeDriver()` 立刻把 phase 切成 running 并调用 `kick()`；如果当前有活动（maintenance 或刚被取消），唤醒会被闩住，等收敛后重放。取消期间到达的唤醒消息会被改投到下一轮。",
+      "input": "wakeup = true",
+      "output": "Promise 驱动的 kick() 循环",
+      "event": "agent/status",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 230,
+          "symbol": "wakeDriver()"
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "phase": "轮次",
+      "title": "打开 Turn",
+      "node": "turnStart",
+      "code": "agent-turn",
+      "detail": "每轮先写 `turn/start`，即使随后发现输入为空或被拒绝，也会有一个不带 Step 的轮次边界。随后进入 `while (true)`：每次迭代就是一个候选 Step。",
+      "input": "phase.turn + 1",
+      "output": "turn/start { turn }",
+      "event": "turn/start",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 336,
+          "symbol": "session.append('turn/start')"
+        }
+      ]
+    },
+    {
+      "id": "l4",
+      "phase": "轮次",
+      "title": "领取输入并固定模型选择",
+      "node": "claim",
+      "code": "agent-turn",
+      "detail": "`preStep()` 先 `inbox.claim(target)` 原子领取，再 `model.current()` 读取本轮固定的 provider/model/reasoningEffort。首次从 next-turn 领，后续 Step 从 next-step 领。",
+      "input": "InboxTarget: next-turn | next-step",
+      "output": "claimed UserMessage[] + ModelSelection",
+      "event": "agent/inbox/claimed",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 287,
+          "symbol": "inbox.claim()"
+        }
+      ]
+    },
+    {
+      "id": "l5",
+      "phase": "轮次",
+      "title": "组装提示词与工具 schema",
+      "node": "assemble",
+      "code": "prompt-assemble",
+      "detail": "`ctx.tools.resolve()` 先按 Agent 作用域与模型能力求可见工具集合；`ctx.systemPrompt.assemble()` 合并全局/作用域 section、context、变量，收集工具 schema，并跑 `system-prompt/assemble` 瀑布。",
+      "input": "modelSelection、toolSet、scope",
+      "output": "PromptAssembly { sections, contexts, variables, tools }",
+      "event": "system-prompt/assemble",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 292,
+          "symbol": "tools.resolve()"
+        },
+        {
+          "path": "packages/core/system-prompt/src/index.ts",
+          "line": 620,
+          "symbol": "assemble()"
+        }
+      ]
+    },
+    {
+      "id": "l6",
+      "phase": "轮次",
+      "title": "agent/pre-step 决策",
+      "node": "preStep",
+      "code": "agent-turn",
+      "detail": "waterfall 监听器可以改写或拒绝已领取消息，也可以声明 `startsRequestSeries`。fallback 会把运行时上下文投影成一条额外的 user 消息。被拒绝或首次领取为空时，轮次不产生 Step。",
+      "input": "{ messages, turn, step, modelSelection }",
+      "output": "PreStepDecision: reject | enter(messages, startsRequestSeries?)",
+      "event": "agent/pre-step",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 296,
+          "symbol": "dispatch.waterfall('agent/pre-step')"
+        }
+      ]
+    },
+    {
+      "id": "l7",
+      "phase": "步骤",
+      "title": "打开 Step",
+      "node": "stepStart",
+      "code": "agent-turn",
+      "detail": "`step/start` 是持久事件，标记「一次模型调用及其工具」的开始。Step 号在同一 Turn 内递增；工具结果需要继续推理时，循环回到领取阶段，Step 号再 +1。",
+      "input": "turn、step",
+      "output": "step/start",
+      "event": "step/start",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 361,
+          "symbol": "session.append('step/start')"
+        }
+      ]
+    },
+    {
+      "id": "l8",
+      "phase": "准备",
+      "title": "agent/request 与 prepareCall",
+      "node": "request",
+      "code": "agent-prepare",
+      "detail": "`prepareRequest()` 先跑已弃用但仍可用的 `agent/request` 瀑布（可改采样，不可改 provider/model/reasoning），再 `ctx.llm.prepareCall()` 把适配器与其模型能力绑定成一次性的 prepared call。",
+      "input": "selection + 持久化的控制参数",
+      "output": "LlmCallConfig + PreparedLlmCall",
+      "event": "agent/request",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 630,
+          "symbol": "agent/request waterfall"
+        },
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 644,
+          "symbol": "ctx.llm.prepareCall()"
+        }
+      ]
+    },
+    {
+      "id": "l9",
+      "phase": "准备",
+      "title": "提交 system/message 与 user/message",
+      "node": "commitPrompt",
+      "code": "agent-step",
+      "detail": "提示词按「能力路由 + 请求序列」协调成一条或追加的 system/message；首次尝试才把已接纳的用户消息写入日志。两次异步阶段都被取消时，这两类事件一个都不会提交。",
+      "input": "renderedPrompt、decision.messages、runtime context",
+      "output": "system/message、user/message（surface append）",
+      "event": "system/message · user/message",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 460,
+          "symbol": "system/message"
+        },
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 471,
+          "symbol": "user/message"
+        }
+      ]
+    },
+    {
+      "id": "l10",
+      "phase": "准备",
+      "title": "记录 header 并冻结请求",
+      "node": "header",
+      "code": "agent-build",
+      "detail": "`buildRequest()` 在 envelope 变化时写 `request/header`，路由信息变化时写 `request/context`；消息来自 `session.deriveMessages()`，再逐条深冻结。请求不携带 `system` 字段——提示词已经在历史里。",
+      "input": "config、tools、preparedCall",
+      "output": "GenerateOptions（冻结）",
+      "event": "request/header · request/context",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 677,
+          "symbol": "request/header"
+        },
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 728,
+          "symbol": "deriveMessages()"
+        }
+      ]
+    },
+    {
+      "id": "l11",
+      "phase": "流式",
+      "title": "发起模型流",
+      "node": "stream",
+      "code": "llm-stream",
+      "detail": "`preparedCall.stream(request)`（或 `ctx.llm.stream`）统一经过 `llm/stream` 瀑布，监听器可以包装或替换流。适配器 throw 会被归一化成终止的 `error` / `aborted` finish，而不是把异常抛给循环。",
+      "input": "GenerateOptions",
+      "output": "AsyncIterable<StreamChunk>",
+      "event": "llm/stream",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 490,
+          "symbol": "preparedCall.stream()"
+        },
+        {
+          "path": "packages/llm/llm/src/index.ts",
+          "line": 1170,
+          "symbol": "ctx.llm.stream()"
+        }
+      ]
+    },
+    {
+      "id": "l12",
+      "phase": "流式",
+      "title": "逐 chunk 消费并广播",
+      "node": "chunks",
+      "code": "llm-chunks",
+      "detail": "循环一边 `throwIfAborted()` 一边把 chunk 交给 `AssistantStreamAttempt`：文本、推理、工具参数增量在这里累积成内容块，同时以 `agent/assistant-stream` 帧实时推给订阅者。只有进程本地事件，不写日志。",
+      "input": "text-delta / reasoning-delta / tool-call-delta / block-end / usage",
+      "output": "组装中的 assistant 内容块 + 实时帧",
+      "event": "agent/assistant-stream",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 494,
+          "symbol": "for await (const chunk of stream)"
+        },
+        {
+          "path": "packages/api/session-controller/src/history/assistant-stream.ts",
+          "line": 17,
+          "symbol": "远程流消费者"
+        }
+      ]
+    },
+    {
+      "id": "l13",
+      "phase": "流式",
+      "title": "结算 assistant/message",
+      "node": "assistant",
+      "code": "agent-commit",
+      "detail": "成功结束时提交一条 assistant/message，内嵌本次紧凑 stream 与可选的 usage。失败或被取消则改为 `assistant/attempt`；取消时若已经流出了内容，会以 `interrupted: true` 保留用户已看到的前缀。",
+      "input": "live.blocks()、usage、finish",
+      "output": "assistant/message | assistant/attempt",
+      "event": "assistant/message",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 574,
+          "symbol": "live.settle('assistant/message')"
+        }
+      ]
+    },
+    {
+      "id": "l14",
+      "phase": "分支",
+      "title": "有没有 tool-call？",
+      "node": "toolCheck",
+      "code": "agent-commit",
+      "detail": "从消息内容里筛出 `tool-call` 块。没有就返回 `{ kind: 'completed' }`，Step 结束、轮次准备收尾；有就把**整个原始批次**交给 `ctx.tools.execute()`。max-tokens 是粘性结果，会覆盖后续正常 Step 的完成语义。",
+      "input": "message.content",
+      "output": "completed | 工具批次",
+      "event": "",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 586,
+          "symbol": "filter(block => block.type === 'tool-call')"
+        }
+      ]
+    },
+    {
+      "id": "l15",
+      "phase": "工具",
+      "title": "交给执行器",
+      "node": "tools",
+      "code": "tools-execute",
+      "detail": "`ctx.tools.execute()` 按 Agent 所在作用域选择执行器；原生执行器用当前 `maxParallelToolCalls`（默认 10）调度：并发安全调用滚动执行，独占调用形成屏障，结果仍按模型顺序返回。",
+      "input": "calls、signal、log { turn, step }、toolSet",
+      "output": "ToolBatchResult",
+      "event": "tools/execute",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 590,
+          "symbol": "ctx.tools.execute()"
+        }
+      ]
+    },
+    {
+      "id": "l16",
+      "phase": "工具",
+      "title": "pre-execute：策略、审批、guard",
+      "node": "pipeline",
+      "code": "tools-prepare",
+      "detail": "`tools/pre-execute` 瀑布给出 allow / ask / deny / cancel；ask 通过 approval seam 变成一次性允许或拒绝。之后还有单调 guard 检查。拒绝会变成一条 `isError` 结果，而不是抛异常。",
+      "input": "ToolExecution",
+      "output": "PreToolDecision",
+      "event": "tools/pre-execute · approval/request",
+      "files": [
+        {
+          "path": "packages/core/tools/src/pipeline.ts",
+          "line": 199,
+          "symbol": "ctx.waterfall('tools/pre-execute')"
+        }
+      ]
+    },
+    {
+      "id": "l17",
+      "phase": "工具",
+      "title": "execute：包裹工具体",
+      "node": "pipeline",
+      "code": "tools-dispatch",
+      "detail": "`tools/execute` 瀑布允许替换执行方式（超时、PTY、PTC 都在这一层）；真正调用 `tool.execute(arguments, exec)`，任何 throw 都转成 isError 结果，保证模型总能拿到配对的结果。",
+      "input": "解析后的工具 + 参数",
+      "output": "ToolExecutionResult",
+      "event": "tools/execute",
+      "files": [
+        {
+          "path": "packages/core/tools/src/pipeline.ts",
+          "line": 299,
+          "symbol": "dispatchToolBody()"
+        }
+      ]
+    },
+    {
+      "id": "l18",
+      "phase": "工具",
+      "title": "post-execute：结果策略",
+      "node": "pipeline",
+      "code": "tools-post",
+      "detail": "`tools/post-execute` 决定 accept 还是 block；可以替换 content/value，也可以附加 `additionalContexts`。这些上下文会被循环 splice 进 next-step，再作为下一 Step 的输入。",
+      "input": "ToolExecutionResult",
+      "output": "PostToolDecision",
+      "event": "tools/post-execute",
+      "files": [
+        {
+          "path": "packages/core/tools/src/pipeline.ts",
+          "line": 487,
+          "symbol": "postExecute()"
+        }
+      ]
+    },
+    {
+      "id": "l19",
+      "phase": "工具",
+      "title": "tool/result 写入会话",
+      "node": "toolResult",
+      "code": "agent-turn",
+      "detail": "执行器把每次调用结算成 `tool/result`（通过循环注入的 logger 写 session）。`tool/call` 与 `tool/result` 用 callId 配对；失败的调用同样有结果，错误文本对模型可见。",
+      "input": "ToolBatchResult",
+      "output": "tool/result 事件",
+      "event": "tool/result",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 377,
+          "symbol": "session.append('tool/result')"
+        }
+      ]
+    },
+    {
+      "id": "l20",
+      "phase": "收束",
+      "title": "关闭 Step",
+      "node": "stepEnd",
+      "code": "agent-turn",
+      "detail": "`step/end` 在 finally 中必写：即使 Step 抛错，边界也会闭合。工具批次结算后，admission 的 toolSet 被 dispose。",
+      "input": "turn、step",
+      "output": "step/end",
+      "event": "step/end",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 388,
+          "symbol": "session.append('step/end')"
+        }
+      ]
+    },
+    {
+      "id": "l21",
+      "phase": "收束",
+      "title": "还有欠账吗？",
+      "node": "more",
+      "code": "agent-turn",
+      "detail": "两种欠账：工具结果要求继续推理（step 返回 null），或 inbox 里来了新输入。只要还有，就回到领取阶段开下一个 Step——这就是循环的回边。",
+      "input": "stepEnd 结果 + inbox 长度",
+      "output": "继续下一 Step | 进入收尾",
+      "event": "",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 395,
+          "symbol": "inbox.nextStep.length === 0"
+        }
+      ]
+    },
+    {
+      "id": "l22",
+      "phase": "收束",
+      "title": "agent/turn-stopping 与 turn/end",
+      "node": "turnStop",
+      "code": "agent-turn",
+      "detail": "确认没有欠账后跑 serial 的 `agent/turn-stopping`（监听器可以取消），然后在 finally 写 `turn/end`，带上 completed / max-tokens / error / aborted 等原因。",
+      "input": "turn、原因",
+      "output": "turn/end",
+      "event": "agent/turn-stopping · turn/end",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 396,
+          "symbol": "agent/turn-stopping"
+        },
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 422,
+          "symbol": "turn/end"
+        }
+      ]
+    },
+    {
+      "id": "l23",
+      "phase": "异常",
+      "title": "取消与失败：也走同一条收尾路径",
+      "node": "failed",
+      "code": "agent-commit",
+      "detail": "取消把 `AbortSignal` 的 cause 复制进 `turn/end`；流失败先尝试 `agent/request-error`，监听器返回 retry 就重试同一 Step，否则以 LlmError 终止。工具失败被转成结果，插件失败则直接关闭轮次——插件失败结束的是轮次，不是循环。",
+      "input": "AbortSignal / LlmError / 插件异常",
+      "output": "turn/end { kind: 'aborted' | 'error' }",
+      "event": "agent/request-error",
+      "files": [
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 405,
+          "symbol": "aborted 分支"
+        },
+        {
+          "path": "packages/core/agent-loop/src/agent.ts",
+          "line": 548,
+          "symbol": "agent/request-error"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "title": "一次模型请求 = 一个 Step，不是一个 Turn",
+      "text": "工具调用会让模型再被请求一次；这两次请求都在同一个 Turn 里，各自是一个 Step，各自有一条 assistant/message。"
+    },
+    {
+      "title": "循环不判断业务是否完成",
+      "text": "源码里只有「有没有工具调用 / 有没有新输入」这两个条件。任务完成与否由模型是否停止调用工具表达。"
+    },
+    {
+      "title": "用户中途插话的两种语义",
+      "text": "followup 排在 next-turn，等当前轮次结束再开始新一轮；steer 排在 next-step，当前 Step 结束后立刻插进下一次模型请求。"
+    },
+    {
+      "title": "取消不会丢已显示内容",
+      "text": "取消时若已流出文本，会以 interrupted: true 的 assistant/message 结算，下一次请求仍能看到用户已经看到的内容。"
+    }
+  ]
+}

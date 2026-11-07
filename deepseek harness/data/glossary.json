@@ -1,0 +1,28 @@
+{
+  "title": "术语表",
+  "subtitle": "第一次出现的专业词，用一句人话 + 一个源码落点解释。",
+  "terms": [
+    { "term": "Cordis", "plain": "插件框架：所有能力都挂在共享上下文里，卸载插件就撤销它注册的一切。", "analogy": "像乐高底板：每块积木自己声明要插在哪些凸点上，拔掉就干净了。", "ref": "docs/cordis-primer.zh.md:1" },
+    { "term": "Context / ctx", "plain": "服务容器 + 事件总线 + 生命周期作用域。", "analogy": "一个工具箱，谁需要什么就从里面取，工具用完会放回。", "ref": "vendor/cordis/src/index.ts:1" },
+    { "term": "Profile", "plain": "一套具名组装方案，列出要叠哪些 bundle。", "analogy": "游戏的不同「模式」预设。", "ref": "packages/util/official-bundles/src/bundles.ts:10" },
+    { "term": "Bundle", "plain": "一组带 id 的配置行，可被上层覆盖。", "analogy": "一份可编辑的默认配置模板。", "ref": "packages/bundle/base/cordis.patch.yml:1" },
+    { "term": "Patch", "plain": "按 id 替换整份 config，或 insert 新行。", "analogy": "改配置是「整行替换」，不是「逐字段合并」。", "ref": "packages/boot/app-boot/src/index.ts:536" },
+    { "term": "Turn（轮次）", "plain": "从领取第一条输入到不再欠工作的一个回合。", "analogy": "一次完整的「提问—处理—回答」。", "ref": "packages/core/agent-loop/src/agent.ts:327" },
+    { "term": "Step（步骤）", "plain": "一次模型请求加它请求的工具。", "analogy": "回合里的一个动作：想一下，做个工具，再想一下。", "ref": "packages/core/agent-loop/src/agent.ts:435" },
+    { "term": "Inbox", "plain": "Agent 的待处理消息队列，分 next-turn 与 next-step，且持久化。", "analogy": "收件箱 + 加急件两个格子。", "ref": "packages/core/agent-loop/src/inbox.ts:21" },
+    { "term": "SessionEvent", "plain": "会话日志中的一条不可变记录，模型看到的一切都必须能由它重建。", "analogy": "只写不改的流水账。", "ref": "packages/core/session/src/types.ts:501" },
+    { "term": "Surface", "plain": "从事件日志投影出的模型可见消息序列；压缩用 replace 遮蔽旧节点。", "analogy": "同一本流水账，对外只展示其中一页页正文。", "ref": "packages/core/session/src/surface.ts:1" },
+    { "term": "Waterfall 事件", "plain": "洋葱式拦截：监听器必须调用 next() 才继续，可以改写参数或结果。", "analogy": "中间件。", "ref": "packages/core/tools/src/events.ts:18" },
+    { "term": "Serial 事件", "plain": "顺序执行、没有 next()，任一监听器可以抛错终止。", "analogy": "登机前的最后检查。", "ref": "packages/core/agent/src/runtime-types.ts:417" },
+    { "term": "Seam", "plain": "可替换能力：接口 + 提供方 + 消费方。", "analogy": "插座：换插头不影响电器。", "ref": "docs/capability-seams.zh.md:1" },
+    { "term": "Adapter", "plain": "把某家 provider 的协议翻译成统一的 StreamChunk。", "analogy": "电源转换插头。", "ref": "packages/llm/llm/src/index.ts:208" },
+    { "term": "Tool Schema", "plain": "给模型看的工具名、说明与参数 JSON Schema。", "analogy": "菜单上的菜名、介绍和可选配料。", "ref": "packages/llm/llm/src/types.ts:517" },
+    { "term": "Prepared Call", "plain": "把一次模型调用的适配器代际与配置一起绑定，只能派发一次。", "analogy": "已经盖章的登机牌，不能换航班再用。", "ref": "packages/llm/llm/src/index.ts:169" },
+    { "term": "Projection", "plain": "把已提交事件折叠成客户端/服务消费的快照视图。", "analogy": "从流水账实时算出的仪表盘。", "ref": "packages/session/session-projection/src/index.ts:1" },
+    { "term": "Subagent", "plain": "独立 Session 上的另一个 Agent，由父 Agent 通过工具委派。", "analogy": "把子任务外包给同事，拿回一份结果。", "ref": "packages/subagent/subagent/src/index.ts:451" },
+    { "term": "Job", "plain": "后台任务：注册、读取输出、终止；完成可通知模型。", "analogy": "洗衣机：启动后可以去干别的。", "ref": "packages/jobs/jobs/src/types.ts:179" },
+    { "term": "Sandbox", "plain": "执行世界的权限边界，fs 与进程共享同一套策略。", "analogy": "给执行环境画的护栏。", "ref": "packages/sandbox/sandbox-policy/src/session-mode.ts:25" },
+    { "term": "PTC", "plain": "Programmatic Tool Calling：模型写代码来编排工具调用。", "analogy": "与其一步步点按钮，不如写个脚本。", "ref": "packages/core/tool-executor-ptc/src/types.ts:31" },
+    { "term": "ACP", "plain": "Agent Client Protocol，编辑器/自动化平台接入 Agent 的协议。", "analogy": "Agent 世界的 USB-C。", "ref": "packages/acp/acp/src/index.ts:361" }
+  ]
+}

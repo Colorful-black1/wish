@@ -1,0 +1,141 @@
+{
+  "title": "运行模式对比",
+  "subtitle": "五种随附 profile + 一种桌面载体。差异在「组合了哪些插件」，不在 Agent Loop。",
+  "answer": {
+    "question": "为什么同一个 Agent 能在不同运行模式中运行？",
+    "text": "Agent Loop、Session、Tools、LLM 都是 Cordis 服务，不依赖具体 UI。Profile 只决定把哪些插件行插进同一棵 Context：Web 多了 webserver 与浏览器 UI，Headless 只留一次性 runner，SDK 换成 JSON-RPC 服务器。循环本身在五种模式里是同一份实现。",
+    "ref": "packages/core/agent-loop/src/index.ts:290"
+  },
+  "modes": [
+    {
+      "id": "web",
+      "name": "Web",
+      "profile": "web",
+      "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"],
+      "rows": "base 99 行 + web-app 97 行（含覆盖）",
+      "entry": "dsh web → apps/cli → profile runner",
+      "ui": "React 18 浏览器应用 + WebSocket",
+      "loop": "ctx.agentLoop（同一实现）",
+      "tools": "base 全部工具 + Web 专属（ask_user_question、present、schedule、plan、subagent、web）",
+      "session": "Session 日志 + JSONL 持久化 + projection",
+      "transport": "node:http + Typert WebSocket mux",
+      "runtime": "Node 进程 + 浏览器",
+      "best": "日常使用、可视化交互、插件管理",
+      "special": ["webserver", "api-gateway", "session-controller", "全部 client-ui-* 插件", "schedule / plan / goal"],
+      "shared": ["agent-loop", "session", "tools", "llm", "system-prompt", "fs", "shell", "sandbox", "jobs"],
+      "status": "源码确认"
+    },
+    {
+      "id": "desktop",
+      "name": "Desktop",
+      "profile": "desktop（保留目录）",
+      "bundles": ["由打包运行时提供，复用 Web 应用"],
+      "rows": "桌面自有 profile 与包管理；不枚举具体行数",
+      "entry": "Electron RunAsNode → 私有 Desktop Host → 共享 profile runner",
+      "ui": "打包的同一套 Web 资源（dsh-app://app/）",
+      "loop": "ctx.agentLoop（同一实现）",
+      "tools": "与 Web 相同的 base + Web 行，另加桌面侧 host 能力",
+      "session": "同一 JSONL 与投影",
+      "transport": "Electron IPC（启动注入/就绪）+ 本地 HTTP/WS（已认证 Host）",
+      "runtime": "Electron 44.7",
+      "best": "离线桌面使用、原生文件/目录选择",
+      "special": ["apps/desktop", "apps/desktop-host", "private $DSH_HOME/profiles/desktop", "IPC 启动注入"],
+      "shared": ["Web 资源", "profile runner", "Agent Loop", "Session"],
+      "status": "源码确认（具体行数以 Desktop 自带 bundle 为准）"
+    },
+    {
+      "id": "headless",
+      "name": "Headless",
+      "profile": "headless",
+      "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"],
+      "rows": "base 99 行 + headless 2 行",
+      "entry": "dsh headless（run() 一次性驱动）",
+      "ui": "无",
+      "loop": "ctx.agentLoop（同一实现）",
+      "tools": "base 全部工具（不含 Web/桌面专属）",
+      "session": "Session 日志；可指定 --session-id 复用",
+      "transport": "stdout / stderr，或 --json 事件流",
+      "runtime": "Node 进程",
+      "best": "脚本、CI、批处理",
+      "special": ["headless-startup", "headless-runner", "whenIdle() 收敛后退出"],
+      "shared": ["agent-loop", "session", "tools", "llm", "fs", "shell", "jobs"],
+      "status": "源码确认"
+    },
+    {
+      "id": "sdk",
+      "name": "SDK",
+      "profile": "sdk",
+      "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-sdk-app"],
+      "rows": "base 99 行 + sdk-app 14 行",
+      "entry": "packages/sdk/server 的 JSON-RPC 服务器",
+      "ui": "无（调用方自建）",
+      "loop": "ctx.agentLoop（同一实现）",
+      "tools": "base + sdk-app 追加（skill-office、schedule、ask_user、present 等）",
+      "session": "同一 Session 日志",
+      "transport": "JSON-RPC",
+      "runtime": "Node 进程（被 SDK 客户端启动）",
+      "best": "把 dsh 嵌入其他程序",
+      "special": ["sdk-app-startup", "sdk-jsonrpc-server", "workspace-dependencies", "skill-office"],
+      "shared": ["agent-loop", "session", "tools", "llm", "fs", "shell"],
+      "status": "源码确认"
+    },
+    {
+      "id": "sdk-minimal",
+      "name": "SDK Minimal",
+      "profile": "sdk-minimal",
+      "bundles": ["@deepseek-ai/dsh-sdk-minimal"],
+      "rows": "37 行，独立显式配置树（不叠 base）",
+      "entry": "同一 launcher，但用极简组合包",
+      "ui": "无",
+      "loop": "ctx.agentLoop（同一实现）",
+      "tools": "显式列出的最小集：fs、working-directory、terminal、job、ask_user 等",
+      "session": "Session + projection + token-meter + compaction",
+      "transport": "JSON-RPC",
+      "runtime": "Node 进程",
+      "best": "嵌入式/教学示例：看清楚一个 Agent 最少需要什么",
+      "special": ["不应用 dsh-base", "显式沙箱/文件/终端/契约行"],
+      "shared": ["agent-loop", "session", "tools", "llm", "system-prompt"],
+      "status": "源码确认"
+    },
+    {
+      "id": "acp",
+      "name": "ACP",
+      "profile": "acp",
+      "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-acp-app"],
+      "rows": "base 99 行 + acp-app 2 行",
+      "entry": "acp-app-startup + acp",
+      "ui": "由 ACP 客户端提供",
+      "loop": "ctx.agentLoop（同一实现）",
+      "tools": "base 全部工具",
+      "session": "同一 Session 日志",
+      "transport": "ACP 协议",
+      "runtime": "Node 进程",
+      "best": "编辑器/自动化平台接入",
+      "special": ["acp-app-startup", "acp"],
+      "shared": ["agent-loop", "session", "tools", "llm"],
+      "status": "源码确认"
+    }
+  ],
+  "matrix": [
+    { "label": "启动入口", "values": ["CLI → profile", "Electron Host", "CLI → runner", "JSON-RPC", "JSON-RPC（极简）", "ACP"] },
+    { "label": "浏览器 UI", "values": ["有", "打包 Web", "无", "无", "无", "客户端提供"] },
+    { "label": "Agent Loop", "values": ["同一实现", "同一实现", "同一实现", "同一实现", "同一实现", "同一实现"] },
+    { "label": "工具集合", "values": ["base + Web", "base + Web + 桌面", "base", "base + SDK", "显式最小集", "base"] },
+    { "label": "持久化", "values": ["JSONL", "JSONL", "JSONL", "JSONL", "JSONL", "JSONL"] },
+    { "label": "典型用途", "values": ["日常使用", "离线桌面", "脚本/CI", "嵌入程序", "教学/最小内核", "编辑器"] }
+  ],
+  "facts": [
+    {
+      "title": "共用的是服务，不是进程",
+      "text": "五种模式都会挂 dsh-agent-loop；但每次启动是独立的进程与独立的 Cordis 树。"
+    },
+    {
+      "title": "差异靠 patch 表达",
+      "text": "web-app 与 sdk-app 都是 patch：按 id 覆盖 base 的行、insert 新行。没有为模式写分支代码。"
+    },
+    {
+      "title": "sdk-minimal 是刻意的例外",
+      "text": "它不应用 dsh-base，而是自己列出一棵完整显式配置树，用来展示最小可运行 Agent 需要哪些行。"
+    }
+  ]
+}

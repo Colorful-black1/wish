@@ -1,0 +1,348 @@
+{
+  "id": "request",
+  "title": "用户请求完整链路",
+  "subtitle": "从输入框里按下回车，到回复出现在屏幕上。注意：这不是一条同步调用链，而是三条并行推进的过程。",
+  "lanes": [
+    { "id": "client", "label": "浏览器 / 客户端", "short": "浏览器", "hint": "输入、RPC、渲染" },
+    { "id": "api", "label": "Gateway + Session Controller", "short": "API", "hint": "校验、准入、转发" },
+    { "id": "agent", "label": "Agent Loop", "short": "Agent", "hint": "轮次、步骤、工具" },
+    { "id": "session", "label": "Session 日志", "short": "会话", "hint": "事件、投影、持久化" },
+    { "id": "model", "label": "模型 / 工具", "short": "模型", "hint": "流式响应与执行世界" }
+  ],
+  "tracks": [
+    { "id": "exec", "label": "① Agent 执行过程", "detail": "Agent Loop 拥有的顺序：轮次 → 步骤 → 模型 → 工具 → 下一步骤。这是唯一有控制流的轨道。" },
+    { "id": "persist", "label": "② Session 持久化与事件记录", "detail": "每一步的持久事实都 append 成 SessionEvent，JSONL 后端旁路写入；UI 与恢复都从这条日志或它的投影派生。" },
+    { "id": "ui", "label": "③ 前端实时展示", "detail": "不是等日志落盘再读：assistant-stream 走进程本地事件 → session-controller → 远程流；projection 变化另外推送。" }
+  ],
+  "steps": [
+    {
+      "id": "r1",
+      "phase": "输入",
+      "lane": "client",
+      "track": "exec",
+      "title": "用户按下回车",
+      "code": "ui-send",
+      "detail": "输入框把文本与附件序列化成一个 submission；简单路径是 `conversation.send()`，带附件时是 `sendSession()`：先登记本地 echo，再等 Host 的 accepted 回执。",
+      "input": "textarea 内容、附件",
+      "output": "PromptContentPart[] + requestId",
+      "event": "",
+      "refs": [
+        { "path": "packages/client/ui-conversation/src/client/service.ts", "line": 203, "symbol": "conversation.send()" },
+        { "path": "packages/client/ui-conversation/src/client/service.ts", "line": 309, "symbol": "session.prompt(content, mode, signal, requestId)" }
+      ]
+    },
+    {
+      "id": "r2",
+      "phase": "输入",
+      "lane": "client",
+      "track": "exec",
+      "title": "客户端 Session 发起 RPC",
+      "code": "client-prompt",
+      "detail": "浏览器侧的 Session 句柄把 `mode`（queue / steer）、`requestId` 与客户端时区发给 `remote.session.prompt`。同一个 requestId 是后续幂等与 echo 回收的依据。",
+      "input": "{ requestId, sessionId, mode, content, clientTimeZone }",
+      "output": "RemoteResult<{ accepted: true }>",
+      "event": "",
+      "refs": [
+        { "path": "packages/api/session-controller/src/client/sessions/session.ts", "line": 257, "symbol": "prompt()" },
+        { "path": "packages/api/session-controller/src/client/sessions/session.ts", "line": 271, "symbol": "remote.session.prompt()" }
+      ]
+    },
+    {
+      "id": "r3",
+      "phase": "传输",
+      "lane": "api",
+      "track": "exec",
+      "title": "Gateway 解码、鉴权、分派",
+      "code": "",
+      "detail": "Typert Gateway 读取 InvocationDescriptor，校验参数形状与资源权限（`session` 资源由 sessionId 解析），再调用 Host 上的 @Remote 方法。错误以结构化 RemoteError 返回，不会变成 500 HTML。",
+      "input": "wire envelope",
+      "output": "服务方法调用",
+      "event": "connection/request",
+      "refs": [
+        { "path": "packages/api/gateway/src/index.ts", "line": 1, "symbol": "TypertGatewayService" },
+        { "path": "packages/api/gateway/src/stream-server.ts", "line": 54, "symbol": "WebSocket mux" }
+      ]
+    },
+    {
+      "id": "r4",
+      "phase": "准入",
+      "lane": "api",
+      "track": "exec",
+      "title": "@Remote('prompt') 做内容校验",
+      "code": "rpc-prompt",
+      "detail": "Host 侧先拒绝「有内容但全是空白」的请求，规范化 clientTimeZone，再构造 MessageSource：有内容记 `user`，空内容记 `retry`；rpcId 始终记录。",
+      "input": "SessionPromptRequest",
+      "output": "commands.prompt(request, source)",
+      "event": "",
+      "refs": [
+        { "path": "packages/api/session-controller/src/index.ts", "line": 468, "symbol": "@Remote('prompt')" },
+        { "path": "packages/api/session-controller/src/index.ts", "line": 485, "symbol": "MessageSource" }
+      ]
+    },
+    {
+      "id": "r5",
+      "phase": "准入",
+      "lane": "api",
+      "track": "exec",
+      "title": "解析 Agent、幂等检查、附件准入",
+      "code": "commands-prompt",
+      "detail": "`resolveAgent(sessionId)` 找到或恢复 Agent；`hasPromptRequest()` 扫描未读日志，发现同 requestId 已接收就直接返回 accepted。带图片时还要确认当前模型声明了 image 输入模态。",
+      "input": "SessionPromptRequest",
+      "output": "UserMessage 或 accepted（重复提交）",
+      "event": "",
+      "refs": [
+        { "path": "packages/api/session-controller/src/commands.ts", "line": 322, "symbol": "resolveAgent()" },
+        { "path": "packages/api/session-controller/src/commands.ts", "line": 323, "symbol": "hasPromptRequest()" },
+        { "path": "packages/api/session-controller/src/commands.ts", "line": 352, "symbol": "resolveModelInfo()" }
+      ]
+    },
+    {
+      "id": "r6",
+      "phase": "准入",
+      "lane": "agent",
+      "track": "exec",
+      "title": "消息进入 Inbox",
+      "code": "agent-send",
+      "detail": "`agent.followup(message)` = `send(message, 'next-turn', true)`；`steer` 走 next-step。splice 同时写 `agent/inbox/spliced` 这个持久事件，所以投影立即更新，客户端能马上看到排队中的消息。",
+      "input": "UserMessage",
+      "output": "inbox['next-turn'] 更新",
+      "event": "agent/inbox/spliced",
+      "refs": [
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 179, "symbol": "followup()" },
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 175, "symbol": "inbox.splice()" }
+      ]
+    },
+    {
+      "id": "r7",
+      "phase": "轮次",
+      "lane": "agent",
+      "track": "exec",
+      "title": "唤醒并打开 Turn",
+      "code": "agent-wake",
+      "detail": "驱动器空闲就立刻开始；否则把唤醒闩到收敛点。`turn()` 在领取输入之前写 `turn/start`。",
+      "input": "inbox 非空",
+      "output": "running phase",
+      "event": "turn/start",
+      "refs": [
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 230, "symbol": "wakeDriver()" },
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 336, "symbol": "turn/start" }
+      ]
+    },
+    {
+      "id": "r8",
+      "phase": "轮次",
+      "lane": "agent",
+      "track": "exec",
+      "title": "领取输入、固定模型路由",
+      "code": "agent-turn",
+      "detail": "`inbox.claim()` 是原子的：消息从待处理列表移除并写 `agent/inbox/spliced`（outcome 为空表示 claimed）。同一个 Turn 内后续 Step 只领取 next-step。",
+      "input": "next-turn | next-step",
+      "output": "UserMessage[] + ModelSelection",
+      "event": "agent/inbox/claimed",
+      "refs": [
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 287, "symbol": "inbox.claim()" },
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 288, "symbol": "model.current()" }
+      ]
+    },
+    {
+      "id": "r9",
+      "phase": "组装",
+      "lane": "agent",
+      "track": "exec",
+      "title": "组装提示词与可见工具",
+      "code": "prompt-assemble",
+      "detail": "系统提示词不是一段固定文本：全局 section、Agent 作用域 section、运行时 context、变量按确定顺序合并；工具 schema 由 tool provider 收集后排序。",
+      "input": "scope + modelSelection + toolSet",
+      "output": "PromptAssembly",
+      "event": "system-prompt/assemble",
+      "refs": [
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 294, "symbol": "systemPrompt.assemble()" },
+        { "path": "packages/core/system-prompt/src/index.ts", "line": 620, "symbol": "assemble()" }
+      ]
+    },
+    {
+      "id": "r10",
+      "phase": "组装",
+      "lane": "agent",
+      "track": "exec",
+      "title": "agent/pre-step 决定进不进 Step",
+      "code": "agent-turn",
+      "detail": "监听器可以拒绝（例如空提示词、被取消的请求）或改写消息；拒绝时不产生 Step，但轮次仍会写 turn/end。",
+      "input": "claimed messages",
+      "output": "enter / reject",
+      "event": "agent/pre-step",
+      "refs": [{ "path": "packages/core/agent-loop/src/agent.ts", "line": 296, "symbol": "waterfall('agent/pre-step')" }]
+    },
+    {
+      "id": "r11",
+      "phase": "步骤",
+      "lane": "session",
+      "track": "persist",
+      "title": "写 step/start",
+      "code": "agent-turn",
+      "detail": "步骤边界先落日志；从这一刻起，后续所有模型可见输入都必须能被这条日志重建。",
+      "input": "turn、step",
+      "output": "step/start",
+      "event": "step/start",
+      "refs": [{ "path": "packages/core/agent-loop/src/agent.ts", "line": 361, "symbol": "step/start" }]
+    },
+    {
+      "id": "r12",
+      "phase": "步骤",
+      "lane": "agent",
+      "track": "exec",
+      "title": "绑定适配器，提交提示词",
+      "code": "agent-prepare",
+      "detail": "`agent/request` 只允许改控制参数；provider/model 在 pre-step 已固定。`prepareCall()` 解析模型能力与默认值，随后 system/message 与 user/message 才被提交——两段异步都被取消时不会留下半截输入。",
+      "input": "selection、assembly",
+      "output": "PreparedLlmCall",
+      "event": "agent/request",
+      "refs": [
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 630, "symbol": "agent/request" },
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 644, "symbol": "prepareCall()" }
+      ]
+    },
+    {
+      "id": "r13",
+      "phase": "步骤",
+      "lane": "session",
+      "track": "persist",
+      "title": "记录 header / context，派生历史",
+      "code": "agent-build",
+      "detail": "header 只在请求信封（配置/工具）变化时写；context 只在路由或上下文窗口变化时写。消息数组来自 `deriveMessages()`，不是内存里的消息对象；这让恢复、分叉、回放天然一致。",
+      "input": "config、tools",
+      "output": "request/header、request/context、冻结的 GenerateOptions",
+      "event": "request/header",
+      "refs": [
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 677, "symbol": "request/header" },
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 722, "symbol": "request/context" },
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 728, "symbol": "deriveMessages()" }
+      ]
+    },
+    {
+      "id": "r14",
+      "phase": "模型",
+      "lane": "model",
+      "track": "exec",
+      "title": "调用模型并接收流",
+      "code": "llm-stream",
+      "detail": "适配器把 provider 的 SSE 解析成统一 chunk：文本、推理、工具参数增量、usage、finish。循环逐 chunk 消费；`llm/stream` 瀑布允许重放、检查点、标题生成等监听器包装这次调用。",
+      "input": "GenerateOptions",
+      "output": "StreamChunk*",
+      "event": "llm/stream",
+      "refs": [
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 490, "symbol": "preparedCall.stream()" },
+        { "path": "packages/llm/llm/src/index.ts", "line": 1170, "symbol": "ctx.llm.stream()" },
+        { "path": "packages/llm/llm-deepseek/src/adapter.ts", "line": 22, "symbol": "DeepSeekAdapter" }
+      ]
+    },
+    {
+      "id": "r15",
+      "phase": "模型",
+      "lane": "client",
+      "track": "ui",
+      "title": "实时帧先到浏览器",
+      "code": "stream-bridge",
+      "detail": "`agent/assistant-stream` 是**进程本地**事件：session-controller 累积后，按连接转成 `assistant-stream` 帧推给前端。它不写 Session 日志；页面刷新后靠 projection / 日志恢复，而不是重放这些帧。",
+      "input": "live chunk 帧",
+      "output": "前端增量渲染",
+      "event": "agent/assistant-stream",
+      "refs": [
+        { "path": "packages/api/session-controller/src/history/assistant-stream.ts", "line": 17, "symbol": "监听 agent/assistant-stream" },
+        { "path": "packages/api/session-controller/src/history/assistant-stream.ts", "line": 36, "symbol": "bind()" }
+      ]
+    },
+    {
+      "id": "r16",
+      "phase": "持久化",
+      "lane": "session",
+      "track": "persist",
+      "title": "assistant/message 落日志",
+      "code": "agent-commit",
+      "detail": "流结束后结算 assistant/message，内嵌紧凑 stream 与 usage。几乎同时，session/event 被 JSONL 后端写成 zstd 帧；`session/flush` 是耐久检查点。",
+      "input": "live 内容块",
+      "output": "assistant/message + 磁盘帧",
+      "event": "assistant/message",
+      "refs": [
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 574, "symbol": "assistant/message" },
+        { "path": "packages/core/session/src/index.ts", "line": 892, "symbol": "commit()" },
+        { "path": "packages/session/session-persistence-jsonl/src/index.ts", "line": 69, "symbol": "zstd" }
+      ]
+    },
+    {
+      "id": "r17",
+      "phase": "工具",
+      "lane": "model",
+      "track": "exec",
+      "title": "有工具调用就执行批次",
+      "code": "tools-prepare",
+      "detail": "整个批次交给执行器：pre-execute → 审批/guard → execute → post-execute。结果写 tool/result，并可能通过 additionalContexts 把额外上下文插到 next-step。",
+      "input": "tool-call 块",
+      "output": "tool/result + 可能的额外上下文",
+      "event": "tools/pre-execute",
+      "refs": [
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 590, "symbol": "tools.execute()" },
+        { "path": "packages/core/tools/src/pipeline.ts", "line": 190, "symbol": "prepare()" }
+      ]
+    },
+    {
+      "id": "r18",
+      "phase": "循环",
+      "lane": "agent",
+      "track": "exec",
+      "title": "下一 Step，而不是下一条用户消息",
+      "code": "agent-turn",
+      "detail": "工具结果被视为「欠账」：循环回到领取阶段，用更新后的历史再请求模型。用户看到的一次回答，可能已经是第 3、第 5 个 Step。",
+      "input": "stepEnd + 工具欠账",
+      "output": "claim → assemble → step/start（step+1）",
+      "event": "step/start",
+      "refs": [{ "path": "packages/core/agent-loop/src/agent.ts", "line": 400, "symbol": "target = 'next-step'" }]
+    },
+    {
+      "id": "r19",
+      "phase": "收束",
+      "lane": "agent",
+      "track": "exec",
+      "title": "收尾轮次",
+      "code": "agent-turn",
+      "detail": "没有工具调用、也没有新输入时，先跑 serial 的 `agent/turn-stopping`，再写 `turn/end`。随后 Agent 回到 idle，状态事件推给 UI。",
+      "input": "turnEnds",
+      "output": "turn/end + idle",
+      "event": "agent/turn-stopping · turn/end",
+      "refs": [
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 396, "symbol": "agent/turn-stopping" },
+        { "path": "packages/core/agent-loop/src/agent.ts", "line": 422, "symbol": "turn/end" }
+      ]
+    },
+    {
+      "id": "r20",
+      "phase": "展示",
+      "lane": "client",
+      "track": "ui",
+      "title": "前端把最终消息渲染出来",
+      "code": "",
+      "detail": "projection 快照与 assistant 帧在客户端合并成会话状态；消息按注册的 ConversationNodeDefinition 渲染。此时磁盘上的日志已经是可回放的最终事实。",
+      "input": "projection 变化 + 最终帧",
+      "output": "屏幕上的回复",
+      "event": "session/event",
+      "refs": [
+        { "path": "packages/api/session-controller/src/client/sessions/session.ts", "line": 518, "symbol": "subscribe()" },
+        { "path": "packages/client/ui-chat/src/client/chat/register-node-renderers.ts", "line": 1, "symbol": "节点渲染器" }
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "title": "三条过程不是一条链",
+      "text": "Agent Loop 推进执行；Session 把每一步的持久事实写进日志；前端靠 live 帧 + projection 展示。三者通过事件解耦，所以 UI 卡住不会阻塞 Agent，日志写入也不依赖 UI 请求。"
+    },
+    {
+      "title": "为什么 UI 不能只靠 assistant-stream",
+      "text": "assistant-stream 是进程本地、不持久；刷新页面后它就没有了。恢复靠 Session 日志的 assistant/message（内嵌同一段紧凑 stream）。"
+    },
+    {
+      "title": "模型看到的历史来自日志，不来自内存对象",
+      "text": "每次请求都重新 `deriveMessages()`；消息对象被深冻结。这是「模型可见即已记录」的实现方式。"
+    }
+  ]
+}

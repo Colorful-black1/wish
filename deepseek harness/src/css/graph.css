@@ -1,0 +1,122 @@
+/* ===== 架构图 / 流程图 ===== */
+
+.graph {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+  cursor: grab;
+}
+.graph.is-panning { cursor: grabbing; }
+.graph svg { display: block; width: 100%; height: 100%; }
+.graph:fullscreen { height: 100vh; width: 100vw; background: var(--bg); }
+.graph:fullscreen .graph__hint { display: none; }
+
+.graph__toolbar {
+  position: absolute; left: 10px; top: 10px; z-index: 3;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: calc(100% - 20px);
+}
+.graph__toolbar .chip { background: color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter: blur(6px); }
+.graph__toolbar .searchbox {
+  display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent); backdrop-filter: blur(6px);
+}
+.graph__toolbar input {
+  width: 130px; border: 0; outline: 0; background: transparent; font-size: 11.5px;
+}
+.graph__toolbar input::placeholder { color: var(--faint); }
+
+.graph__zoom {
+  position: absolute; right: 10px; bottom: 10px; z-index: 3;
+  display: flex; gap: 1px; border: 1px solid var(--line); border-radius: 8px;
+  overflow: hidden; background: var(--panel); box-shadow: var(--shadow);
+}
+.graph__zoom button { width: 30px; height: 28px; display: grid; place-items: center; color: var(--text-2); }
+.graph__zoom button:hover { background: var(--panel-2); color: var(--text); }
+.graph__zoom span { min-width: 44px; display: grid; place-items: center; font-family: var(--mono); font-size: 10.5px; color: var(--muted); border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+
+.graph__legend {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3;
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter: blur(6px);
+  font-size: 10.5px; color: var(--muted); max-width: calc(100% - 120px);
+}
+.graph__legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+.graph__hint {
+  position: absolute; right: 10px; top: 10px; z-index: 3;
+  font-size: 10.5px; color: var(--faint);
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line-soft);
+}
+
+/* ---- 节点 ---- */
+.g-node { cursor: pointer; }
+.g-node__box {
+  fill: var(--panel-2);
+  stroke: var(--line);
+  stroke-width: 1.2;
+  transition: stroke 0.12s ease, fill 0.12s ease;
+}
+.g-node:hover .g-node__box { stroke: #3d5670; }
+.g-node.is-selected .g-node__box { stroke: var(--accent); stroke-width: 2; fill: var(--accent-bg); }
+.g-node.is-neighbor .g-node__box { stroke: #3d6f9e; }
+.g-node.is-dim { opacity: 0.22; }
+.g-node.is-hit .g-node__box { stroke: var(--amber); stroke-width: 2; }
+.g-node:focus { outline: none; }
+.g-node:focus-visible .g-node__box { stroke: var(--accent); stroke-width: 2.4; }
+
+.g-node__accent { stroke: none; rx: 3; }
+.g-node__label { fill: var(--text); font-size: 12px; font-weight: 600; font-family: var(--sans); }
+.g-node__sub { fill: var(--muted); font-size: 9.5px; font-family: var(--sans); }
+.g-node__badge { fill: var(--faint); font-size: 8.5px; font-family: var(--mono); letter-spacing: 0.06em; }
+
+.g-node--event .g-node__box { fill: color-mix(in srgb, var(--violet) 10%, var(--panel-2)); }
+.g-node--decision .g-node__box { fill: color-mix(in srgb, var(--amber) 10%, var(--panel-2)); }
+.g-node--error .g-node__box { fill: color-mix(in srgb, var(--red) 10%, var(--panel-2)); }
+.g-node--active .g-node__box {
+  stroke: var(--accent); stroke-width: 2;
+  filter: drop-shadow(0 0 8px rgba(90, 162, 255, 0.55));
+}
+.g-node--active .g-node__label { fill: #fff; }
+[data-theme="light"] .g-node--active .g-node__label { fill: #0b1a2c; }
+
+/* ---- 边 ---- */
+.g-edge path {
+  fill: none;
+  stroke: #2b3d50;
+  stroke-width: 1.3;
+  transition: stroke 0.12s ease, opacity 0.12s ease;
+}
+.g-edge--loop path { stroke: var(--amber); stroke-dasharray: 7 5; animation: dash 1.6s linear infinite; }
+.g-edge--error path { stroke: rgba(232, 115, 125, 0.6); stroke-dasharray: 4 4; }
+.g-edge--event path { stroke: rgba(167, 139, 250, 0.55); }
+.g-edge.is-active path { stroke: var(--accent); stroke-width: 2; }
+.g-edge.is-dim path { opacity: 0.15; }
+.g-edge__label {
+  fill: var(--muted); font-size: 9px; font-family: var(--sans);
+  opacity: 0; pointer-events: none;
+  paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round;
+}
+.graph.show-labels .g-edge__label,
+.g-edge:hover .g-edge__label,
+.g-edge.is-active .g-edge__label { opacity: 1; }
+.g-edge.is-active .g-edge__label { fill: var(--accent-2); }
+.g-edge { cursor: pointer; }
+.g-edge:hover path { stroke: var(--accent-2); }
+
+/* ---- 迷你图 ---- */
+.mini-graph { height: 240px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden; }
+.mini-graph .graph__legend, .mini-graph .graph__hint { display: none; }
+
+@media (max-width: 720px) {
+  .graph__toolbar { right: 10px; }
+  .graph__toolbar input { width: 90px; }
+  .graph__legend { display: none; }
+  .flow__graph { height: 340px; }
+}

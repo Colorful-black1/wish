@@ -1,0 +1,963 @@
+{
+  "title": "技术栈全景",
+  "subtitle": "按层拆开看：每种技术在这里做什么、落在哪个包、为什么对 Agent 有价值。状态标注区分「源码确认」与「未发现」。",
+  "layers": [
+    {
+      "id": "lang",
+      "label": "语言与构建",
+      "hint": "先把工程底座摸清"
+    },
+    {
+      "id": "runtime",
+      "label": "运行时框架",
+      "hint": "Cordis 与配置树"
+    },
+    {
+      "id": "frontend",
+      "label": "前端",
+      "hint": "浏览器与桌面共用的一套 UI"
+    },
+    {
+      "id": "transport",
+      "label": "通信",
+      "hint": "Client ↔ Host 的四条路"
+    },
+    {
+      "id": "ai",
+      "label": "AI 能力",
+      "hint": "模型、提示词、工具与循环"
+    },
+    {
+      "id": "exec",
+      "label": "执行世界",
+      "hint": "文件、进程、搜索、沙箱与外部系统"
+    },
+    {
+      "id": "data",
+      "label": "数据与可观测",
+      "hint": "会话日志与旁路遥测"
+    }
+  ],
+  "items": [
+    {
+      "id": "typescript",
+      "name": "TypeScript 6.0.3",
+      "layer": "lang",
+      "role": "全仓唯一实现语言，类型即契约。",
+      "usage": "SessionEventMap、ToolDefinition、LlmAdapter、Typert RPC descriptor 都是类型；声明合并（declare module）被大量用于插件扩展事件与 Context 键。",
+      "packages": [
+        "root devDependencies"
+      ],
+      "files": [
+        {
+          "path": "package.json",
+          "line": 1,
+          "symbol": "devDependencies.typescript"
+        },
+        {
+          "path": "tsconfig.base.json",
+          "line": 1,
+          "symbol": "strict 配置"
+        }
+      ],
+      "why": "Agent 的状态机、事件与工具 schema 都需要在编译期被约束；插件扩展点靠类型合并而不是运行时字符串。",
+      "status": "源码确认",
+      "tags": [
+        "语言",
+        "类型"
+      ]
+    },
+    {
+      "id": "node",
+      "name": "Node.js ≥ 24.9",
+      "layer": "lang",
+      "role": "Host 运行时。",
+      "usage": "node:http / node:sqlite / node:zlib 等新 API 直接使用；engines 在根 package.json 中强制。",
+      "packages": [
+        "root engines"
+      ],
+      "files": [
+        {
+          "path": "package.json",
+          "line": 1,
+          "symbol": "engines.node"
+        }
+      ],
+      "why": "SQLite FTS5、zstd、原生 WebSocket 服务端都依赖较新的 Node。",
+      "status": "源码确认",
+      "tags": [
+        "运行时"
+      ]
+    },
+    {
+      "id": "pnpm",
+      "name": "pnpm workspace 11.28.5",
+      "layer": "lang",
+      "role": "单仓多包管理与依赖边界。",
+      "usage": "packages/*/*、apps/*、vendor/* 全部是 workspace；peerDependencies 被用来表达“共享实例”的架构约束，module-graph.md 就是由 peer 边生成的。",
+      "packages": [
+        "pnpm-workspace.yaml"
+      ],
+      "files": [
+        {
+          "path": "pnpm-workspace.yaml",
+          "line": 1,
+          "symbol": "workspaces"
+        }
+      ],
+      "why": "插件必须与宿主共享同一份 Cordis 实例，peer 依赖是最直接的强制手段。",
+      "status": "源码确认",
+      "tags": [
+        "工程"
+      ]
+    },
+    {
+      "id": "tsdown",
+      "name": "tsdown / tsc project references",
+      "layer": "lang",
+      "role": "Host 与 Client 两套构建面。",
+      "usage": "tsconfig.host.json / tsconfig.client.json 分开编译；tsdown 打包插件与服务端产物。",
+      "packages": [
+        "root scripts.build"
+      ],
+      "files": [
+        {
+          "path": "tsconfig.base.json",
+          "line": 1,
+          "symbol": "project references"
+        }
+      ],
+      "why": "同一份代码要同时产出 Node 插件与浏览器插件，构建面必须能隔离 node 内置模块。",
+      "status": "源码确认",
+      "tags": [
+        "工程"
+      ]
+    },
+    {
+      "id": "vite",
+      "name": "Vite 6.4 + @vitejs/plugin-react",
+      "layer": "lang",
+      "role": "Web 前端开发与打包。",
+      "usage": "apps/web/vite.config.ts 产出单页资源；开发时配合 HMR。",
+      "packages": [
+        "@deepseek-ai/dsh-web-frontend"
+      ],
+      "files": [
+        {
+          "path": "apps/web/vite.config.ts",
+          "line": 1,
+          "symbol": "vite config"
+        }
+      ],
+      "why": "客户端插件需要快速迭代；打包结果由 Host 的 index 注入加载。",
+      "status": "源码确认",
+      "tags": [
+        "工程",
+        "前端"
+      ]
+    },
+    {
+      "id": "vitest",
+      "name": "Vitest 4.1 + 多套 config",
+      "layer": "lang",
+      "role": "单测、快照、e2e、Web 压测与性能回归。",
+      "usage": "vitest.config.ts / e2e / snapshot / web / web-stress / web.perf 各一套；DSH_SNAPSHOT=record|replay 控制快照模式。",
+      "packages": [
+        "root devDependencies"
+      ],
+      "files": [
+        {
+          "path": "vitest.config.ts",
+          "line": 1,
+          "symbol": "vitest config"
+        }
+      ],
+      "why": "Agent 循环是并发与取消密集型的，只有快照 + e2e 才能守住行为不回归。",
+      "status": "源码确认",
+      "tags": [
+        "测试"
+      ]
+    },
+    {
+      "id": "oxlint",
+      "name": "oxlint 1.81",
+      "layer": "lang",
+      "role": "全仓 lint 与规则门禁。",
+      "usage": "`pnpm run lint` 先编译 host contracts，再用 oxlint 扫描；`verify-*` 脚本组成 doc-sync / hygiene 门禁。",
+      "packages": [
+        "root scripts.lint"
+      ],
+      "files": [
+        {
+          "path": ".oxlintrc.json",
+          "line": 1,
+          "symbol": "oxlint rules"
+        }
+      ],
+      "why": "插件边界、类型断言、事件调用点都有专门规则，避免架构约束被悄悄绕过。",
+      "status": "源码确认",
+      "tags": [
+        "工程"
+      ]
+    },
+    {
+      "id": "cordis",
+      "name": "Cordis",
+      "layer": "runtime",
+      "role": "插件框架：Context、Service、事件、作用域。",
+      "usage": "每个能力（模型适配器、工具注册表、会话日志，甚至 Agent Loop）都是插件；ctx.* 是服务定位，ctx.on/waterfall/serial/parallel 是事件。",
+      "packages": [
+        "@deepseek-ai/cordis"
+      ],
+      "files": [
+        {
+          "path": "docs/cordis-primer.zh.md",
+          "line": 1,
+          "symbol": "Cordis 入门"
+        },
+        {
+          "path": "vendor/cordis/src/index.ts",
+          "line": 1,
+          "symbol": "Context"
+        }
+      ],
+      "why": "没有特权内核意味着任何一层都能被替换：换模型、换工具执行器、换存储都不需要 fork。",
+      "status": "源码确认",
+      "tags": [
+        "框架",
+        "核心"
+      ]
+    },
+    {
+      "id": "schemastery",
+      "name": "Schemastery",
+      "layer": "runtime",
+      "role": "插件配置 schema 与校验。",
+      "usage": "每个插件用 `static Config = z.object({...})` 声明配置；Loader 在挂载时校验并注入默认值。",
+      "packages": [
+        "@deepseek-ai/schemastery"
+      ],
+      "files": [
+        {
+          "path": "vendor/schemastery/src/index.ts",
+          "line": 1,
+          "symbol": "Schema"
+        }
+      ],
+      "why": "配置即契约，profile/patch 的可组合性依赖每个插件自己说清楚接受什么。",
+      "status": "源码确认",
+      "tags": [
+        "框架",
+        "配置"
+      ]
+    },
+    {
+      "id": "loader",
+      "name": "Cordis Loader",
+      "layer": "runtime",
+      "role": "把 YAML 条目树变成运行中的插件树。",
+      "usage": "profile 根 cordis.yml 是空数组，bundle patch 以 insert 方式长出行；Loader 按服务依赖并发挂载、HMR 时重载。",
+      "packages": [
+        "@deepseek-ai/cordis-plugin-loader"
+      ],
+      "files": [
+        {
+          "path": "packages/boot/app-boot/src/index.ts",
+          "line": 1224,
+          "symbol": "ctx.plugin(Loader)"
+        }
+      ],
+      "why": "声明式装配 + 运行时可改，让 profile 成为「产品形态」而不是编译期分支。",
+      "status": "源码确认",
+      "tags": [
+        "启动"
+      ]
+    },
+    {
+      "id": "hmr",
+      "name": "HMR（配置热重载）",
+      "layer": "runtime",
+      "role": "监听 profile 配置并在不重启进程的情况下协调重载。",
+      "usage": "base 默认开启仅配置监视；Headless / SDK / ACP 关闭；sdk-minimal 不含 HMR。",
+      "packages": [
+        "@deepseek-ai/dsh-hmr"
+      ],
+      "files": [
+        {
+          "path": "packages/bundle/base/cordis.patch.yml",
+          "line": 1,
+          "symbol": "hmr 行"
+        }
+      ],
+      "why": "改一个插件配置就能生效，是插件化产品的基本体验。",
+      "status": "文档确认",
+      "tags": [
+        "启动"
+      ]
+    },
+    {
+      "id": "react",
+      "name": "React 18.2",
+      "layer": "frontend",
+      "role": "客户端 UI。",
+      "usage": "apps/web 与所有 client/* UI 包都用 React；会话消息按 ConversationNodeDefinition 注册渲染器。",
+      "packages": [
+        "@deepseek-ai/dsh-client-web",
+        "@deepseek-ai/dsh-client-ui-chat"
+      ],
+      "files": [
+        {
+          "path": "apps/web/package.json",
+          "line": 1,
+          "symbol": "react ^18.2.0"
+        }
+      ],
+      "why": "插件式 UI 需要可注册的渲染单元，而不是一个巨型组件。",
+      "status": "源码确认",
+      "tags": [
+        "前端",
+        "UI"
+      ]
+    },
+    {
+      "id": "cssmodules",
+      "name": "CSS Modules + --dsw-* 主题 token",
+      "layer": "frontend",
+      "role": "组件样式与主题。",
+      "usage": "ui-theme 负责全局 token 与明暗主题，功能包用 CSS Modules 和语义别名；规范明确不使用 Tailwind，也不新增组件库。",
+      "packages": [
+        "@deepseek-ai/dsh-client-ui-theme"
+      ],
+      "files": [
+        {
+          "path": "docs/web-styling.zh.md",
+          "line": 1,
+          "symbol": "样式职责归属"
+        }
+      ],
+      "why": "插件由不同作者提供，只有共享 token 才能保证视觉一致且可换主题。",
+      "status": "源码确认",
+      "tags": [
+        "前端",
+        "样式"
+      ]
+    },
+    {
+      "id": "virtual",
+      "name": "@tanstack/react-virtual 3.14",
+      "layer": "frontend",
+      "role": "长会话虚拟滚动。",
+      "usage": "ui-chat 用它渲染长消息列表，避免一次挂载成百上千个节点。",
+      "packages": [
+        "@deepseek-ai/dsh-client-ui-chat"
+      ],
+      "files": [
+        {
+          "path": "packages/client/ui-chat/package.json",
+          "line": 1,
+          "symbol": "@tanstack/react-virtual"
+        }
+      ],
+      "why": "Agent 会话会非常长，虚拟化是可用性底线。",
+      "status": "源码确认",
+      "tags": [
+        "前端",
+        "性能"
+      ]
+    },
+    {
+      "id": "typert",
+      "name": "Typert RPC",
+      "layer": "transport",
+      "role": "Host 与 Client 的类型化调用与流。",
+      "usage": "@Remote() 标记 Host 方法，生成 InvocationDescriptor；Client 侧 ctx.remote.session.prompt(...) 直接调用，错误是结构化 RemoteError。",
+      "packages": [
+        "@deepseek-ai/dsh-typert-protocol",
+        "@deepseek-ai/dsh-api-gateway"
+      ],
+      "files": [
+        {
+          "path": "packages/api/session-controller/src/index.ts",
+          "line": 468,
+          "symbol": "@Remote('prompt')"
+        },
+        {
+          "path": "packages/api/gateway/src/index.ts",
+          "line": 1,
+          "symbol": "TypertGatewayService"
+        }
+      ],
+      "why": "浏览器与 Host 共享同一份类型，避免手写协议与重复校验。",
+      "status": "源码确认",
+      "tags": [
+        "通信",
+        "核心"
+      ]
+    },
+    {
+      "id": "ws",
+      "name": "WebSocket（ws 8.21）",
+      "layer": "transport",
+      "role": "RPC 与实时流的载体。",
+      "usage": "gateway 的 stream-server 维护一条 noServer WebSocket，多路复用所有逻辑流；回执、取消、心跳都在同一 socket 上。",
+      "packages": [
+        "@deepseek-ai/dsh-api-gateway",
+        "@deepseek-ai/dsh-host-webserver"
+      ],
+      "files": [
+        {
+          "path": "packages/api/gateway/src/stream-server.ts",
+          "line": 54,
+          "symbol": "WebSocketServer"
+        }
+      ],
+      "why": "Agent 输出是流式的；一条多路复用连接比每个会话一条 socket 更稳。",
+      "status": "源码确认",
+      "tags": [
+        "通信",
+        "流"
+      ]
+    },
+    {
+      "id": "http",
+      "name": "node:http / node:https",
+      "layer": "transport",
+      "role": "页面与 RPC 的 HTTP 入口。",
+      "usage": "webserver 负责路由、gzip、index 注入、WebSocket 升级；同一条连接上先 HTTP 再升级。",
+      "packages": [
+        "@deepseek-ai/dsh-host-webserver"
+      ],
+      "files": [
+        {
+          "path": "packages/host/webserver/src/index.ts",
+          "line": 1,
+          "symbol": "createServer"
+        }
+      ],
+      "why": "不引入框架，减少宿主依赖面，也方便 Desktop 用 file:// + IPC 绕开 HTTP。",
+      "status": "源码确认",
+      "tags": [
+        "通信"
+      ]
+    },
+    {
+      "id": "jsonrpc",
+      "name": "JSON-RPC（SDK）",
+      "layer": "transport",
+      "role": "进程间 SDK 协议。",
+      "usage": "sdk/server 暴露 prompt 等命令，sdk/client 提供 TypeScript 客户端；Python SDK 通过随附运行时启动 `dsh --profile sdk`。",
+      "packages": [
+        "@deepseek-ai/dsh-sdk-jsonrpc-server",
+        "@deepseek-ai/dsh-sdk-client"
+      ],
+      "files": [
+        {
+          "path": "packages/sdk/server/src/server.ts",
+          "line": 262,
+          "symbol": "prompt()"
+        }
+      ],
+      "why": "让别的程序把 dsh 当成一个可嵌入的 Agent 进程，而不是复制一套实现。",
+      "status": "源码确认",
+      "tags": [
+        "通信",
+        "SDK"
+      ]
+    },
+    {
+      "id": "acp",
+      "name": "ACP（Agent Client Protocol）",
+      "layer": "transport",
+      "role": "面向编辑器的自动化协议。",
+      "usage": "acp profile = base + acp-app；acp 包把 prompt / 事件映射到协议会话。",
+      "packages": [
+        "@deepseek-ai/dsh-acp"
+      ],
+      "files": [
+        {
+          "path": "packages/acp/acp/src/index.ts",
+          "line": 361,
+          "symbol": "prompt()"
+        }
+      ],
+      "why": "同一内核可以被不同前端（编辑器、自动化平台）驱动。",
+      "status": "源码确认",
+      "tags": [
+        "通信",
+        "入口"
+      ]
+    },
+    {
+      "id": "llm-seam",
+      "name": "LLM 适配器 seam",
+      "layer": "ai",
+      "role": "把 provider 的 wire 协议关在适配器里。",
+      "usage": "LlmAdapter 只需实现 stream()；ctx.llm 负责注册、路由、prepareCall、重试与 llm/stream 瀑布。",
+      "packages": [
+        "@deepseek-ai/dsh-llm"
+      ],
+      "files": [
+        {
+          "path": "packages/llm/llm/src/index.ts",
+          "line": 208,
+          "symbol": "LlmAdapter"
+        }
+      ],
+      "why": "循环只认识 StreamChunk，不关心是 DeepSeek 还是别家；换模型不动循环。",
+      "status": "源码确认",
+      "tags": [
+        "AI",
+        "核心"
+      ]
+    },
+    {
+      "id": "deepseek-api",
+      "name": "DeepSeek Messages API",
+      "layer": "ai",
+      "role": "默认 provider。",
+      "usage": "DeepSeekAdapter 直连 Messages API，处理鉴权、SSE、图片/文件、模型目录与计费。另有 pi-ai 适配器支持多家 provider。",
+      "packages": [
+        "@deepseek-ai/dsh-llm-deepseek",
+        "@deepseek-ai/dsh-llm-pi-ai"
+      ],
+      "files": [
+        {
+          "path": "packages/llm/llm-deepseek/src/adapter.ts",
+          "line": 22,
+          "symbol": "DeepSeekAdapter"
+        }
+      ],
+      "why": "默认路由必须可用且可观测；多 provider 能力则通过适配器并存。",
+      "status": "源码确认",
+      "tags": [
+        "AI",
+        "模型"
+      ]
+    },
+    {
+      "id": "streaming",
+      "name": "流式 chunk 协议",
+      "layer": "ai",
+      "role": "模型输出的统一增量格式。",
+      "usage": "block-start / text-delta / reasoning-delta / tool-call-delta / block-end / usage / finish；循环逐 chunk 消费并组装 assistant 消息。",
+      "packages": [
+        "@deepseek-ai/dsh-llm"
+      ],
+      "files": [
+        {
+          "path": "packages/llm/llm/src/types.ts",
+          "line": 496,
+          "symbol": "StreamChunk"
+        }
+      ],
+      "why": "UI 可以边收边渲染，工具调用参数也能增量解析；不同 provider 的差异被吃掉。",
+      "status": "源码确认",
+      "tags": [
+        "AI",
+        "流"
+      ]
+    },
+    {
+      "id": "compaction",
+      "name": "Compaction",
+      "layer": "ai",
+      "role": "长会话的上下文管理。",
+      "usage": "compaction-basic 在 agent/pre-step 介入，把旧历史摘要化并以 compaction/* 事件替换 surface；图像卸载、工具结果裁剪是独立策略包。",
+      "packages": [
+        "@deepseek-ai/dsh-compaction-basic",
+        "@deepseek-ai/dsh-compaction-image-offload"
+      ],
+      "files": [
+        {
+          "path": "packages/compaction/compaction/src/types.ts",
+          "line": 18,
+          "symbol": "compaction/start"
+        }
+      ],
+      "why": "模型上下文有限，而会话日志无限；压缩只改投影，不删日志。",
+      "status": "源码确认",
+      "tags": [
+        "AI",
+        "上下文"
+      ]
+    },
+    {
+      "id": "subagent-tech",
+      "name": "Subagent / Agent Teams",
+      "layer": "ai",
+      "role": "把任务拆给子 Agent。",
+      "usage": "同一 SubagentProvider 接口背后有进程内 spawn/fork、Codex、Claude Code、ACP、SDK；Agent Teams 额外提供共享任务板。",
+      "packages": [
+        "@deepseek-ai/dsh-subagent",
+        "@deepseek-ai/dsh-agent-team"
+      ],
+      "files": [
+        {
+          "path": "packages/subagent/subagent/src/index.ts",
+          "line": 451,
+          "symbol": "prompt()"
+        }
+      ],
+      "why": "上下文隔离 + 并行探索是大项目分析的关键能力。",
+      "status": "源码确认",
+      "tags": [
+        "AI",
+        "协作"
+      ]
+    },
+    {
+      "id": "skills",
+      "name": "Skills",
+      "layer": "ai",
+      "role": "可复用的任务说明。",
+      "usage": "skill-filesystem 发现 SKILL.md，tool-skill 按名字加载并通过 agent.inject() 注入；office 技能包带 LibreOffice Kit。",
+      "packages": [
+        "@deepseek-ai/dsh-skill",
+        "@deepseek-ai/dsh-skill-office"
+      ],
+      "files": [
+        {
+          "path": "packages/skill/skill/src/index.ts",
+          "line": 296,
+          "symbol": "skills/change"
+        }
+      ],
+      "why": "把「怎么做某类任务」从系统提示词里拆出来，按需加载。",
+      "status": "源码确认",
+      "tags": [
+        "AI",
+        "扩展"
+      ]
+    },
+    {
+      "id": "mcp",
+      "name": "MCP",
+      "layer": "ai",
+      "role": "接入外部工具服务器。",
+      "usage": "mcp-client / mcp-manager / mcp-resources 把 MCP server 的工具与资源桥接进 ctx.tools。",
+      "packages": [
+        "@deepseek-ai/dsh-mcp-client",
+        "@deepseek-ai/dsh-mcp-resources"
+      ],
+      "files": [
+        {
+          "path": "packages/mcp/mcp-client/src/index.ts",
+          "line": 1,
+          "symbol": "MCP client"
+        }
+      ],
+      "why": "不用为每个外部系统写插件，协议层复用。",
+      "status": "源码确认",
+      "tags": [
+        "AI",
+        "扩展"
+      ]
+    },
+    {
+      "id": "ptc",
+      "name": "PTC / Code Mode",
+      "layer": "ai",
+      "role": "用代码编排工具调用。",
+      "usage": "tool-executor-ptc 只向模型暴露 run_code，其余工具由生成的 SDK 在运行时绑定；子调用仍走同一条受守卫流水线。",
+      "packages": [
+        "@deepseek-ai/dsh-tool-executor-ptc",
+        "@deepseek-ai/dsh-ptc-runtime-node"
+      ],
+      "files": [
+        {
+          "path": "packages/core/tool-executor-ptc/src/types.ts",
+          "line": 31,
+          "symbol": "tool/ptc-dispatch"
+        }
+      ],
+      "why": "多步工具编排写成程序比一串 tool call 更省 token、更可控。",
+      "status": "源码确认",
+      "tags": [
+        "AI",
+        "执行"
+      ]
+    },
+    {
+      "id": "shell",
+      "name": "Shell / PTY",
+      "layer": "exec",
+      "role": "命令执行与持久终端。",
+      "usage": "ctx.shell 的 bash / pwsh 后端通过 ctx.subprocess spawn；可选 node-pty 提供持久终端，terminal_* 工具管理会话。",
+      "packages": [
+        "@deepseek-ai/dsh-shell",
+        "@deepseek-ai/dsh-terminal",
+        "@deepseek-ai/dsh-subprocess-local"
+      ],
+      "files": [
+        {
+          "path": "packages/shell/shell/src/index.ts",
+          "line": 1,
+          "symbol": "ShellService"
+        }
+      ],
+      "why": "Coding 场景的大部分能力最终都落到「跑一条命令」上。",
+      "status": "源码确认",
+      "tags": [
+        "执行"
+      ]
+    },
+    {
+      "id": "fs",
+      "name": "Filesystem seam",
+      "layer": "exec",
+      "role": "读写、编辑、补丁与搜索。",
+      "usage": "ctx.fs 提供文件操作与 fs/* 意图事件；tool-fs 注册 read/write/edit/apply_patch/read_image；tool-fs-search 用打包的 ripgrep 做 glob/grep。",
+      "packages": [
+        "@deepseek-ai/dsh-fs",
+        "@deepseek-ai/dsh-tool-fs",
+        "@deepseek-ai/dsh-tool-fs-search"
+      ],
+      "files": [
+        {
+          "path": "packages/fs/fs/src/index.ts",
+          "line": 66,
+          "symbol": "fs/write-intent"
+        }
+      ],
+      "why": "把「读」和「改」做成可拦截事件，安全策略不必写进每个工具。",
+      "status": "源码确认",
+      "tags": [
+        "执行",
+        "文件"
+      ]
+    },
+    {
+      "id": "ripgrep",
+      "name": "ripgrep（@vscode/ripgrep 1.18）",
+      "layer": "exec",
+      "role": "代码搜索。",
+      "usage": "tool-fs-search 通过 ctx.subprocess 调用随包 ripgrep，不依赖宿主安装。",
+      "packages": [
+        "@deepseek-ai/dsh-tool-fs-search"
+      ],
+      "files": [
+        {
+          "path": "packages/fs/tool-fs-search/package.json",
+          "line": 1,
+          "symbol": "@vscode/ripgrep"
+        }
+      ],
+      "why": "搜索结果稳定、速度快，且跨平台行为一致。",
+      "status": "源码确认",
+      "tags": [
+        "执行",
+        "搜索"
+      ]
+    },
+    {
+      "id": "lsp",
+      "name": "LSP",
+      "layer": "exec",
+      "role": "语言服务器查询。",
+      "usage": "ctx.lsp 后面接 lsp-stdio 提供方；tool-lsp 暴露一个 schema 稳定的 lsp 工具，没有提供方时返回 LSP_UNAVAILABLE。",
+      "packages": [
+        "@deepseek-ai/dsh-lsp",
+        "@deepseek-ai/dsh-tool-lsp"
+      ],
+      "files": [
+        {
+          "path": "packages/lsp/lsp/src/index.ts",
+          "line": 1,
+          "symbol": "LSP service"
+        }
+      ],
+      "why": "符号级理解比全文搜索更省上下文。",
+      "status": "源码确认",
+      "tags": [
+        "执行",
+        "代码"
+      ]
+    },
+    {
+      "id": "sandbox",
+      "name": "Sandbox",
+      "layer": "exec",
+      "role": "执行世界的权限边界。",
+      "usage": "sandbox-local 提供本地后端，Windows 用 sandbox-windows-acl，远程可用 sandbox-ssh；fs 与进程共享同一套策略。",
+      "packages": [
+        "@deepseek-ai/dsh-sandbox-local",
+        "@deepseek-ai/dsh-sandbox-policy"
+      ],
+      "files": [
+        {
+          "path": "packages/sandbox/sandbox-policy/src/session-mode.ts",
+          "line": 25,
+          "symbol": "sandbox/mode"
+        }
+      ],
+      "why": "把文件与进程指向远程沙箱，Bash/PTY/LSP 会一起搬过去，无需 provider 专用 fork。",
+      "status": "源码确认",
+      "tags": [
+        "执行",
+        "安全"
+      ]
+    },
+    {
+      "id": "jobs",
+      "name": "Jobs",
+      "layer": "exec",
+      "role": "后台任务。",
+      "usage": "jobs-local 注册任务；bash 的 run_in_background 与终端发送都会登记，模型用 job_list/job_output/job_kill 取回或终止。",
+      "packages": [
+        "@deepseek-ai/dsh-jobs-local",
+        "@deepseek-ai/dsh-tool-jobs"
+      ],
+      "files": [
+        {
+          "path": "packages/jobs/jobs/src/types.ts",
+          "line": 54,
+          "symbol": "job/registered"
+        }
+      ],
+      "why": "长任务不该阻塞一次模型请求；完成通知还能唤醒下一次轮次。",
+      "status": "源码确认",
+      "tags": [
+        "执行",
+        "后台"
+      ]
+    },
+    {
+      "id": "browser",
+      "name": "Browser Use / Computer Use",
+      "layer": "exec",
+      "role": "网页与桌面自动化。",
+      "usage": "browser-use 提供浏览器工具；computer-use 提供桌面操作；两者都是可选 bundle，不进入默认 base。",
+      "packages": [
+        "@deepseek-ai/dsh-browser-use",
+        "@deepseek-ai/dsh-computer-use"
+      ],
+      "files": [
+        {
+          "path": "packages/browser-use/browser-use/src/index.ts",
+          "line": 1,
+          "symbol": "browserUse"
+        }
+      ],
+      "why": "浏览器与桌面是文件/命令之外的另一种「执行世界」。",
+      "status": "文档确认",
+      "tags": [
+        "执行",
+        "自动化"
+      ]
+    },
+    {
+      "id": "office",
+      "name": "LibreOffice Kit",
+      "layer": "exec",
+      "role": "文档生成与转换。",
+      "usage": "skill-office 依赖 @deepseek-ai/libreoffice-kit；Web 侧还有 office-to-pdf 行负责预览转换。",
+      "packages": [
+        "@deepseek-ai/dsh-skill-office"
+      ],
+      "files": [
+        {
+          "path": "packages/skill/skill-office/package.json",
+          "line": 1,
+          "symbol": "libreoffice-kit"
+        }
+      ],
+      "why": "办公任务需要真实的文档引擎，而不是让模型手写二进制。",
+      "status": "源码确认",
+      "tags": [
+        "执行",
+        "办公"
+      ]
+    },
+    {
+      "id": "jsonl",
+      "name": "JSONL + zstd 帧",
+      "layer": "data",
+      "role": "会话日志的持久化格式。",
+      "usage": "默认 `session.vN.jsonl.zstd`，一帧一个批次；generation 选择与排他发布保证崩溃后仍能恢复。",
+      "packages": [
+        "@deepseek-ai/dsh-session-persistence-jsonl"
+      ],
+      "files": [
+        {
+          "path": "packages/session/session-persistence-jsonl/src/index.ts",
+          "line": 69,
+          "symbol": "DEFAULT_COMPRESSION"
+        }
+      ],
+      "why": "只追加 + 可压缩 + 可逐行回放，是事件溯源最省心的落盘形式。",
+      "status": "源码确认",
+      "tags": [
+        "数据",
+        "持久化"
+      ]
+    },
+    {
+      "id": "sqlite",
+      "name": "node:sqlite FTS5",
+      "layer": "data",
+      "role": "会话全文检索。",
+      "usage": "session-query-sqlite 用 DB Sync + FTS5 建索引；base 里 openAt 默认 never，Web 用内存索引。",
+      "packages": [
+        "@deepseek-ai/dsh-session-query-sqlite"
+      ],
+      "files": [
+        {
+          "path": "packages/session-query/session-query-sqlite/src/index.ts",
+          "line": 9,
+          "symbol": "DatabaseSync"
+        }
+      ],
+      "why": "历史会话会很长，检索必须下推给数据库而不是让模型翻日志。",
+      "status": "源码确认",
+      "tags": [
+        "数据",
+        "搜索"
+      ]
+    },
+    {
+      "id": "otel",
+      "name": "OpenTelemetry",
+      "layer": "data",
+      "role": "遥测导出。",
+      "usage": "otel + session-telemetry-otel 旁路消费事件，导出 span/metrics；产品遥测是单独开关。",
+      "packages": [
+        "@deepseek-ai/dsh-otel",
+        "@deepseek-ai/dsh-session-telemetry-otel"
+      ],
+      "files": [
+        {
+          "path": "packages/telemetry/otel/src/index.ts",
+          "line": 1,
+          "symbol": "OTel"
+        }
+      ],
+      "why": "Agent 的成本与延迟问题只能靠真实遥测定位。",
+      "status": "文档确认",
+      "tags": [
+        "可观测"
+      ]
+    },
+    {
+      "id": "electron",
+      "name": "Electron 44.7",
+      "layer": "frontend",
+      "role": "桌面壳。",
+      "usage": "Electron Node 模式启动私有 Desktop Host；窗口加载打包 Web 资源，IPC 承载启动注入、就绪与致命错误。",
+      "packages": [
+        "@deepseek-ai/dsh-desktop"
+      ],
+      "files": [
+        {
+          "path": "apps/desktop/package.json",
+          "line": 1,
+          "symbol": "electron ^44.7.0"
+        }
+      ],
+      "why": "桌面端与 Web 共用同一套 UI 与 Host，只替换载体。",
+      "status": "源码确认",
+      "tags": [
+        "桌面"
+      ]
+    }
+  ]
+}

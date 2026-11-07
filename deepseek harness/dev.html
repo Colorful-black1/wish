@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>DeepSeek Harness 源码架构可视化实验室</title>
+  <meta name="description" content="以本地源码为准的 DeepSeek Harness 架构可视化学习平台：技术栈、模块关系、Agent Loop、端到端链路、场景、事件、数据结构与运行模式。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23122944'/%3E%3Cpath d='M8 10h6v5H8zM18 10h6v5h-6zM8 18h6v5H8zM18 18h6v5h-6z' fill='%235aa2ff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/layout.css">
+  <link rel="stylesheet" href="src/css/components.css">
+  <link rel="stylesheet" href="src/css/graph.css">
+  <link rel="stylesheet" href="src/css/lab.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <button class="icon-btn hamburger" id="menuBtn" aria-label="打开导航">☰</button>
+      <div class="brand">
+        <div class="brand__mark">DSH</div>
+        <div class="brand__text">
+          <span class="brand__title">DeepSeek Harness</span>
+          <span class="brand__sub">Architecture Explorer</span>
+        </div>
+      </div>
+      <nav class="crumbs" aria-label="面包屑">
+        <span>源码实验室</span>
+        <span class="crumbs__sep">/</span>
+        <span class="crumbs__now" id="crumbNow">学习首页</span>
+      </nav>
+      <div class="topbar__grow"></div>
+      <div class="global-search">
+        <span style="display:flex;color:var(--faint)" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        </span>
+        <input id="globalSearch" type="search" placeholder="搜索模块 / 事件 / 源码…" autocomplete="off" aria-label="全局搜索">
+        <kbd>Ctrl K</kbd>
+        <div id="searchPop" class="search-pop hidden" role="listbox" aria-label="搜索结果"></div>
+      </div>
+      <button class="icon-btn" id="themeBtn" aria-label="切换明暗主题"></button>
+    </header>
+
+    <div class="shell" id="shell">
+      <aside class="nav" id="nav" aria-label="主导航">
+        <div id="navItems"></div>
+        <div class="nav__progress">
+          <div class="nav__progress-top"><span>学习进度</span><span id="navPct">0%</span></div>
+          <div class="nav__bar"><i id="navBar" style="width:0%"></i></div>
+        </div>
+      </aside>
+
+      <main class="workspace" id="workspace" tabindex="-1">
+        <noscript>
+          <div style="padding:40px;font-family:sans-serif;color:#dbe6f3">
+            这个实验室需要 JavaScript 来渲染架构图与源码面板。请在浏览器中启用 JavaScript。
+          </div>
+        </noscript>
+      </main>
+
+      <aside class="inspector" id="inspector" aria-label="源码与模块详情" aria-hidden="true"></aside>
+    </div>
+
+    <div class="scrim" id="scrim"></div>
+  </div>
+
+  <script src="src/js/data.generated.js"></script>
+  <script src="src/js/ui.js"></script>
+  <script src="src/js/graph.js"></script>
+  <script src="src/js/player.js"></script>
+  <script src="src/js/lab-engine.js"></script>
+  <script src="src/js/lab-scene.js"></script>
+  <script src="src/js/lab-panel.js"></script>
+  <script src="src/js/lab.js"></script>
+  <script src="src/js/pages.js"></script>
+  <script src="src/js/app.js"></script>
+</body>
+</html>

@@ -16,6 +16,7 @@
 | [milvus](milvus/) | [index.html](milvus/index.html) | 「Milvus × RAG 执行链路」：写入五站 + 查询五站，每站四段式，HNSW/IVF、BM25、三级归并、pre/post 过滤与融合都在页面里真算；事实来自 7 篇官方文档，示意与真算分栏标注 |
 | [solar-system](solar-system/) | [index.html](solar-system/index.html) | 「HELIOS 太阳系观测台」：WebGL2 逐像素光线求解的太阳系，行星位置由 JPL 根数 + 开普勒方程实时算出，太阳与八大行星都能点进特写；星空来自 HYG 星表 8,920 颗真实恒星，银河贴着真实银道面，三种尺度模式并标注失真。v2 加了四层运动（本动 19.4 km/s / 绕银心 220 km/s / 相对 CMB 369.82 km/s）与三档参考系，按 F 看椭圆变螺旋；滚轮可从行星表面连续拉到银河，六档时间倍率与里程表同步 |
 | [supercar](supercar/) | [index.html](supercar/index.html) | 「SUPERCAR 3D Showroom」：Ferrari 458 Italia 的实时 3D 展厅，7 个预设视角、5 套程序化 IBL 环境（不用 HDRI 文件）、12 色车漆 × 5 档漆面工艺、卡钳 / 轮辋 / 内饰 / 碳纤维饰板配置、7 种灯光与程序化仪表中控屏、第一人称驾驶舱、WebAudio 合成引擎声；three.js + Draco 解码器 + GLB 全部内联成 3.25 MB 单文件，50 项 GPU-only 验收全绿 |
+| [deepseek harness](deepseek%20harness/) | [index.html](deepseek%20harness/index.html) | 「DeepSeek Harness 源码架构可视化实验室」：以本地源码 commit fcc0ad4 为准，37 个模块 / 46 条带 `file:line` 的调用边、23 步 Agent Loop 播放、20 步端到端链路（三条轨道）、A–H 场景、90 个事件、63 个 Session 事件、375 个包索引；16 篇分析文档 + 33 段真实代码；新增 3D Agent 动态执行实验室（19 站台 + 中央核心、10 个场景、粒子/审批/回边、双向跳转），单文件 0.76 MB、零外部请求、64 项 GPU-only 验收全绿 |
 
 ---
 
@@ -35,6 +36,7 @@
 - `LLM执行流程/index.html` —— 单文件自包含的 3D 推理实验室，Three.js / GSAP / 样式全部内联，离线可用。
 - `milvus/index.html` —— 单文件自包含的 Milvus × RAG 十站执行追踪，样式、数据与引擎全部内联，离线可用。
 - `supercar/index.html` —— 单文件自包含的 Ferrari 458 Italia 实时 3D 展厅，three.js、Draco 解码器、GLB 模型与样式全部内联，离线可用。
+- `deepseek harness/index.html` —— 单文件自包含的源码知识库 + 3D Agent 动态执行实验室，样式、数据与自研 3D 引擎全部内联，离线可用。
 
 ### 重新构建 / 回归测试
 

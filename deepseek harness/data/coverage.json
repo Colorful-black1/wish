@@ -1,0 +1,40 @@
+{
+  "title": "覆盖率与未完成项",
+  "subtitle": "宁可不写，也不补造。状态只有六种，任何一条都能追溯。",
+  "statuses": [
+    { "id": "analyzed", "label": "已分析", "tone": "ok" },
+    { "id": "visualized", "label": "已可视化", "tone": "ok" },
+    { "id": "sourced", "label": "已关联源码", "tone": "ok" },
+    { "id": "pending", "label": "尚未分析", "tone": "warn" },
+    { "id": "absent", "label": "源码中不存在", "tone": "muted" },
+    { "id": "unknown", "label": "当前无法确认", "tone": "warn" }
+  ],
+  "items": [
+    { "area": "启动链路", "status": "sourced", "note": "CLI → profile → patch → boot → loader，逐函数定位。" },
+    { "area": "Turn / Step 状态机", "status": "visualized", "note": "23 步播放，含回边、取消与失败分支。" },
+    { "area": "LLM 调用与流协议", "status": "analyzed", "note": "适配器 seam、chunk 词汇、llm/stream 瀑布。" },
+    { "area": "工具流水线与审批", "status": "analyzed", "note": "pre / execute / post 三段与 approval seam。" },
+    { "area": "Session 事件日志", "status": "visualized", "note": "事件时间轴、surface 投影、持久化格式。" },
+    { "area": "插件 / Profile / Bundle / Patch", "status": "visualized", "note": "分层、行数、生命周期与 preset。" },
+    { "area": "事件三域与 90 个事件", "status": "sourced", "note": "矩阵来自生成文档；页面可搜索、可看生产者/监听者。" },
+    { "area": "五种运行模式", "status": "analyzed", "note": "对比表与共用/专属行。" },
+    { "area": "场景 A–H", "status": "visualized", "note": "每场景独立步骤与分支；能力存在性单独标注。" },
+    { "area": "3D Agent 动态执行实验室", "status": "visualized", "note": "19 个源码站台 + 中央核心、10 个教学场景、粒子/审批/回边；数据与源码位置逐条校验。" },
+    { "area": "真实运行追踪（实时事件/日志接入）", "status": "pending", "note": "当前未接入：不修改、不注入 Harness 进程；实验室只播放按源码预演的模拟。" },
+    { "area": "Desktop 打包与签名细节", "status": "pending", "note": "只确认了启动与 IPC 概览，未逐文件分析 electron-builder 配置。" },
+    { "area": "Office 渲染与重算实现", "status": "pending", "note": "确认技能与 LibreOffice Kit 依赖，未深入渲染器实现。" },
+    { "area": "Agent Teams 任务板", "status": "pending", "note": "确认存在 team/task 事件与工具，未逐状态机分析。" },
+    { "area": "PTC 运行时内部", "status": "pending", "note": "确认 run_code 与桥接机制，未分析生成 SDK 的细节。" },
+    { "area": "MCP 传输与生命周期", "status": "pending", "note": "确认 mcp-client / mcp-manager / mcp-resources 包存在。" },
+    { "area": "Browser Use / Computer Use", "status": "pending", "note": "确认包与工具存在，未分析各 provider 的驱动。" },
+    { "area": "LSP / 终端 / SSH", "status": "pending", "note": "只到 seam 与工具层，未分析传输协议。" },
+    { "area": "自动判定「任务完成」的语义模块", "status": "absent", "note": "循环只按「无 tool-call 且无新输入」结束；没有独立判定器。" },
+    { "area": "内置 Python 数据分析工具", "status": "absent", "note": "只有实验性 PTC python 运行时；没有面向数据分析的专用工具。" },
+    { "area": "固定的「登录功能」领域工具", "status": "absent", "note": "Coding 能力来自通用 fs/shell/search，不是领域插件。" },
+    { "area": "浏览器任意文件读取接口", "status": "absent", "note": "安全要求明确禁止；源码只暴露受控的 workspace 文件 API。" },
+    { "area": "循环请求里的 system 字段", "status": "absent", "note": "循环构建的 GenerateOptions 不带 system；提示词在历史里。" },
+    { "area": "本机模型凭据是否可用", "status": "unknown", "note": "取决于运行环境与 settings，不在源码里。" },
+    { "area": "LibreOffice Kit 是否已安装", "status": "unknown", "note": "取决于部署环境。" },
+    { "area": "你的 profile 最终行数", "status": "unknown", "note": "用户可能改过 cordis.patch.yml；页面显示的是随附模板计数。" }
+  ]
+}

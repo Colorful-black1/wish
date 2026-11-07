@@ -1,0 +1,266 @@
+[
+  {
+    "id": "cli-entry",
+    "file": "apps/cli/src/bin.ts",
+    "start": 26,
+    "end": 48,
+    "label": "CLI 入口 · runCli()",
+    "note": "解析参数后按 invocation.mode 分派：profile 模式动态载入 profile-boot 并调用 runProfile()。"
+  },
+  {
+    "id": "profile-boot",
+    "file": "apps/cli/src/profile-boot.ts",
+    "start": 292,
+    "end": 346,
+    "label": "runProfile · 组合 profile 并启动",
+    "note": "composeProfile() 解析 bundle/patch 层，boot() 挂载 Cordis 树，appReady 只在 loader 就绪后提交。"
+  },
+  {
+    "id": "app-boot",
+    "file": "packages/boot/app-boot/src/index.ts",
+    "start": 1200,
+    "end": 1236,
+    "label": "boot() · Loader 与根 include",
+    "note": "Cordis 上下文创建后先挂 Loader，再把 profile 根配置与 patch 层挂成一条 include 条目。"
+  },
+  {
+    "id": "agent-send",
+    "file": "packages/core/agent-loop/src/agent.ts",
+    "start": 170,
+    "end": 197,
+    "label": "Agent.send / followup / steer / inject",
+    "note": "四种入口都落到 inbox.splice；followup 唤醒新轮次，steer 进 next-step，inject 不唤醒。"
+  },
+  {
+    "id": "agent-wake",
+    "file": "packages/core/agent-loop/src/agent.ts",
+    "start": 230,
+    "end": 281,
+    "label": "wakeDriver() / kick()",
+    "note": "空闲时立即启动驱动器；忙碌时把唤醒闩到当前活动收敛，kick() 循环调用 turn()。"
+  },
+  {
+    "id": "agent-turn",
+    "file": "packages/core/agent-loop/src/agent.ts",
+    "start": 326,
+    "end": 433,
+    "label": "turn() · 轮次循环",
+    "note": "turn/start 后循环 preStep → step/start → step() → step/end，工具欠账或新输入则进入下一 Step，最后 turn/end。"
+  },
+  {
+    "id": "agent-step",
+    "file": "packages/core/agent-loop/src/agent.ts",
+    "start": 435,
+    "end": 500,
+    "label": "step() · 准备请求并发起流式调用",
+    "note": "prepareRequest() 绑定适配器后协调 system/message、写入 user/message，再 buildRequest() 并消费 stream。"
+  },
+  {
+    "id": "agent-commit",
+    "file": "packages/core/agent-loop/src/agent.ts",
+    "start": 541,
+    "end": 609,
+    "label": "流结束 · assistant/message 与工具执行",
+    "note": "成功流先结算 assistant/message；含 tool-call 时调用 ctx.tools.execute()，结果上下文回填 next-step。"
+  },
+  {
+    "id": "agent-prepare",
+    "file": "packages/core/agent-loop/src/agent.ts",
+    "start": 613,
+    "end": 653,
+    "label": "prepareRequest() · agent/request 与 prepareCall",
+    "note": "waterfall 允许监听器改采样等控制参数，但不许改 provider/model；随后 ctx.llm.prepareCall() 绑定适配器。"
+  },
+  {
+    "id": "agent-build",
+    "file": "packages/core/agent-loop/src/agent.ts",
+    "start": 656,
+    "end": 709,
+    "label": "buildRequest() · header / context / messages",
+    "note": "记录 request/header 与 request/context，消息来自 session.deriveMessages()，工具来自组装结果的 header.tools。"
+  },
+  {
+    "id": "session-append",
+    "file": "packages/core/session/src/index.ts",
+    "start": 806,
+    "end": 837,
+    "label": "Session.append() · 快照、校验、追加",
+    "note": "append 先做 JSON 快照与结构校验，再生成 seq/time 并交给 commit；日志是唯一事实来源。"
+  },
+  {
+    "id": "session-commit",
+    "file": "packages/core/session/src/index.ts",
+    "start": 886,
+    "end": 912,
+    "label": "commit() · 写日志并广播 session/event",
+    "note": "推入 log 后同步通知 session/event 监听者；每个监听器各自隔离失败。"
+  },
+  {
+    "id": "session-derive",
+    "file": "packages/core/session/src/index.ts",
+    "start": 999,
+    "end": 1020,
+    "label": "deriveMessages() · 从事件日志投影模型历史",
+    "note": "只遍历 surface 节点增量投影，返回冻结的消息数组；模型看到的正是日志能重建的内容。"
+  },
+  {
+    "id": "session-events",
+    "file": "packages/core/session/src/types.ts",
+    "start": 287,
+    "end": 410,
+    "label": "SessionEventMap · 持久事件词汇",
+    "note": "turn/step/message/tool/request 等持久事实的形态定义；每个事件都是无损 JSON。"
+  },
+  {
+    "id": "tools-execute",
+    "file": "packages/core/tools/src/index.ts",
+    "start": 369,
+    "end": 377,
+    "label": "ctx.tools.execute() · 批次委派",
+    "note": "按 Agent 所在作用域选择执行器，把原始调用批次整体交给它。"
+  },
+  {
+    "id": "tools-prepare",
+    "file": "packages/core/tools/src/pipeline.ts",
+    "start": 184,
+    "end": 233,
+    "label": "tools/pre-execute · 策略、审批与 guard",
+    "note": "waterfall 决策 allow / ask / deny / cancel；ask 走 approval seam，随后再跑单调 guard。"
+  },
+  {
+    "id": "tools-dispatch",
+    "file": "packages/core/tools/src/pipeline.ts",
+    "start": 288,
+    "end": 325,
+    "label": "tools/execute · 包裹工具体",
+    "note": "外层 waterfall 可替换执行方式；工具名解析失败抛 ToolNotFoundError，错误统一转成 isError 结果。"
+  },
+  {
+    "id": "tools-post",
+    "file": "packages/core/tools/src/pipeline.ts",
+    "start": 475,
+    "end": 524,
+    "label": "tools/post-execute · 结果策略",
+    "note": "accept / block 两种决策；可替换 content 或 value，并携带 additionalContexts 回到循环。"
+  },
+  {
+    "id": "llm-prepare",
+    "file": "packages/llm/llm/src/index.ts",
+    "start": 960,
+    "end": 1018,
+    "label": "ctx.llm.prepareCall() · 绑定适配器代际",
+    "note": "解析模型信息、补齐默认值并冻结 config；返回的 stream 只能派发一次，防止 HMR 混淆两代适配器。"
+  },
+  {
+    "id": "llm-stream",
+    "file": "packages/llm/llm/src/index.ts",
+    "start": 1159,
+    "end": 1184,
+    "label": "ctx.llm.stream() · llm/stream 瀑布",
+    "note": "所有模型调用都经过 llm/stream waterfall，监听器可包装/替换流；失败归一化为终止 chunk。"
+  },
+  {
+    "id": "llm-chunks",
+    "file": "packages/llm/llm/src/types.ts",
+    "start": 488,
+    "end": 508,
+    "label": "StreamChunk · 适配器流协议",
+    "note": "块索引关联交错的增量；block-end 携带组装好的内容块，finish 之前的 usage 单独成帧。"
+  },
+  {
+    "id": "llm-request",
+    "file": "packages/llm/llm/src/types.ts",
+    "start": 560,
+    "end": 606,
+    "label": "GenerateOptions · 一次模型请求",
+    "note": "provider/model、消息、工具 schema、toolHistory、采样参数与取消信号；循环构建的请求不填 system 字段。"
+  },
+  {
+    "id": "prompt-assemble",
+    "file": "packages/core/system-prompt/src/index.ts",
+    "start": 610,
+    "end": 694,
+    "label": "ctx.systemPrompt.assemble() · 提示词组装",
+    "note": "合并全局与作用域的 section/context/variable，收集可见工具 schema，最后跑 system-prompt/assemble 瀑布。"
+  },
+  {
+    "id": "rpc-prompt",
+    "file": "packages/api/session-controller/src/index.ts",
+    "start": 461,
+    "end": 492,
+    "label": "@Remote('prompt') · RPC 入口",
+    "note": "网关校验后进入：内容非空白、时区合法，构造 MessageSource（user / retry + rpcId），交给 commands.prompt。"
+  },
+  {
+    "id": "commands-prompt",
+    "file": "packages/api/session-controller/src/commands.ts",
+    "start": 321,
+    "end": 387,
+    "label": "prompt 准入 → agent.followup / steer",
+    "note": "先幂等检查 requestId，再解析附件与图片模态；queue 走 followup，steer 走 agent.steer。"
+  },
+  {
+    "id": "client-prompt",
+    "file": "packages/api/session-controller/src/client/sessions/session.ts",
+    "start": 245,
+    "end": 299,
+    "label": "客户端 session.prompt() · 发起 RPC",
+    "note": "浏览器侧 Session 句柄把 queue/steer、requestId、时区发给 remote.session.prompt；子 Agent 走 subagents.prompt。"
+  },
+  {
+    "id": "ui-send",
+    "file": "packages/client/ui-conversation/src/client/service.ts",
+    "start": 203,
+    "end": 213,
+    "label": "会话输入框提交 · conversation.send()",
+    "note": "最简单的一条发送路径：文本块交给 scopedSession.prompt(content, 'queue')。"
+  },
+  {
+    "id": "stream-bridge",
+    "file": "packages/api/session-controller/src/history/assistant-stream.ts",
+    "start": 11,
+    "end": 42,
+    "label": "agent/assistant-stream → 远程流",
+    "note": "进程内 live 事件由 session-controller 累积，按连接订阅转成 assistant-stream 帧推给浏览器。"
+  },
+  {
+    "id": "headless-run",
+    "file": "packages/bundle/headless/src/index.ts",
+    "start": 379,
+    "end": 430,
+    "label": "Headless runner · 一次性驱动",
+    "note": "通过 ctx.agents.create() 创建 Agent，followup 投递任务，whenIdle() 等待收敛后输出最终文本。"
+  },
+  {
+    "id": "tools-resolve",
+    "file": "packages/core/tools/src/index.ts",
+    "start": 264,
+    "end": 297,
+    "label": "ctx.tools.resolve() · 本 Step 的可见工具集",
+    "note": "每个 Step 按 Agent 作用域重新解析一次可见工具；when() 读取条件，取消或条件失败都不发布半成品。"
+  },
+  {
+    "id": "approval-request",
+    "file": "packages/interaction/user-approval/src/types.ts",
+    "start": 78,
+    "end": 92,
+    "label": "approval/request · 审批瀑布",
+    "note": "审批是 waterfall：监听器返回 outcome 即认领请求，或调用 next() 交给下一个审批者；按 Agent 作用域过滤。"
+  },
+  {
+    "id": "tool-batch",
+    "file": "packages/core/tools/src/batch.ts",
+    "start": 236,
+    "end": 269,
+    "label": "BatchSettlement · tool/call 与 tool/result 落日志",
+    "note": "工具批次开始时 append tool/call，提交结果时 append tool/result，并把 additionalContexts 收回给循环。"
+  },
+  {
+    "id": "subagent-start",
+    "file": "packages/subagent/tool-subagent/src/index.ts",
+    "start": 317,
+    "end": 334,
+    "label": "subagent 工具 · 启动子 Agent",
+    "note": "父 Agent 的工具调用组装 child 请求，交给 ctx.subagents.startActivation()；子 Agent 有独立 Session 与循环。"
+  }
+]

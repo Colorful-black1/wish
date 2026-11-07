@@ -1,0 +1,215 @@
+{
+  "title": "数据结构与状态流转",
+  "subtitle": "Agent 的「状态」不是一堆字段，而是一条只追加的事件日志；下面每个结构都标了创建、更新与消费位置。",
+  "models": [
+    {
+      "id": "agent",
+      "name": "Agent",
+      "kind": "interface",
+      "file": "packages/core/agent/src/runtime-types.ts",
+      "line": 191,
+      "summary": "驱动一个 Session 的句柄。接口在 core/agent 声明，唯一默认实现由 agent-loop 提供。",
+      "fields": [
+        { "name": "options", "type": "AgentOptions", "desc": "路由与输出控制的回退值；Session 记录选择后以日志为准。" },
+        { "name": "session", "type": "Session", "desc": "它驱动的会话；日志是唯一持久事实来源。" },
+        { "name": "model", "type": "Model", "desc": "读取/选择后续步骤的 provider、model、推理强度。" },
+        { "name": "inbox", "type": "Inbox", "desc": "待处理输入的持久投影（next-turn / next-step）。" },
+        { "name": "status", "type": "'idle' | 'running'", "desc": "当前生命周期状态，每次变化发 agent/status。" },
+        { "name": "ctx", "type": "Context", "desc": "Agent 作用域上下文；注册随 Agent 销毁而撤销。" }
+      ],
+      "methods": [
+        { "name": "send(message, target, wakeup)", "desc": "唯一底层入口；followup / steer / inject 都是它的包装。" },
+        { "name": "cancel(cause, options?)", "desc": "清空（或保留）inbox 并 abort 当前活动。" },
+        { "name": "whenIdle()", "desc": "等待整个 Agent 活动收敛。" },
+        { "name": "runMaintenance(task)", "desc": "在真正空闲时执行非轮次任务（如压缩）。" }
+      ],
+      "createdBy": "ctx.agents.create() / resume()（agent-loop 工厂）",
+      "updatedBy": "inbox splice、model.select()、status 变化",
+      "consumedBy": "session-controller、subagent、headless runner、Web UI",
+      "lifecycle": "创建 → setup/commit → agent/created → 跑轮次 → dispose → agent/disposed。初始化失败有回滚保护。"
+    },
+    {
+      "id": "session",
+      "name": "Session",
+      "kind": "class",
+      "file": "packages/core/session/src/index.ts",
+      "line": 525,
+      "summary": "一个 Agent 交互的日志与内存存储；消息历史、请求头、工具历史全部从它派生。",
+      "fields": [
+        { "name": "id", "type": "SessionId", "desc": "会话身份；子 Agent 有独立 id。" },
+        { "name": "log", "type": "SessionEvent[]", "desc": "只追加事件数组，seq 连续。" },
+        { "name": "seq", "type": "SessionSeq", "desc": "下一个事件序号 / 当前日志长度。" },
+        { "name": "surface", "type": "SessionSurface", "desc": "消息投影：哪些事件进入模型历史、如何替换。" },
+        { "name": "inheritedEventCount", "type": "number", "desc": "fork/seed 继承前缀的长度；之前的事件不算子会话的新请求。" }
+      ],
+      "methods": [
+        { "name": "append(type, data, intent?)", "desc": "快照、校验、冻结、分配 seq，再广播 session/event。" },
+        { "name": "deriveMessages()", "desc": "从 surface 节点增量投影模型消息。" },
+        { "name": "requestHeader()", "desc": "折叠 request/header 得到当前信封。" },
+        { "name": "toolHistory()", "desc": "工具声明与变更历史，供 provider 投影。" }
+      ],
+      "createdBy": "ctx.sessions.create()；agent-loop 在持久化后端上 create/open",
+      "updatedBy": "所有 append（agent-loop 是主要写入者）",
+      "consumedBy": "agent-loop、session-controller、projection、persistence、telemetry",
+      "lifecycle": "创建（可带 seed）→ 追加事件 → 可选持久化 → session/disposed。没有后端时只存在于内存。"
+    },
+    {
+      "id": "session-event",
+      "name": "SessionEvent<T>",
+      "kind": "type",
+      "file": "packages/core/session/src/types.ts",
+      "line": 501,
+      "summary": "日志中的一条不可变记录；type 与 data 构成判别联合，surface 事件额外携带投影意图。",
+      "fields": [
+        { "name": "type", "type": "SessionEventType", "desc": "事件名，如 turn/start、assistant/message，或插件的 plugin:*。" },
+        { "name": "seq", "type": "SessionSeq", "desc": "会话内单调序号。" },
+        { "name": "time", "type": "number", "desc": "Unix 毫秒时间戳。" },
+        { "name": "data", "type": "SessionEventMap[T]", "desc": "该事件的负载，必须是无损 JSON。" },
+        { "name": "surfaceOp", "type": "SurfaceOp | never", "desc": "仅消息事件：append 或 replace 区间。" },
+        { "name": "ignorable", "type": "true?", "desc": "读者可安全跳过的信息性记录；缺失表示必须理解。" }
+      ],
+      "methods": [],
+      "createdBy": "Session.append()",
+      "updatedBy": "不可变",
+      "consumedBy": "deriveMessages、投影、持久化、遥测、回放",
+      "lifecycle": "追加后永不修改；surface replace 只改变投影，不删日志。"
+    },
+    {
+      "id": "turn",
+      "name": "Turn / Step",
+      "kind": "state",
+      "file": "packages/core/agent-loop/src/agent.ts",
+      "line": 327,
+      "summary": "不是 TypeScript 类型，而是由 turn/start、step/start、step/end、turn/end 划出的运行区间。",
+      "fields": [
+        { "name": "turn", "type": "number", "desc": "轮次号，从 1 递增。" },
+        { "name": "step", "type": "number", "desc": "轮次内步骤号，从 1 递增；新轮次归零。" },
+        { "name": "phase", "type": "'idle' | 'running' | 'maintenance'", "desc": "驱动器生命周期，不等于 Turn 状态。" },
+        { "name": "turnEnds", "type": "TurnEndReason | null", "desc": "当前轮次的结束原因，最终写入 turn/end。" }
+      ],
+      "methods": [],
+      "createdBy": "turn() / step() 打开",
+      "updatedBy": "session.append 的边界事件",
+      "consumedBy": "UI 时间轴、session-query、telemetry、恢复逻辑",
+      "lifecycle": "turn/start 必有配对 turn/end；step/start 必有配对 step/end（finally 写）。"
+    },
+    {
+      "id": "message",
+      "name": "Message",
+      "kind": "type",
+      "file": "packages/llm/llm/src/message.ts",
+      "line": 196,
+      "summary": "模型可见的五种角色消息；id、content、source 是共享字段。",
+      "fields": [
+        { "name": "role", "type": "'system' | 'developer' | 'user' | 'assistant' | 'tool'", "desc": "判别字段。" },
+        { "name": "id", "type": "MessageId", "desc": "跨表示边界保持稳定。" },
+        { "name": "content", "type": "ContentBlock[]", "desc": "文本、图片、工具调用/结果等块。" },
+        { "name": "source", "type": "MessageSource", "desc": "谁产生了它：user、model、tool、system-prompt…" },
+        { "name": "toolCallId", "type": "ToolCallId (tool 角色)", "desc": "tool 结果与调用配对。" },
+        { "name": "isError", "type": "boolean (tool 角色)", "desc": "工具调用是否失败。" }
+      ],
+      "methods": [],
+      "createdBy": "createUserMessage / createAssistantMessage / 工具结果构造",
+      "updatedBy": "不可变（冻结）",
+      "consumedBy": "deriveMessages、适配器序列化、UI 渲染",
+      "lifecycle": "进入 surface 时冻结；被压缩替换后不再出现在模型历史，但日志仍在。"
+    },
+    {
+      "id": "tool-def",
+      "name": "ToolDefinition / ToolExecution",
+      "kind": "interface",
+      "file": "packages/core/tools/src/contracts.ts",
+      "line": 26,
+      "summary": "工具注册项与一次执行上下文；schema 面向模型，execute 面向运行时。",
+      "fields": [
+        { "name": "name", "type": "string", "desc": "模型看到的工具名。" },
+        { "name": "description", "type": "string", "desc": "模型看到的说明。" },
+        { "name": "parameters", "type": "Record<string, unknown>", "desc": "JSON Schema。" },
+        { "name": "execute", "type": "(args, exec) => Promise<JsonValue>", "desc": "工具体；抛错会被转成 isError。" },
+        { "name": "concurrency", "type": "'safe' | 'exclusive'", "desc": "决定批次里能否并行。" },
+        { "name": "exec.agent / signal / arguments / log", "type": "运行上下文", "desc": "归属 Agent、取消信号、原始参数、turn/step 日志位置。" }
+      ],
+      "methods": [],
+      "createdBy": "插件 apply 时 ctx.tools.register()",
+      "updatedBy": "工具插件启停 / 作用域切换",
+      "consumedBy": "system-prompt（schema）、tool pipeline（执行）、executor（调度）",
+      "lifecycle": "注册随插件 fiber 撤销；进行中的批次由选中时的执行器结算。"
+    },
+    {
+      "id": "llm-request",
+      "name": "GenerateOptions / StreamChunk",
+      "kind": "type",
+      "file": "packages/llm/llm/src/types.ts",
+      "line": 564,
+      "summary": "一次模型请求与它的流式响应协议；循环只认识这两个结构。",
+      "fields": [
+        { "name": "provider / model", "type": "string", "desc": "路由到适配器。" },
+        { "name": "messages", "type": "RequestMessage[]", "desc": "从日志派生的历史；循环构建时不填 system 字段。" },
+        { "name": "tools", "type": "ToolSchema[]", "desc": "本步可见工具声明。" },
+        { "name": "toolHistory", "type": "ToolHistory", "desc": "工具增删历史，供 provider 投影。" },
+        { "name": "signal", "type": "AbortSignal", "desc": "取消贯穿到适配器与流迭代。" },
+        { "name": "StreamChunk.type", "type": "'block-start' | 'text-delta' | 'reasoning-delta' | 'tool-call-delta' | 'block-end' | 'usage' | 'finish'", "desc": "统一增量词汇。" }
+      ],
+      "methods": [],
+      "createdBy": "buildRequest()（agent-loop）",
+      "updatedBy": "不可变；prepared call 只能派发一次",
+      "consumedBy": "ctx.llm、适配器、AssistantStreamAttempt",
+      "lifecycle": "每次 Step 尝试构造一次；失败会归一化为终止 chunk。"
+    },
+    {
+      "id": "job",
+      "name": "Job",
+      "kind": "interface",
+      "file": "packages/jobs/jobs/src/types.ts",
+      "line": 179,
+      "summary": "后台任务的运行期视图；持久身份与结算是两条 Session 记录。",
+      "fields": [
+        { "name": "jobId", "type": "JobId", "desc": "`<kind>-<uuid16>` 品牌化 id。" },
+        { "name": "kind", "type": "string", "desc": "生产者定义，如 bash。" },
+        { "name": "owner", "type": "SessionId", "desc": "原始所有者；复制历史不转移所有权。" },
+        { "name": "status", "type": "'running' | 'stopping' | 'completed' | 'killed' | 'failed'", "desc": "运行期状态。" },
+        { "name": "output", "type": "拉取源", "desc": "job_output 按游标增量读取。" }
+      ],
+      "methods": [],
+      "createdBy": "ctx.jobs.start()（bash run_in_background / 终端发送）",
+      "updatedBy": "运行时注册表；job/registered、job/settled 写日志",
+      "consumedBy": "job_* 工具、UI 后台任务面板",
+      "lifecycle": "注册 → 运行 → 结算。进程硬退出可能缺 job/settled，记录区间不完整。"
+    }
+  ],
+  "timeline": {
+    "title": "一次带工具的 Turn：Session 事件时间轴",
+    "note": "事件顺序来自 apply 逻辑；payload 为结构示意（字段来自 SessionEventMap），不是某次真实运行的逐字节复制。",
+    "events": [
+      { "seq": 0, "type": "turn/start", "data": "{ turn: 1 }", "tag": "边界", "note": "领取输入之前就打开轮次。" },
+      { "seq": 1, "type": "agent/inbox/spliced", "data": "{ target: 'next-turn', start: 0, removedCount: 1, inserted: [] }", "tag": "投影", "note": "claim：消息从待处理列表移除，发出 claimed 通知。" },
+      { "seq": 2, "type": "step/start", "data": "{ turn: 1, step: 1 }", "tag": "边界", "note": "第一个步骤开始。" },
+      { "seq": 3, "type": "system/message", "data": "{ turn: 1, step: 1, message: SystemMessage }", "tag": "消息", "note": "渲染后的系统提示词进入历史（surface append）。" },
+      { "seq": 4, "type": "user/message", "data": "UserMessage { content: [{ type: 'text', text: '…' }] }", "tag": "消息", "note": "已接纳的用户输入。" },
+      { "seq": 5, "type": "request/header", "data": "{ header: EpochHeader, reason: 'initial' }", "tag": "请求", "note": "首次请求记录完整信封（provider/model/tools）。" },
+      { "seq": 6, "type": "request/context", "data": "{ provider, model, contextWindow }", "tag": "请求", "note": "路由信息变化时才追加。" },
+      { "seq": 7, "type": "assistant/message", "data": "{ turn: 1, step: 1, message: AssistantMessage, stream: [...], usage }", "tag": "消息", "note": "模型输出与内嵌 stream 一起结算。" },
+      { "seq": 8, "type": "tool/call", "data": "{ turn: 1, step: 1, callId, name: 'grep', arguments: '{\"pattern\":\"…\"}' }", "tag": "工具", "note": "原始参数 JSON 字符串，未解析。" },
+      { "seq": 9, "type": "tool/result", "data": "{ turn: 1, step: 1, message: ToolResultMessage }", "tag": "工具", "note": "结果按模型顺序写回；失败也是结果。" },
+      { "seq": 10, "type": "step/end", "data": "{ turn: 1, step: 1 }", "tag": "边界", "note": "finally 中必写。" },
+      { "seq": 11, "type": "step/start", "data": "{ turn: 1, step: 2 }", "tag": "边界", "note": "工具欠账 → 下一个 Step。" },
+      { "seq": 12, "type": "assistant/message", "data": "{ turn: 1, step: 2, message: AssistantMessage }", "tag": "消息", "note": "模型基于工具结果给出最终回答。" },
+      { "seq": 13, "type": "step/end", "data": "{ turn: 1, step: 2 }", "tag": "边界", "note": "" },
+      { "seq": 14, "type": "turn/end", "data": "{ turn: 1, reason: { kind: 'completed' } }", "tag": "边界", "note": "轮次结束；reason 是最终事实。" }
+    ]
+  },
+  "facts": [
+    {
+      "title": "为什么是事件日志",
+      "text": "模型可见即已记录：任何进入请求的内容都必须能从日志重建。日志也是恢复、fork、回放、遥测与 UI 快照的共同来源。"
+    },
+    {
+      "title": "哪些持久、哪些只在内存",
+      "text": "turn/step、消息、tool/call/result、request/header/context 等 Session 事件持久；agent/* 实时事件、assistant-stream 帧、job 运行期视图只在内存。assistant/message 内嵌的紧凑 stream 是例外：它让一次输出的过程也能持久回放。"
+    },
+    {
+      "title": "surface 不是日志本身",
+      "text": "surface 是消息投影。压缩用 `surfaceOp: replace` 遮蔽旧节点，但原始事件仍在日志里；所以「模型看不到」不等于「记录被删除」。"
+    }
+  ]
+}

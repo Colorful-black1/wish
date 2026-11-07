@@ -1,0 +1,4476 @@
+{
+  "meta": {
+    "title": "DeepSeek Agent Execution Lab",
+    "cn": "DeepSeek Agent 动态执行实验室",
+    "subtitle": "把一次 Agent 执行拆成 19 个真实站台，用粒子和光路看它如何循环、分支、等待审批与收束。",
+    "sourceCommit": "fcc0ad4",
+    "version": "0.2.2-rc.1",
+    "disclaimer": "教学模拟：站台、模块、事件与源码位置来自本地源码；模型回复、耗时、token 与部分字段值为教学模拟数据，不是真实运行结果。",
+    "realTrace": {
+      "status": "not-connected",
+      "label": "真实运行追踪未接入",
+      "text": "本实验室不修改、不注入 DeepSeek Harness 进程。当前没有读取真实运行事件或日志的通道；所有流程都是按源码结构预演的模拟。"
+    },
+    "rendering": "自研轻量 3D：透视投影 + 深度排序 + Canvas 2D 绘制，零 WebGL / 第三方依赖。"
+  },
+  "stations": [
+    {
+      "id": "input",
+      "no": "01",
+      "name": "用户输入",
+      "en": "User Input",
+      "kind": "terminal",
+      "color": "cyan",
+      "module": "Web Client",
+      "node": "web-client",
+      "summary": "输入框把一段文本变成一次 prompt 调用。",
+      "what": "会话输入框把用户内容组装成 ContentBlock，调用 scopedSession.prompt(content, 'queue')。这里只负责提交，不碰模型，也不写 Session 日志。",
+      "why": "它是整条链路的起点，也是 queue / steer 两种投递语义的分岔口：现在发，还是等当前 Step 结束再插进去。",
+      "input": "用户键入的文本、当前 sessionId",
+      "output": "conversation.send() → session.prompt() 调用",
+      "source": {
+        "file": "packages/client/ui-conversation/src/client/service.ts",
+        "line": 203,
+        "symbol": "conversation.send()",
+        "excerpt": "ui-send"
+      },
+      "events": [],
+      "packages": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-web"
+      ],
+      "types": [
+        "Message",
+        "ContentBlock"
+      ],
+      "sample": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{{task}}"
+          }
+        ],
+        "delivery": "queue",
+        "sessionId": "ses_demo",
+        "note": "服务端会把 content 组装成 user message；此处只是提交形状"
+      },
+      "links": [
+        {
+          "page": "request",
+          "label": "用户请求链路"
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "ui-conversation"
+          }
+        },
+        {
+          "page": "modes",
+          "label": "运行模式"
+        }
+      ],
+      "pos": [
+        -16.5,
+        0.1,
+        6
+      ]
+    },
+    {
+      "id": "rpc",
+      "no": "02",
+      "name": "客户端 RPC",
+      "en": "Client RPC",
+      "kind": "gateway",
+      "color": "blue",
+      "module": "API Gateway / Session Controller",
+      "node": "gateway",
+      "summary": "浏览器把调用变成带 requestId 的远程帧。",
+      "what": "客户端 Session 句柄补上 requestId、时区与 delivery，通过 Typert RPC 发到 Gateway；Gateway 解码、鉴权后分派给 Session Controller。",
+      "why": "浏览器与 Host 之间只有这一条准入边界：不是 HTTP 业务路由，而是 WebSocket mux 上的 Typert 调用。",
+      "input": "本地 session.prompt() 调用",
+      "output": "remote.session.prompt(request) 帧",
+      "source": {
+        "file": "packages/api/session-controller/src/client/sessions/session.ts",
+        "line": 245,
+        "symbol": "Session.prompt()",
+        "excerpt": "client-prompt"
+      },
+      "events": [
+        {
+          "name": "connection/request",
+          "kind": "capability"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-api-gateway"
+      ],
+      "types": [
+        "PromptRequest",
+        "ConnectionRequest"
+      ],
+      "sample": {
+        "method": "session.prompt",
+        "requestId": "req_demo_01",
+        "params": {
+          "sessionId": "ses_demo",
+          "content": [
+            {
+              "type": "text",
+              "text": "{{task}}"
+            }
+          ],
+          "delivery": "queue"
+        }
+      },
+      "links": [
+        {
+          "page": "request",
+          "label": "请求链路"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · Gateway",
+          "params": {
+            "node": "gateway"
+          }
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "api/gateway"
+          }
+        }
+      ],
+      "pos": [
+        -14.2,
+        0.3,
+        4.8
+      ]
+    },
+    {
+      "id": "session",
+      "no": "03",
+      "name": "Session 准入",
+      "en": "Session Admission",
+      "kind": "vault",
+      "color": "violet",
+      "module": "Session Controller",
+      "node": "session-controller",
+      "summary": "校验、幂等、附件准入，然后决定 followup 还是 steer。",
+      "what": "@Remote('prompt') 先校验内容非空白、时区合法，构造 MessageSource；commands.prompt 再查 requestId 幂等、解析附件与图片模态，queue 走 agent.followup，steer 走 agent.steer。",
+      "why": "重试不能重复插入同一条消息；附件必须先落成 Host 侧引用；两个投递语义必须在这里就分开。",
+      "input": "RPC params",
+      "output": "agent.followup(message) / agent.steer(message)",
+      "source": {
+        "file": "packages/api/session-controller/src/index.ts",
+        "line": 461,
+        "symbol": "@Remote('prompt')",
+        "excerpt": "rpc-prompt"
+      },
+      "events": [],
+      "packages": [
+        "@deepseek-ai/dsh-api-session-controller"
+      ],
+      "types": [
+        "MessageSource",
+        "PromptRequest"
+      ],
+      "sample": {
+        "requestId": "req_demo_01",
+        "idempotentHit": false,
+        "source": {
+          "kind": "user",
+          "rpcId": "req_demo_01"
+        },
+        "delivery": "queue"
+      },
+      "links": [
+        {
+          "page": "request",
+          "label": "请求链路"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · Session Controller",
+          "params": {
+            "node": "session-controller"
+          }
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "api/session-controller"
+          }
+        }
+      ],
+      "pos": [
+        -11.8,
+        0.6,
+        3.4
+      ]
+    },
+    {
+      "id": "inbox",
+      "no": "04",
+      "name": "Agent Inbox",
+      "en": "Agent Inbox",
+      "kind": "inbox",
+      "color": "teal",
+      "module": "Agent Loop",
+      "node": "agent-loop",
+      "summary": "消息进入收件箱，等待驱动器领取。",
+      "what": "send / followup / steer / inject 四个入口最终都落到 inbox.splice。followup 排 next-turn 并唤醒，steer 排 next-step，inject 只入队不唤醒。",
+      "why": "Inbox 把「用户投递」与「Agent 正在算」解耦：忙碌时不会重入 turn，消息只会排队。",
+      "input": "followup / steer 消息",
+      "output": "inbox entry（next-turn 或 next-step）",
+      "source": {
+        "file": "packages/core/agent-loop/src/agent.ts",
+        "line": 170,
+        "symbol": "Agent.send / followup / steer / inject",
+        "excerpt": "agent-send"
+      },
+      "events": [
+        {
+          "name": "agent/inbox/spliced",
+          "kind": "session"
+        },
+        {
+          "name": "agent/inbox/inserted",
+          "kind": "capability"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-agent-loop"
+      ],
+      "types": [
+        "InboxEntry",
+        "Message"
+      ],
+      "sample": {
+        "queue": "next-turn",
+        "pending": 1,
+        "entry": {
+          "kind": "followup",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "{{task}}"
+              }
+            ]
+          }
+        }
+      },
+      "links": [
+        {
+          "page": "loop",
+          "label": "Agent Loop"
+        },
+        {
+          "page": "request",
+          "label": "请求链路"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · Agent Loop",
+          "params": {
+            "node": "agent-loop"
+          }
+        }
+      ],
+      "pos": [
+        -9.2,
+        0.9,
+        2.2
+      ]
+    },
+    {
+      "id": "turn",
+      "no": "05",
+      "name": "Turn 初始化",
+      "en": "Turn Start",
+      "kind": "tower",
+      "color": "blue",
+      "module": "Agent Loop",
+      "node": "agent-loop",
+      "summary": "写 turn/start，随后 preStep 领取输入并固定本轮模型。",
+      "what": "空闲时 wakeDriver() 启动驱动器，kick() 调用 turn()；turn 先写 turn/start，随后 preStep 才 claim 输入、固定模型、解析工具并组装提示词。",
+      "why": "一个 Turn 可以包含多个 Step。模型路由在 Turn 开始时固定，Step 内不允许换；turn/end 只在这一轮真的没有欠账时写。",
+      "input": "inbox 非空",
+      "output": "turn/start + 本轮输入 + 固定模型",
+      "source": {
+        "file": "packages/core/agent-loop/src/agent.ts",
+        "line": 230,
+        "symbol": "wakeDriver() / kick()",
+        "excerpt": "agent-wake"
+      },
+      "events": [
+        {
+          "name": "turn/start",
+          "kind": "session"
+        },
+        {
+          "name": "agent/status",
+          "kind": "capability"
+        },
+        {
+          "name": "agent/inbox/claimed",
+          "kind": "capability"
+        },
+        {
+          "name": "agent/pre-step",
+          "kind": "capability"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-agent-loop"
+      ],
+      "types": [
+        "TurnState",
+        "ModelSelection"
+      ],
+      "sample": {
+        "turnId": "turn_demo_1",
+        "step": 1,
+        "model": {
+          "provider": "deepseek",
+          "model": "deepseek-chat"
+        },
+        "input": {
+          "kind": "followup"
+        },
+        "note": "模型路由为示例值，实际来自 profile / settings"
+      },
+      "links": [
+        {
+          "page": "loop",
+          "label": "Agent Loop 播放"
+        },
+        {
+          "page": "models",
+          "label": "数据结构"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · Agent Loop",
+          "params": {
+            "node": "agent-loop"
+          }
+        }
+      ],
+      "pos": [
+        -6.6,
+        1.2,
+        0.8
+      ]
+    },
+    {
+      "id": "registry",
+      "no": "06",
+      "name": "Tool Registry",
+      "en": "Tool Registry",
+      "kind": "grid",
+      "color": "amber",
+      "module": "Tool Registry",
+      "node": "tools",
+      "summary": "每个 Step 重新解析一次可见工具集。",
+      "what": "preStep 调用 tools.resolve()：按 Agent 作用域过滤注册项，逐个跑 when() 条件，冻结成这个 Step 的 ResolvedToolSet；随后 schemas() 只投影 name / description / parameters。",
+      "why": "工具可见性会随 Step 变化（权限、预设、连接状态），不能在启动时一次定死。这也是「Tool Registry 在 LLM 请求之前」的原因。",
+      "input": "Agent 作用域 + Step 上下文",
+      "output": "ResolvedToolSet + 模型可见 schema",
+      "source": {
+        "file": "packages/core/tools/src/index.ts",
+        "line": 264,
+        "symbol": "ToolsService.resolve()",
+        "excerpt": "tools-resolve"
+      },
+      "events": [],
+      "packages": [
+        "@deepseek-ai/dsh-tools"
+      ],
+      "types": [
+        "ResolvedToolSet",
+        "ToolSchema"
+      ],
+      "sample": {
+        "scope": "agent:main",
+        "tools": [
+          {
+            "name": "read"
+          },
+          {
+            "name": "grep"
+          },
+          {
+            "name": "edit"
+          },
+          {
+            "name": "bash"
+          }
+        ],
+        "count": 4,
+        "note": "示例集；实际可见工具取决于 profile 与 Step 条件"
+      },
+      "links": [
+        {
+          "page": "architecture",
+          "label": "架构图 · Tool Registry",
+          "params": {
+            "node": "tools"
+          }
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "core/tools/src/index.ts"
+          }
+        },
+        {
+          "page": "scenarios",
+          "label": "场景实验室"
+        }
+      ],
+      "pos": [
+        -1.6,
+        1.7,
+        -1.4
+      ]
+    },
+    {
+      "id": "prompt",
+      "no": "07",
+      "name": "Prompt 构建",
+      "en": "Prompt Assembly",
+      "kind": "prism",
+      "color": "aqua",
+      "module": "System Prompt",
+      "node": "system-prompt",
+      "summary": "合并 section、上下文与工具 schema。",
+      "what": "assemble() 合并全局与作用域的 section / context / variable，收集可见工具 schema，最后跑 system-prompt/assemble 瀑布。",
+      "why": "系统提示不是一段硬编码字符串，而是插件按序贡献、监听器可替换的组装结果。替换提示词不需要改 Agent Loop。",
+      "input": "sections + tools + context",
+      "output": "system prompt 文本 + tools schema",
+      "source": {
+        "file": "packages/core/system-prompt/src/index.ts",
+        "line": 610,
+        "symbol": "SystemPromptService.assemble()",
+        "excerpt": "prompt-assemble"
+      },
+      "events": [
+        {
+          "name": "system-prompt/assemble",
+          "kind": "capability"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-system-prompt"
+      ],
+      "types": [
+        "SystemPromptSection",
+        "ToolSchema"
+      ],
+      "sample": {
+        "sections": [
+          "identity",
+          "environment",
+          "tools"
+        ],
+        "tools": [
+          {
+            "name": "read"
+          },
+          {
+            "name": "grep"
+          }
+        ],
+        "bytes": 4821,
+        "note": "字节数为教学示意，不是实际 token"
+      },
+      "links": [
+        {
+          "page": "agent",
+          "label": "Agent 核心机制"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · System Prompt",
+          "params": {
+            "node": "system-prompt"
+          }
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "system-prompt"
+          }
+        }
+      ],
+      "pos": [
+        1,
+        1.9,
+        -2.2
+      ]
+    },
+    {
+      "id": "llmRequest",
+      "no": "08",
+      "name": "LLM 请求",
+      "en": "LLM Request",
+      "kind": "engine",
+      "color": "violet",
+      "module": "LLM Runtime",
+      "node": "llm",
+      "summary": "prepareCall 绑定适配器，冻结一次请求。",
+      "what": "step/start 后 prepareRequest() 跑 agent/request 瀑布并可改采样参数，但不能换 provider/model；ctx.llm.prepareCall() 解析模型、补默认值、冻结 config，返回只能派发一次的 stream。",
+      "why": "一个 Step 一次请求。绑定后适配器代际不能混用，HMR 也不会把两代适配器的流串在一起。",
+      "input": "system prompt + messages + tools + 采样参数",
+      "output": "冻结的 GenerateOptions + stream 工厂",
+      "source": {
+        "file": "packages/llm/llm/src/index.ts",
+        "line": 960,
+        "symbol": "LlmService.prepareCall()",
+        "excerpt": "llm-prepare"
+      },
+      "events": [
+        {
+          "name": "step/start",
+          "kind": "session"
+        }
+      ],
+      "hooks": [
+        {
+          "name": "agent/request",
+          "mode": "waterfall",
+          "ref": "packages/core/agent/src/runtime-types.ts:373",
+          "note": "源码里的真实瀑布钩子；事件矩阵表未收录这一行。"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-llm",
+        "@deepseek-ai/dsh-llm-deepseek"
+      ],
+      "types": [
+        "GenerateOptions",
+        "StreamChunk"
+      ],
+      "sample": {
+        "provider": "deepseek",
+        "model": "deepseek-chat",
+        "messages": 1,
+        "tools": 4,
+        "stream": true,
+        "note": "请求结构示例；循环构建的请求不带 system 字段，提示词在历史里"
+      },
+      "links": [
+        {
+          "page": "request",
+          "label": "请求链路"
+        },
+        {
+          "page": "models",
+          "label": "数据结构 · GenerateOptions"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · LLM Runtime",
+          "params": {
+            "node": "llm"
+          }
+        }
+      ],
+      "pos": [
+        3.8,
+        2.1,
+        -2.8
+      ]
+    },
+    {
+      "id": "context",
+      "no": "09",
+      "name": "Context 构建",
+      "en": "Context Build",
+      "kind": "lens",
+      "color": "green",
+      "module": "Session / Context Injection",
+      "node": "context",
+      "summary": "prepareCall 之后，从日志投影出冻结的模型历史。",
+      "what": "prepareRequest 绑定适配器后，step 先提交 system/message 与 user/message；buildRequest 再记录 request/header、request/context，并用 deriveMessages() 从日志投影出冻结的消息数组。",
+      "why": "模型看到的历史必须能由日志重建，不能来自可变的内存对象。消息被深冻结，谁也不能在请求发出前偷改。",
+      "input": "prepareCall 后的请求 + Session 日志",
+      "output": "request/header、request/context 与冻结的 Message[]",
+      "source": {
+        "file": "packages/core/session/src/index.ts",
+        "line": 999,
+        "symbol": "deriveMessages()",
+        "excerpt": "session-derive"
+      },
+      "events": [
+        {
+          "name": "system/message",
+          "kind": "session"
+        },
+        {
+          "name": "user/message",
+          "kind": "session"
+        },
+        {
+          "name": "request/header",
+          "kind": "session"
+        },
+        {
+          "name": "request/context",
+          "kind": "session"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-session",
+        "@deepseek-ai/dsh-agent-instructions"
+      ],
+      "types": [
+        "SessionEvent",
+        "Message"
+      ],
+      "sample": {
+        "messages": [],
+        "injected": [
+          {
+            "source": "agent-instructions",
+            "kind": "context"
+          }
+        ],
+        "note": "首次请求的历史为空；后续 Step 会包含 tool/result"
+      },
+      "links": [
+        {
+          "page": "models",
+          "label": "数据结构 · Session"
+        },
+        {
+          "page": "request",
+          "label": "请求链路"
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "session/src/index.ts"
+          }
+        }
+      ],
+      "pos": [
+        5.15,
+        2.35,
+        -3.75
+      ]
+    },
+    {
+      "id": "streaming",
+      "no": "10",
+      "name": "LLM Streaming",
+      "en": "LLM Streaming",
+      "kind": "waves",
+      "color": "cyan",
+      "module": "LLM Runtime",
+      "node": "llm",
+      "summary": "流式块经 llm/stream 瀑布抵达 Agent。",
+      "what": "ctx.llm.stream() 跑 llm/stream 瀑布，适配器产出 StreamChunk；失败会归一化成终止 chunk，而不是把异常抛到循环外。",
+      "why": "文本可以先到 UI，同时仍在组装 assistant/message。UI 看到的不是最终日志，两者不能混为一谈。",
+      "input": "GenerateOptions",
+      "output": "StreamChunk（block-start / text-delta / block-end / finish）",
+      "source": {
+        "file": "packages/llm/llm/src/index.ts",
+        "line": 1159,
+        "symbol": "LlmService.stream()",
+        "excerpt": "llm-stream"
+      },
+      "events": [
+        {
+          "name": "llm/stream",
+          "kind": "capability"
+        },
+        {
+          "name": "agent/assistant-stream",
+          "kind": "capability"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-llm",
+        "@deepseek-ai/dsh-llm-deepseek"
+      ],
+      "types": [
+        "StreamChunk"
+      ],
+      "sample": {
+        "chunks": [
+          {
+            "type": "block-start",
+            "index": 0
+          },
+          {
+            "type": "text-delta",
+            "index": 0,
+            "text": "…"
+          },
+          {
+            "type": "block-end",
+            "index": 0
+          },
+          {
+            "type": "finish",
+            "reason": "stop"
+          }
+        ],
+        "note": "chunk 顺序为教学示意；usage 帧可能单独出现在 finish 之前"
+      },
+      "links": [
+        {
+          "page": "models",
+          "label": "数据结构 · StreamChunk"
+        },
+        {
+          "page": "request",
+          "label": "请求链路"
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "llm/src/index.ts"
+          }
+        }
+      ],
+      "pos": [
+        6.6,
+        1.8,
+        -2.4
+      ]
+    },
+    {
+      "id": "assistant",
+      "no": "11",
+      "name": "Assistant 消息",
+      "en": "Assistant Message",
+      "kind": "doc",
+      "color": "blue",
+      "module": "Agent Loop",
+      "node": "agent-loop",
+      "summary": "流结束后结算一条 assistant/message。",
+      "what": "agent-commit 先写 assistant/message（内嵌紧凑 stream），再判断有没有 tool-call。一个 Step 只有这一条助手消息。",
+      "why": "重放、恢复与下一轮历史都靠这条持久事实，而不是内存里的半截流。取消时也会以 interrupted: true 结算。",
+      "input": "stream 结果",
+      "output": "assistant/message Session 事件",
+      "source": {
+        "file": "packages/core/agent-loop/src/agent.ts",
+        "line": 541,
+        "symbol": "commitAssistantMessage()",
+        "excerpt": "agent-commit"
+      },
+      "events": [
+        {
+          "name": "assistant/message",
+          "kind": "session"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-agent-loop"
+      ],
+      "types": [
+        "AssistantMessage"
+      ],
+      "sample": {
+        "type": "assistant/message",
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "…"
+            }
+          ]
+        },
+        "interrupted": false
+      },
+      "links": [
+        {
+          "page": "loop",
+          "label": "Agent Loop"
+        },
+        {
+          "page": "models",
+          "label": "数据结构 · Message"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · Agent Loop",
+          "params": {
+            "node": "agent-loop"
+          }
+        }
+      ],
+      "pos": [
+        9,
+        1.4,
+        -1.4
+      ]
+    },
+    {
+      "id": "toolcall",
+      "no": "12",
+      "name": "Tool Call 解析",
+      "en": "Tool Call Branch",
+      "kind": "split",
+      "color": "amber",
+      "module": "Agent Loop",
+      "node": "agent-loop",
+      "summary": "检查助手消息里有没有 tool-call，决定是否进入工具分支。",
+      "what": "从 assistant/message 中读出工具调用批次。没有调用就准备收尾；有调用就交给 ctx.tools.execute()，结果回填后再开下一个 Step。",
+      "why": "这是循环唯一自然的分叉点：工具调用表示模型还要继续工作。",
+      "input": "assistant message",
+      "output": "ToolCall[] 或空",
+      "source": {
+        "file": "packages/core/agent-loop/src/agent.ts",
+        "line": 541,
+        "symbol": "toolCall 判定",
+        "excerpt": "agent-commit"
+      },
+      "events": [],
+      "packages": [
+        "@deepseek-ai/dsh-agent-loop"
+      ],
+      "types": [
+        "ToolCall"
+      ],
+      "sample": {
+        "calls": [
+          {
+            "id": "call_demo_1",
+            "name": "grep",
+            "arguments": "{\"pattern\":\"login\",\"path\":\"src\"}"
+          }
+        ],
+        "note": "arguments 是模型产出的 JSON 字符串（执行前由 schema 校验）；空数组 → 收尾"
+      },
+      "links": [
+        {
+          "page": "loop",
+          "label": "Agent Loop"
+        },
+        {
+          "page": "scenarios",
+          "label": "场景实验室"
+        },
+        {
+          "page": "models",
+          "label": "数据结构 · ToolCall"
+        }
+      ],
+      "pos": [
+        10.6,
+        0.9,
+        0.2
+      ]
+    },
+    {
+      "id": "pipeline",
+      "no": "13",
+      "name": "Tool 执行",
+      "en": "Tool Pipeline",
+      "kind": "press",
+      "color": "orange",
+      "module": "Tool Pipeline",
+      "node": "tool-pipeline",
+      "summary": "pre-execute 决策、execute 执行、post-execute 收口。",
+      "what": "tools/pre-execute 瀑布给出 allow / ask / deny / cancel；ask 走审批；guard 复核；tools/execute 包裹工具体；tools/post-execute 决定 accept / block，并可追加 additionalContexts。",
+      "why": "权限、审批、沙箱与审计都长在工具周围，而不是散落在每个工具实现里。",
+      "input": "ToolCall 批次",
+      "output": "ToolExecutionResult",
+      "source": {
+        "file": "packages/core/tools/src/pipeline.ts",
+        "line": 184,
+        "symbol": "ToolsPipeline.prepare()",
+        "excerpt": "tools-prepare"
+      },
+      "events": [
+        {
+          "name": "tool/call",
+          "kind": "session"
+        },
+        {
+          "name": "tools/pre-execute",
+          "kind": "capability"
+        },
+        {
+          "name": "tools/execute",
+          "kind": "capability"
+        },
+        {
+          "name": "tools/post-execute",
+          "kind": "capability"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-tools",
+        "@deepseek-ai/dsh-tool-executor-native"
+      ],
+      "types": [
+        "ToolExecution",
+        "ToolExecutionResult"
+      ],
+      "sample": {
+        "callId": "call_demo_1",
+        "tool": "grep",
+        "decision": "allow",
+        "durationMs": 42,
+        "isError": false,
+        "note": "耗时与结果为教学示意"
+      },
+      "links": [
+        {
+          "page": "architecture",
+          "label": "架构图 · Tool Pipeline",
+          "params": {
+            "node": "tool-pipeline"
+          }
+        },
+        {
+          "page": "scenarios",
+          "label": "场景实验室"
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "tools/src/pipeline.ts"
+          }
+        }
+      ],
+      "pos": [
+        12.4,
+        0.2,
+        2.4
+      ]
+    },
+    {
+      "id": "approval",
+      "no": "14",
+      "name": "审批门",
+      "en": "Approval Gate",
+      "kind": "gate",
+      "color": "amber",
+      "module": "Approval",
+      "node": "approval",
+      "summary": "需要用户点头时，工具调用停在这里等决定。",
+      "what": "approval/request 是 scope 过滤的 waterfall：监听器返回 outcome 即认领，或调用 next() 交给下一个审批者。决定有 allow / deny / cancel。",
+      "why": "高风险工具不能只靠自己判断。审批是独立 seam，可按 Agent 作用域配置，也可以被插件整体替换。",
+      "input": "PreToolDecision.kind === 'ask'",
+      "output": "ApprovalOutcome",
+      "source": {
+        "file": "packages/interaction/user-approval/src/types.ts",
+        "line": 87,
+        "symbol": "approval/request",
+        "excerpt": "approval-request"
+      },
+      "events": [
+        {
+          "name": "approval/request",
+          "kind": "capability"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-user-approval"
+      ],
+      "types": [
+        "ApprovalRequestEvent",
+        "ApprovalOutcome"
+      ],
+      "sample": {
+        "requestId": "apr_demo_1",
+        "tool": "bash",
+        "reason": "工具声明需要审批",
+        "outcome": "approved"
+      },
+      "links": [
+        {
+          "page": "architecture",
+          "label": "架构图 · Approval",
+          "params": {
+            "node": "approval"
+          }
+        },
+        {
+          "page": "plugins",
+          "label": "插件系统"
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "user-approval"
+          }
+        }
+      ],
+      "pos": [
+        14.2,
+        -0.4,
+        4.4
+      ]
+    },
+    {
+      "id": "result",
+      "no": "15",
+      "name": "Tool Result",
+      "en": "Tool Result",
+      "kind": "tray",
+      "color": "green",
+      "module": "Agent Loop / Session",
+      "node": "agent-loop",
+      "summary": "工具结果写入会话，成为下一个 Step 的输入。",
+      "what": "每个调用写一条 tool/result（成功或 isError），并带上 additionalContexts；这些事件会投影进下一 Step 的消息历史。",
+      "why": "工具结果不是返回值就完了，它必须持久化；否则恢复后模型会失去上下文。",
+      "input": "ToolExecutionResult",
+      "output": "tool/result Session 事件",
+      "source": {
+        "file": "packages/core/tools/src/batch.ts",
+        "line": 236,
+        "symbol": "BatchSettlement.commit()",
+        "excerpt": "tool-batch"
+      },
+      "events": [
+        {
+          "name": "tool/result",
+          "kind": "session"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-agent-loop",
+        "@deepseek-ai/dsh-session"
+      ],
+      "types": [
+        "ToolResultEvent"
+      ],
+      "sample": {
+        "type": "tool/result",
+        "callId": "call_demo_1",
+        "isError": false,
+        "content": [
+          {
+            "type": "text",
+            "text": "src/auth/login.ts:42"
+          }
+        ]
+      },
+      "links": [
+        {
+          "page": "loop",
+          "label": "Agent Loop"
+        },
+        {
+          "page": "models",
+          "label": "数据结构 · SessionEvent"
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "agent-loop/src/agent.ts"
+          }
+        }
+      ],
+      "pos": [
+        10.4,
+        -0.9,
+        6.2
+      ]
+    },
+    {
+      "id": "loop",
+      "no": "16",
+      "name": "Loop 判断",
+      "en": "Loop Decision",
+      "kind": "loop",
+      "color": "red",
+      "module": "Agent Loop",
+      "node": "agent-loop",
+      "summary": "还有工具欠账或新输入，就再开一个 Step。",
+      "what": "step/end 后检查欠账与新输入：有就回到领取阶段开始下一 Step；没有就进入 agent/turn-stopping 与 turn/end。",
+      "why": "这是「循环」真正发生的地方，也是唯一能解释为什么一次提问会有多次模型请求的地方。循环不判断业务是否完成。",
+      "input": "step/end + inbox",
+      "output": "下一 Step 或 turn/end",
+      "source": {
+        "file": "packages/core/agent-loop/src/agent.ts",
+        "line": 326,
+        "symbol": "turn() 的欠账检查",
+        "excerpt": "agent-turn"
+      },
+      "events": [
+        {
+          "name": "step/end",
+          "kind": "session"
+        },
+        {
+          "name": "agent/turn-stopping",
+          "kind": "capability"
+        },
+        {
+          "name": "turn/end",
+          "kind": "session"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-agent-loop"
+      ],
+      "types": [
+        "TurnState",
+        "StepState"
+      ],
+      "sample": {
+        "step": 1,
+        "toolCalls": 1,
+        "inbox": 0,
+        "next": "step 2",
+        "turnEnded": false,
+        "note": "有 tool result → 欠账；无 tool-call 且 inbox 空 → turn/end"
+      },
+      "links": [
+        {
+          "page": "loop",
+          "label": "Agent Loop 完整播放"
+        },
+        {
+          "page": "models",
+          "label": "数据结构 · Turn"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · Agent Loop",
+          "params": {
+            "node": "agent-loop"
+          }
+        }
+      ],
+      "pos": [
+        6.8,
+        -0.6,
+        6.8
+      ]
+    },
+    {
+      "id": "event",
+      "no": "17",
+      "name": "Session Event",
+      "en": "Session Event",
+      "kind": "log",
+      "color": "violet",
+      "module": "Session",
+      "node": "session",
+      "summary": "日志贯穿全程；收束时回看每一条持久事实。",
+      "what": "append() 在每条持久事实发生时就要执行：turn/start、system/user message、assistant/message、tool/result、turn/end 都各自 append。它不是流程最后才发生的一步，这里的站台是收束后的回看视图。",
+      "why": "日志是唯一事实来源：UI、模型历史、恢复都从它派生。只追加、不改写，是可重放的前提。",
+      "input": "SessionEvent payload",
+      "output": "seq + 持久化日志 + session/event",
+      "source": {
+        "file": "packages/core/session/src/index.ts",
+        "line": 806,
+        "symbol": "Session.append()",
+        "excerpt": "session-append"
+      },
+      "events": [
+        {
+          "name": "session/event",
+          "kind": "capability"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-session",
+        "@deepseek-ai/dsh-session-persistence-jsonl"
+      ],
+      "types": [
+        "SessionEvent"
+      ],
+      "sample": {
+        "seq": 42,
+        "time": "2026-11-07T14:03:21.000Z",
+        "type": "tool/result",
+        "data": {
+          "callId": "call_demo_1"
+        },
+        "note": "seq 与时间戳为教学示意"
+      },
+      "links": [
+        {
+          "page": "events",
+          "label": "事件系统"
+        },
+        {
+          "page": "models",
+          "label": "数据结构 · Session 事件"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · Session",
+          "params": {
+            "node": "session"
+          }
+        }
+      ],
+      "pos": [
+        15.2,
+        0.6,
+        -1.4
+      ]
+    },
+    {
+      "id": "output",
+      "no": "18",
+      "name": "UI 输出",
+      "en": "UI Output",
+      "kind": "portal",
+      "color": "green",
+      "module": "Web Client",
+      "node": "web-client",
+      "summary": "live 帧先到浏览器，最终消息再由投影渲染。",
+      "what": "agent/assistant-stream 累积成远程流帧推给浏览器；最终展示仍来自 session 投影。刷新后 live 流消失，用日志恢复。",
+      "why": "实时展示与持久事实是两条路。把 assistant-stream 当作历史，刷新后就会丢内容。",
+      "input": "session/event + assistant-stream 帧",
+      "output": "屏幕上的回复",
+      "source": {
+        "file": "packages/api/session-controller/src/history/assistant-stream.ts",
+        "line": 11,
+        "symbol": "agent/assistant-stream 桥",
+        "excerpt": "stream-bridge"
+      },
+      "events": [
+        {
+          "name": "agent/assistant-stream",
+          "kind": "capability"
+        },
+        {
+          "name": "session/event",
+          "kind": "capability"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-web"
+      ],
+      "types": [
+        "Message",
+        "AssistantStreamFrame"
+      ],
+      "sample": {
+        "frames": [
+          "assistant-stream"
+        ],
+        "renderedFrom": "session projection",
+        "live": true,
+        "note": "刷新页面后 live 帧不再存在，消息由日志重建"
+      },
+      "links": [
+        {
+          "page": "request",
+          "label": "请求链路"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · Web Client",
+          "params": {
+            "node": "web-client"
+          }
+        },
+        {
+          "page": "modes",
+          "label": "运行模式"
+        }
+      ],
+      "pos": [
+        17.4,
+        1,
+        -3.6
+      ]
+    },
+    {
+      "id": "subagent",
+      "no": "19",
+      "name": "Subagent",
+      "en": "Subagent",
+      "kind": "spawn",
+      "color": "magenta",
+      "module": "Subagent",
+      "node": "subagent",
+      "summary": "父 Agent 用工具启动一个带独立 Session 的子 Agent。",
+      "what": "subagent 工具组装 child 请求（prompt / preset / cwd / 模型路由），调用 ctx.subagents.startActivation()。子 Agent 有自己的 Session 与 Agent Loop。",
+      "why": "复杂任务可以拆到独立上下文里跑；父子不共享内存，只通过消息与任务板交换结果。",
+      "input": "prompt、preset、cwd、模型路由",
+      "output": "子 Agent 启动回执 + 后续结果",
+      "source": {
+        "file": "packages/subagent/tool-subagent/src/index.ts",
+        "line": 317,
+        "symbol": "ctx.subagents.startActivation()",
+        "excerpt": "subagent-start"
+      },
+      "events": [
+        {
+          "name": "subagent/start",
+          "kind": "capability"
+        },
+        {
+          "name": "subagent/end",
+          "kind": "capability"
+        }
+      ],
+      "packages": [
+        "@deepseek-ai/dsh-subagent",
+        "@deepseek-ai/dsh-tool-subagent"
+      ],
+      "types": [
+        "SubagentPromptRequest"
+      ],
+      "sample": {
+        "parent": "main",
+        "child": "sub_demo",
+        "task": "在独立上下文里检查 tests 目录",
+        "status": "started",
+        "note": "子 Agent 的循环不再单独展开，避免把主流程画成两倍长"
+      },
+      "links": [
+        {
+          "page": "architecture",
+          "label": "架构图 · Subagent",
+          "params": {
+            "node": "subagent"
+          }
+        },
+        {
+          "page": "scenarios",
+          "label": "场景实验室 · F"
+        },
+        {
+          "page": "sources",
+          "label": "源码索引",
+          "params": {
+            "q": "subagent"
+          }
+        }
+      ],
+      "pos": [
+        2.2,
+        3,
+        5
+      ]
+    },
+    {
+      "id": "core",
+      "no": "00",
+      "name": "Agent Core",
+      "en": "Agent Core",
+      "kind": "core",
+      "color": "accent",
+      "module": "Agent Loop",
+      "node": "agent-loop",
+      "summary": "一个 Turn 的驱动器：领输入、开 Step、收工具欠账。",
+      "what": "turn() 与 step() 构成 ReactLoopAgent 的主循环：preStep → step/start → 请求 → assistant/message → 工具 → step/end → 判断欠账。",
+      "why": "它不是一次函数调用，而是一个由欠账驱动的循环。理解这一点，才能理解多 Step、工具回填与取消收尾。",
+      "input": "Inbox 输入",
+      "output": "turn/end 或下一 Step",
+      "source": {
+        "file": "packages/core/agent-loop/src/agent.ts",
+        "line": 327,
+        "symbol": "ReactLoopAgent.turn()",
+        "excerpt": "agent-turn"
+      },
+      "events": [],
+      "packages": [
+        "@deepseek-ai/dsh-agent-loop"
+      ],
+      "types": [
+        "TurnState",
+        "StepState"
+      ],
+      "sample": {
+        "turn": 1,
+        "step": 2,
+        "debt": true,
+        "note": "中央核心不参与路径动画，只作为循环的视觉锚点"
+      },
+      "links": [
+        {
+          "page": "agent",
+          "label": "Agent 核心机制"
+        },
+        {
+          "page": "loop",
+          "label": "Agent Loop"
+        },
+        {
+          "page": "architecture",
+          "label": "架构图 · Agent Loop",
+          "params": {
+            "node": "agent-loop"
+          }
+        }
+      ],
+      "pos": [
+        0.4,
+        3.8,
+        1.4
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "ask",
+      "title": "普通问答",
+      "en": "Plain Q&A",
+      "example": "什么是 Java 的 HashMap？",
+      "tag": "无工具调用",
+      "support": "完全支持",
+      "summary": "一次 Turn、一个 Step、没有工具分支。重点看 toolcall 判定如何把流程直接导向收尾。",
+      "beats": [
+        {
+          "s": "input",
+          "p": "输入",
+          "t": "用户按下回车",
+          "d": "输入框把文本包成 ContentBlock，调用 conversation.send()。此时还没有任何 Session 事件。",
+          "ms": 1200
+        },
+        {
+          "s": "rpc",
+          "p": "传输",
+          "t": "浏览器发起 session.prompt",
+          "d": "客户端补上 requestId 与 delivery=queue，RPC 帧进入 Gateway；这一步还没有碰 Agent。",
+          "ms": 1500
+        },
+        {
+          "s": "session",
+          "p": "准入",
+          "t": "校验、幂等、投递",
+          "d": "@Remote('prompt') 校验内容与时区；commands.prompt 查到 requestId 未出现过，调用 agent.followup()。",
+          "ms": 1800
+        },
+        {
+          "s": "inbox",
+          "p": "入队",
+          "t": "消息进入 next-turn",
+          "d": "Agent 空闲，followup 除了入队还会立刻唤醒驱动器；如果正在跑，它只会排队等当前 Turn 结束。",
+          "ms": 1600
+        },
+        {
+          "s": "turn",
+          "p": "轮次",
+          "t": "开启 Turn 1",
+          "d": "写 turn/start；preStep 紧接着 claim 这条消息，固定模型路由。一个 Turn 可以有多 Step，但模型选择在这里就定了。",
+          "ms": 2000
+        },
+        {
+          "s": "registry",
+          "p": "准备",
+          "t": "解析本 Step 可见工具",
+          "d": "tools.resolve() 按作用域过滤并跑 when() 条件，冻结成 ResolvedToolSet。工具可见性每个 Step 都可能不同。",
+          "ms": 1800
+        },
+        {
+          "s": "prompt",
+          "p": "准备",
+          "t": "组装 system prompt",
+          "d": "合并 section、context 与工具 schema，跑 system-prompt/assemble。提示词是插件协作的结果，不是一段常量。",
+          "ms": 2000
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "prepareCall 冻结请求",
+          "d": "agent/request 瀑布可改采样参数但不能换 provider/model；request/header 记下这次请求的身份。",
+          "ms": 2000
+        },
+        {
+          "s": "context",
+          "p": "构建",
+          "t": "从日志投影历史",
+          "d": "prepareCall 之后，buildRequest 先记录 request/header 与 request/context，再 deriveMessages()。deriveMessages() 把空历史投影成 []，上下文插件再贡献环境说明；消息对象会被冻结。",
+          "ms": 1800
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "接收模型流",
+          "d": "文本 chunk 先经 assistant-stream 到 UI；同时 Agent 还在组装最终消息。",
+          "ms": 2400
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "写入 assistant/message",
+          "d": "流结束，完整助手消息落日志。没有 tool-call，Step 只剩收尾。",
+          "ms": 1800
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "判定：没有 tool-call",
+          "status": "branch",
+          "ms": 1800,
+          "d": "工具调用数组为空，直接跳过整个工具流水线；这是「普通问答」和 Coding 场景的分水岭。",
+          "data": {
+            "calls": [],
+            "next": "收尾 Turn",
+            "note": "空数组不等于错误，只是没有工具工作"
+          }
+        },
+        {
+          "s": "loop",
+          "p": "收束",
+          "t": "无欠账，关闭 Turn",
+          "ms": 2000,
+          "d": "step/end 后没有工具结果要处理，inbox 也没有新输入；进入 agent/turn-stopping，再写 turn/end。",
+          "data": {
+            "step": 1,
+            "toolCalls": 0,
+            "inbox": 0,
+            "next": "turn/end",
+            "turnEnded": true
+          }
+        },
+        {
+          "s": "event",
+          "p": "持久化",
+          "t": "事件按序进入日志",
+          "d": "turn/start、user/message、assistant/message、turn/end 都是 Session 事件；session/event 同步广播给监听者。",
+          "ms": 1800
+        },
+        {
+          "s": "output",
+          "p": "展示",
+          "t": "回复出现在屏幕",
+          "d": "最终展示来自 Session 投影；刷新页面后 live 流不在了，但消息仍能重建。",
+          "ms": 1400
+        }
+      ],
+      "outcome": {
+        "title": "Turn 正常结束",
+        "text": "没有工具调用，也没有新输入，循环自然停止。"
+      }
+    },
+    {
+      "id": "coding",
+      "title": "Coding 代码分析",
+      "en": "Code Analysis",
+      "example": "分析当前项目的登录功能，找出入口和关键校验。",
+      "tag": "两个 Step · 工具回填",
+      "support": "完全支持",
+      "summary": "第一个 Step 只做检索与读取；tool/result 落日志后，循环开启第二个 Step，模型带着文件内容再回答。",
+      "beats": [
+        {
+          "s": "input",
+          "p": "输入",
+          "t": "用户提交分析任务",
+          "d": "任务文本进入 conversation.send()；与普通问答的起点完全相同。",
+          "ms": 1200
+        },
+        {
+          "s": "rpc",
+          "p": "传输",
+          "t": "RPC 帧发往 Host",
+          "d": "客户端带上 requestId；Gateway 解码后交给 Session Controller。",
+          "ms": 1300
+        },
+        {
+          "s": "session",
+          "p": "准入",
+          "t": "消息准入",
+          "d": "幂等检查通过，queue 投递为 followup。",
+          "ms": 1500
+        },
+        {
+          "s": "inbox",
+          "p": "入队",
+          "t": "唤醒 Agent",
+          "d": "Agent 空闲，wakeDriver 立即启动 turn()。",
+          "ms": 1400
+        },
+        {
+          "s": "turn",
+          "p": "轮次",
+          "t": "Turn 1 · Step 1",
+          "d": "写 turn/start；preStep 再 claim 输入并固定模型；此时循环还不知道需要几次工具调用。",
+          "ms": 1800
+        },
+        {
+          "s": "registry",
+          "p": "准备",
+          "t": "解析可见工具",
+          "d": "grep、glob、read 等工具经过 when() 条件后进入本 Step 的可见集。",
+          "ms": 1600
+        },
+        {
+          "s": "prompt",
+          "p": "准备",
+          "t": "组装提示词",
+          "d": "工具 schema 只投影 name / description / parameters，执行回调不会发给模型。",
+          "ms": 1800
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第一次模型请求",
+          "d": "prepareCall 绑定适配器并冻结请求；request/header 记录工具名与模型代际。",
+          "ms": 1800
+        },
+        {
+          "s": "context",
+          "p": "构建",
+          "t": "投影空历史",
+          "d": "prepareCall 之后，buildRequest 先记录 request/header 与 request/context，再 deriveMessages()。首次请求只有用户消息；上下文插件补充工作目录与规则。",
+          "ms": 1500
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "模型返回工具调用",
+          "d": "文本很少，主要产出两个 tool-call：先 grep 再 read。",
+          "ms": 2200
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "assistant/message 含 tool-call",
+          "ms": 1800,
+          "d": "助手消息被持久化；工具调用是消息内容的一部分，不是额外的一条日志。",
+          "data": {
+            "type": "assistant/message",
+            "message": {
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "tool-call",
+                  "id": "call_grep",
+                  "name": "grep",
+                  "arguments": "{\"pattern\":\"login\",\"path\":\"src\"}"
+                },
+                {
+                  "type": "tool-call",
+                  "id": "call_read",
+                  "name": "read",
+                  "arguments": "{\"path\":\"src/auth/login.ts\"}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "解析出 2 个工具调用",
+          "ms": 1700,
+          "d": "批次整体交给 ctx.tools.execute()；多个调用可以并发，但结果都要逐条落日志。",
+          "data": {
+            "calls": [
+              {
+                "id": "call_grep",
+                "name": "grep",
+                "arguments": "{\"pattern\":\"login\",\"path\":\"src\"}"
+              },
+              {
+                "id": "call_read",
+                "name": "read",
+                "arguments": "{\"path\":\"src/auth/login.ts\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "pre-execute 放行",
+          "ms": 1600,
+          "d": "两个调用都命中 allow；没有审批，也没有 guard 拦截，execute 包裹工具体执行。",
+          "data": {
+            "batch": [
+              "grep",
+              "read"
+            ],
+            "decision": "allow",
+            "approval": "none",
+            "note": "策略取决于工具与 profile"
+          }
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "结果写入会话",
+          "ms": 1800,
+          "d": "每条调用写一条 tool/result；下一 Step 的历史里会出现这些内容。",
+          "data": {
+            "type": "tool/result",
+            "results": [
+              {
+                "callId": "call_grep",
+                "isError": false,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "src/auth/login.ts:42\tsrc/auth/session.ts:88"
+                  }
+                ]
+              },
+              {
+                "callId": "call_read",
+                "isError": false,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "export async function login(input) { … }"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "有工具欠账 → Step 2",
+          "ms": 1900,
+          "d": "step/end 后仍有工具结果要处理，turn 不结束，回到领取阶段开下一个 Step。",
+          "data": {
+            "step": 1,
+            "toolCalls": 2,
+            "inbox": 0,
+            "next": "step 2",
+            "turnEnded": false
+          }
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 2：preStep 重新领取",
+          "cycle": "Step 2",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第二次模型请求",
+          "cycle": "Step 2",
+          "d": "同一个 Turn，新的 GenerateOptions；tools 与 system 重新组装，不沿用上一 Step 的缓存。",
+          "ms": 1800
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 2：重新投影历史",
+          "cycle": "Step 2",
+          "ms": 2000,
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result × 2"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "带着文件内容回答",
+          "cycle": "Step 2",
+          "d": "这次没有 tool-call，只有最终分析文本。",
+          "ms": 2400
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "第二条 assistant/message",
+          "cycle": "Step 2",
+          "ms": 1700,
+          "d": "一个 Step 一条助手消息。Turn 1 现在有两条 assistant/message，但用户只看到最后一条完整回答。",
+          "data": {
+            "type": "assistant/message",
+            "step": 2,
+            "toolCalls": 0,
+            "text": "登录入口在 src/auth/login.ts:42，校验集中在 …"
+          }
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "没有更多工具调用",
+          "status": "branch",
+          "ms": 1500,
+          "d": "判定为空，工具分支结束。",
+          "data": {
+            "calls": [],
+            "next": "收尾"
+          }
+        },
+        {
+          "s": "loop",
+          "p": "收束",
+          "t": "欠账清零，关闭 Turn",
+          "ms": 1900,
+          "d": "没有新的工具结果，也没有新输入，写 agent/turn-stopping 与 turn/end。",
+          "data": {
+            "step": 2,
+            "toolCalls": 0,
+            "inbox": 0,
+            "next": "turn/end",
+            "turnEnded": true
+          }
+        },
+        {
+          "s": "event",
+          "p": "持久化",
+          "t": "两条助手消息都在日志里",
+          "d": "事件序列能完整重放这次分析；恢复会话不依赖进程内存。",
+          "ms": 1600
+        },
+        {
+          "s": "output",
+          "p": "展示",
+          "t": "最终回答上屏",
+          "d": "UI 只渲染投影后的最终消息，但历史里保留了两条 assistant/message。",
+          "ms": 1400
+        }
+      ],
+      "outcome": {
+        "title": "一次提问，两次模型请求",
+        "text": "工具调用让 Turn 内产生第二个 Step；循环由 tool/result 欠账驱动。"
+      }
+    },
+    {
+      "id": "bugfix",
+      "title": "Coding Bug 修复",
+      "en": "Bug Fix Loop",
+      "example": "修复登录接口的空指针 Bug，并运行测试。",
+      "tag": "编辑 · 审批 · 测试失败重试",
+      "support": "完全支持",
+      "summary": "读代码 → 改代码 → 跑测试失败 → 再改 → 再跑。审批门出现在写文件与执行命令之前。",
+      "beats": [
+        {
+          "s": "input",
+          "p": "输入",
+          "t": "用户提交修复任务",
+          "d": "任务包含两个动作：改代码、跑测试。是否真的做由模型决定。",
+          "ms": 1200
+        },
+        {
+          "s": "rpc",
+          "p": "传输",
+          "t": "RPC 进入 Gateway",
+          "d": "与普通问答相同的准入路径。",
+          "ms": 1200
+        },
+        {
+          "s": "session",
+          "p": "准入",
+          "t": "followup 投递",
+          "d": "消息进入 next-turn。",
+          "ms": 1400
+        },
+        {
+          "s": "inbox",
+          "p": "入队",
+          "t": "唤醒驱动器",
+          "d": "空闲 Agent 立即启动 turn。",
+          "ms": 1300
+        },
+        {
+          "s": "turn",
+          "p": "轮次",
+          "t": "Turn 1 · Step 1",
+          "d": "固定模型，开始第一轮准备。",
+          "ms": 1600
+        },
+        {
+          "s": "registry",
+          "p": "准备",
+          "t": "解析工具",
+          "d": "read / edit / bash 是否可见取决于当前 profile 与权限条件。",
+          "ms": 1500
+        },
+        {
+          "s": "prompt",
+          "p": "准备",
+          "t": "组装提示词",
+          "d": "工具 schema 与系统规则一起进入请求。",
+          "ms": 1600
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第一次请求",
+          "d": "模型还没有看到登录代码。",
+          "ms": 1600
+        },
+        {
+          "s": "context",
+          "p": "构建",
+          "t": "投影历史",
+          "d": "prepareCall 之后，buildRequest 先记录 request/header 与 request/context，再 deriveMessages()。只有用户任务；没有代码内容，模型必须自己读。",
+          "ms": 1400
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "决定先读文件",
+          "d": "模型返回 read 调用，而不是直接修改。",
+          "ms": 2000
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "assistant/message",
+          "d": "工具调用随助手消息落日志。",
+          "ms": 1500
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "1 个 read 调用",
+          "ms": 1400,
+          "d": "单个调用也走同一条流水线。",
+          "data": {
+            "calls": [
+              {
+                "id": "call_read",
+                "name": "read",
+                "arguments": "{\"path\":\"src/auth/login.ts\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "读取放行",
+          "d": "read 通常 allow；沙箱检查路径是否在可读范围。",
+          "ms": 1400
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "文件内容回填",
+          "d": "tool/result 持久化，模型下一 Step 能看到完整文件。",
+          "ms": 1600
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "欠账 → Step 2",
+          "ms": 1600,
+          "d": "进入下一 Step；Turn 仍开着。",
+          "data": {
+            "step": 1,
+            "toolCalls": 1,
+            "next": "step 2",
+            "turnEnded": false
+          }
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 2：preStep 重新领取",
+          "cycle": "Step 2",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第二次请求",
+          "cycle": "Step 2",
+          "d": "模型带着代码内容决定如何修改。",
+          "ms": 1700
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 2：重新投影历史",
+          "cycle": "Step 2",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1700,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "生成 edit + bash 调用",
+          "cycle": "Step 2",
+          "d": "模型同时请求写文件和跑测试。",
+          "ms": 2200
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "含两个 tool-call",
+          "cycle": "Step 2",
+          "d": "写操作与命令执行都在助手消息里。",
+          "ms": 1600
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "解析 edit 与 bash",
+          "ms": 1400,
+          "d": "批次里既有文件写入，也有命令执行。",
+          "data": {
+            "calls": [
+              {
+                "id": "call_edit",
+                "name": "edit",
+                "arguments": "{\"path\":\"src/auth/login.ts\",\"old\":\"user.profile.name\",\"new\":\"user.profile?.name\"}"
+              },
+              {
+                "id": "call_bash",
+                "name": "bash",
+                "arguments": "{\"command\":\"pnpm test auth\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "pre-execute：返回 ask",
+          "d": "pipeline 在 execute 之前运行 pre-execute；策略返回 ask，于是调用 approval/request，工具体还没有执行。",
+          "ms": 1300,
+          "data": {
+            "tool": "edit",
+            "decision": "ask",
+            "note": "审批发生在 pipeline 内部，不是独立的前置阶段"
+          }
+        },
+        {
+          "s": "approval",
+          "p": "审批",
+          "t": "写文件需要确认",
+          "status": "approval",
+          "ms": 2100,
+          "d": "pre-execute 对 edit 返回 ask，请求停在审批门；这是策略决定，不是工具自己弹窗。",
+          "data": {
+            "requestId": "apr_edit",
+            "tool": "edit",
+            "outcome": "approved",
+            "note": "示例：也可能被 deny"
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "依次执行批次",
+          "d": "edit 获批后执行；bash 继续走自己的策略（此处 allow）。",
+          "ms": 1800
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "测试失败",
+          "status": "error",
+          "ms": 2200,
+          "d": "命令退出码非 0。工具结果仍会落日志，通常以 isError 或错误输出呈现，而不是让循环崩掉。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_bash",
+            "isError": false,
+            "exitCode": 1,
+            "content": [
+              {
+                "type": "text",
+                "text": "FAIL src/auth/login.test.ts\n  expected 'Ada' but got undefined"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "带着失败继续",
+          "status": "error",
+          "ms": 1900,
+          "d": "失败也是工具结果，同样构成欠账；循环不会因为测试失败而结束。",
+          "data": {
+            "step": 2,
+            "toolCalls": 2,
+            "test": "failed",
+            "next": "step 3",
+            "turnEnded": false
+          }
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 3：preStep 重新领取",
+          "cycle": "Step 3",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第三次请求",
+          "cycle": "Step 3",
+          "d": "请求带上测试失败上下文。",
+          "ms": 1600
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 3：重新投影历史",
+          "cycle": "Step 3",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1800,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "生成修复与重跑",
+          "cycle": "Step 3",
+          "d": "模型再次请求 edit，并再跑一次测试。",
+          "ms": 2200
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "第二条含工具的助手消息",
+          "cycle": "Step 3",
+          "d": "每个 Step 的助手消息独立持久化。",
+          "ms": 1500
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "修复批次",
+          "ms": 1300,
+          "data": {
+            "calls": [
+              {
+                "id": "call_edit2",
+                "name": "edit",
+                "arguments": "{\"path\":\"src/auth/login.ts\",\"old\":\"return user.profile?.name\",\"new\":\"return user.profile?.name ?? 'anonymous'\"}"
+              },
+              {
+                "id": "call_bash2",
+                "name": "bash",
+                "arguments": "{\"command\":\"pnpm test auth\"}"
+              }
+            ]
+          },
+          "d": "同一批里再次写入并重跑测试。"
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "pre-execute：返回 ask",
+          "d": "pipeline 在 execute 之前运行 pre-execute；策略返回 ask，于是调用 approval/request，工具体还没有执行。",
+          "ms": 1300,
+          "data": {
+            "tool": "edit",
+            "decision": "ask",
+            "note": "审批发生在 pipeline 内部，不是独立的前置阶段"
+          }
+        },
+        {
+          "s": "approval",
+          "p": "审批",
+          "t": "再次确认写入",
+          "status": "approval",
+          "ms": 1800,
+          "d": "策略可能记住本次会话的允许，也可能再问一次；这里按再问一次展示。",
+          "data": {
+            "requestId": "apr_edit2",
+            "tool": "edit",
+            "outcome": "approved"
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "执行修复与测试",
+          "d": "写文件后命令在沙箱里运行。",
+          "ms": 1800
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "测试通过",
+          "ms": 2000,
+          "d": "退出码 0，结果写入会话。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_bash2",
+            "isError": false,
+            "exitCode": 0,
+            "content": [
+              {
+                "type": "text",
+                "text": "Test Files  1 passed (1)\nTests  6 passed (6)"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "收束",
+          "t": "欠账清零，准备回答",
+          "ms": 1700,
+          "d": "工具结果处理完，但模型还没有总结；下一 Step 生成最终回答。",
+          "data": {
+            "step": 3,
+            "toolCalls": 2,
+            "next": "step 4",
+            "turnEnded": false
+          }
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 4：preStep 重新领取",
+          "cycle": "Step 4",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "最后一次请求",
+          "cycle": "Step 4",
+          "d": "这一次请求只要求总结。",
+          "ms": 1500
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 4：重新投影历史",
+          "cycle": "Step 4",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1600,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "生成修复说明",
+          "cycle": "Step 4",
+          "d": "没有工具调用，只有文本。",
+          "ms": 2200
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "没有更多工具",
+          "status": "branch",
+          "ms": 1300,
+          "d": "工具分支结束。",
+          "data": {
+            "calls": []
+          }
+        },
+        {
+          "s": "loop",
+          "p": "收束",
+          "t": "关闭 Turn",
+          "d": "写 agent/turn-stopping 与 turn/end。",
+          "ms": 1700
+        },
+        {
+          "s": "event",
+          "p": "持久化",
+          "t": "四步全部可重放",
+          "d": "日志里保留三次工具批次与四条 assistant/message。",
+          "ms": 1600
+        },
+        {
+          "s": "output",
+          "p": "展示",
+          "t": "修复说明上屏",
+          "d": "用户看到最终总结，测试失败的中间过程仍可追溯。",
+          "ms": 1400
+        }
+      ],
+      "outcome": {
+        "title": "失败被当成结果，而不是异常终止",
+        "text": "测试失败进入下一条 tool/result；循环继续，直到模型不再请求工具。"
+      }
+    },
+    {
+      "id": "file-read",
+      "title": "文件读取",
+      "en": "File Read",
+      "example": "读取 docs/architecture.md，总结模块分层。",
+      "tag": "read 工具 · 沙箱",
+      "support": "完全支持",
+      "summary": "最短的工具分支：一次 read、一条 tool/result、一个总结 Step。",
+      "beats": [
+        {
+          "s": "input",
+          "p": "输入",
+          "t": "提交读取请求",
+          "d": "用户只要求读取和总结，没有写操作。",
+          "ms": 1000
+        },
+        {
+          "s": "rpc",
+          "p": "传输",
+          "t": "RPC 帧",
+          "d": "进入 Host 侧准入。",
+          "ms": 1100
+        },
+        {
+          "s": "session",
+          "p": "准入",
+          "t": "followup",
+          "d": "消息投递为 next-turn。",
+          "ms": 1300
+        },
+        {
+          "s": "inbox",
+          "p": "入队",
+          "t": "启动 Agent",
+          "d": "空闲，立即唤醒。",
+          "ms": 1200
+        },
+        {
+          "s": "turn",
+          "p": "轮次",
+          "t": "Turn 1 · Step 1",
+          "d": "写 turn/start；preStep 领取任务并固定模型。",
+          "ms": 1500
+        },
+        {
+          "s": "registry",
+          "p": "准备",
+          "t": "read 可用",
+          "d": "文件工具是否可见由作用域与 worktree 配置决定。",
+          "ms": 1400
+        },
+        {
+          "s": "prompt",
+          "p": "准备",
+          "t": "组装提示词",
+          "d": "工具 schema 进入请求。",
+          "ms": 1500
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第一次请求",
+          "d": "模型决定先读文件。",
+          "ms": 1600
+        },
+        {
+          "s": "context",
+          "p": "构建",
+          "t": "空历史 + 注入",
+          "d": "prepareCall 之后，buildRequest 先记录 request/header 与 request/context，再 deriveMessages()。模型只知道任务和工作目录。",
+          "ms": 1400
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "返回 read 调用",
+          "d": "文本很少，主要是工具参数。",
+          "ms": 1900
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "assistant/message",
+          "d": "调用信息随消息落日志。",
+          "ms": 1400
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "read 调用",
+          "ms": 1300,
+          "d": "进入工具流水线。",
+          "data": {
+            "calls": [
+              {
+                "id": "call_read",
+                "name": "read",
+                "arguments": "{\"path\":\"docs/architecture.md\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "路径与沙箱检查",
+          "d": "pre-execute 检查策略；execute 在允许的根目录内读取。",
+          "ms": 1500
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "文件内容回填",
+          "ms": 1600,
+          "d": "结果进入日志，下一 Step 可见。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_read",
+            "isError": false,
+            "content": [
+              {
+                "type": "text",
+                "text": "# 模块分层\n\n## 启动层\n## Agent 层\n## 能力层"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "欠账 → Step 2",
+          "d": "模型需要基于内容回答。",
+          "ms": 1500
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 2：preStep 重新领取",
+          "cycle": "Step 2",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第二次请求",
+          "cycle": "Step 2",
+          "d": "要求总结分层。",
+          "ms": 1500
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 2：重新投影历史",
+          "cycle": "Step 2",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1600,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "生成总结",
+          "cycle": "Step 2",
+          "d": "没有工具调用。",
+          "ms": 2100
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "无 tool-call",
+          "status": "branch",
+          "d": "工具分支关闭。",
+          "ms": 1200,
+          "data": {
+            "calls": []
+          }
+        },
+        {
+          "s": "loop",
+          "p": "收束",
+          "t": "关闭 Turn",
+          "d": "没有欠账，写 turn/end。",
+          "ms": 1500
+        },
+        {
+          "s": "event",
+          "p": "持久化",
+          "t": "读取与总结都可重放",
+          "d": "两个 Step 的事件按 seq 排列。",
+          "ms": 1400
+        },
+        {
+          "s": "output",
+          "p": "展示",
+          "t": "总结上屏",
+          "d": "用户看到分层总结，而不是整个文件。",
+          "ms": 1200
+        }
+      ],
+      "outcome": {
+        "title": "工具结果就是下一 Step 的上下文",
+        "text": "没有额外的「工具结果注入器」；它本来就是 Session 事件。"
+      }
+    },
+    {
+      "id": "file-edit",
+      "title": "文件编辑",
+      "en": "File Edit",
+      "example": "把 README 里的端口 3000 改成 4310。",
+      "tag": "读取 · edit · 审批",
+      "support": "完全支持",
+      "summary": "先定位再改：glob + read 在一个 Step 里完成，第二个 Step 才发起 edit。",
+      "beats": [
+        {
+          "s": "input",
+          "p": "输入",
+          "t": "提交编辑请求",
+          "d": "目标明确，但模型仍需先确认文件内容。",
+          "ms": 1000
+        },
+        {
+          "s": "rpc",
+          "p": "传输",
+          "t": "RPC 帧",
+          "d": "进入准入。",
+          "ms": 1100
+        },
+        {
+          "s": "session",
+          "p": "准入",
+          "t": "followup",
+          "d": "消息入队。",
+          "ms": 1200
+        },
+        {
+          "s": "inbox",
+          "p": "入队",
+          "t": "唤醒 Agent",
+          "d": "立即开始 Turn。",
+          "ms": 1200
+        },
+        {
+          "s": "turn",
+          "p": "轮次",
+          "t": "Turn 1 · Step 1",
+          "d": "固定模型。",
+          "ms": 1400
+        },
+        {
+          "s": "registry",
+          "p": "准备",
+          "t": "glob / read / edit 可见",
+          "d": "编辑工具通常受更严格的策略约束。",
+          "ms": 1400
+        },
+        {
+          "s": "prompt",
+          "p": "准备",
+          "t": "组装提示词",
+          "d": "工具 schema 进入请求。",
+          "ms": 1500
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第一次请求",
+          "d": "模型先定位文件。",
+          "ms": 1500
+        },
+        {
+          "s": "context",
+          "p": "构建",
+          "t": "投影历史",
+          "d": "prepareCall 之后，buildRequest 先记录 request/header 与 request/context，再 deriveMessages()。只有任务文本。",
+          "ms": 1300
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "返回 glob + read",
+          "d": "一次请求里同时给出定位与读取。",
+          "ms": 2000
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "assistant/message",
+          "d": "两个调用都在消息里。",
+          "ms": 1400
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "2 个调用",
+          "ms": 1300,
+          "data": {
+            "calls": [
+              {
+                "id": "call_glob",
+                "name": "glob",
+                "arguments": "{\"pattern\":\"README.md\"}"
+              },
+              {
+                "id": "call_read",
+                "name": "read",
+                "arguments": "{\"path\":\"README.md\"}"
+              }
+            ]
+          },
+          "d": "批次进入工具流水线。"
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "读取类调用放行",
+          "d": "glob 与 read 都命中 allow。",
+          "ms": 1400
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "找到端口位置",
+          "ms": 1600,
+          "d": "结果包含文件路径与命中行。",
+          "data": {
+            "type": "tool/result",
+            "results": [
+              {
+                "callId": "call_glob",
+                "isError": false,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "README.md"
+                  }
+                ]
+              },
+              {
+                "callId": "call_read",
+                "isError": false,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "… 端口 3000 …"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "欠账 → Step 2",
+          "d": "下一步才修改。",
+          "ms": 1400
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 2：preStep 重新领取",
+          "cycle": "Step 2",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第二次请求",
+          "cycle": "Step 2",
+          "d": "模型准备 edit。",
+          "ms": 1400
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 2：重新投影历史",
+          "cycle": "Step 2",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1500,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "返回 edit",
+          "cycle": "Step 2",
+          "d": "参数包含旧串与新串。",
+          "ms": 1900
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "edit 调用",
+          "ms": 1200,
+          "data": {
+            "calls": [
+              {
+                "id": "call_edit",
+                "name": "edit",
+                "arguments": "{\"path\":\"README.md\",\"old\":\"3000\",\"new\":\"4310\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "pre-execute：返回 ask",
+          "d": "pipeline 在 execute 之前运行 pre-execute；策略返回 ask，于是调用 approval/request，工具体还没有执行。",
+          "ms": 1300,
+          "data": {
+            "tool": "edit",
+            "decision": "ask",
+            "note": "审批发生在 pipeline 内部，不是独立的前置阶段"
+          }
+        },
+        {
+          "s": "approval",
+          "p": "审批",
+          "t": "写文件等待确认",
+          "status": "approval",
+          "d": "pre-execute 返回 ask；工具调用暂停在这里。",
+          "ms": 2000
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "执行 edit",
+          "d": "获批后写入；guard 再检查路径与操作类型。",
+          "ms": 1600
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "写入成功",
+          "ms": 1500,
+          "d": "tool/result 记录变更摘要。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_edit",
+            "isError": false,
+            "content": [
+              {
+                "type": "text",
+                "text": "README.md: 1 replacement"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "收束",
+          "t": "关闭 Turn",
+          "d": "模型已无工具请求。",
+          "ms": 1400
+        },
+        {
+          "s": "event",
+          "p": "持久化",
+          "t": "变更可追溯",
+          "d": "tool/call 与 tool/result 都保留参数摘要。",
+          "ms": 1400
+        },
+        {
+          "s": "output",
+          "p": "展示",
+          "t": "修改完成",
+          "d": "最终回答引用文件与行号。",
+          "ms": 1200
+        }
+      ],
+      "outcome": {
+        "title": "写入必须经过策略层",
+        "text": "工具自己不是权限边界；pre-execute 与审批才是。"
+      }
+    },
+    {
+      "id": "web-search",
+      "title": "网页搜索",
+      "en": "Web Research",
+      "example": "查一下 DeepSeek Harness 0.2.2 的发布说明，并给出处。",
+      "tag": "搜索 · 抓取 · 引用",
+      "support": "需配置搜索 provider",
+      "supportNote": "web 工具存在，但搜索能力取决于 deployment 是否配置了 search provider；未配置时工具不可用或报错。",
+      "summary": "搜索不是内置的「模型会联网」；它是工具调用，多轮补充后仍需模型整理与引用。",
+      "beats": [
+        {
+          "s": "input",
+          "p": "输入",
+          "t": "提交研究任务",
+          "d": "任务要求出处，意味着模型必须保留检索结果。",
+          "ms": 1100
+        },
+        {
+          "s": "rpc",
+          "p": "传输",
+          "t": "RPC 帧",
+          "d": "进入 Host。",
+          "ms": 1100
+        },
+        {
+          "s": "session",
+          "p": "准入",
+          "t": "followup",
+          "d": "消息入队。",
+          "ms": 1200
+        },
+        {
+          "s": "inbox",
+          "p": "入队",
+          "t": "唤醒 Agent",
+          "d": "开始 Turn。",
+          "ms": 1200
+        },
+        {
+          "s": "turn",
+          "p": "轮次",
+          "t": "Turn 1 · Step 1",
+          "d": "固定模型。",
+          "ms": 1400
+        },
+        {
+          "s": "registry",
+          "p": "准备",
+          "t": "web 工具是否可见",
+          "d": "取决于 provider 配置；未配置时 schema 不会出现，模型也不会「幻觉联网」。",
+          "ms": 1600
+        },
+        {
+          "s": "prompt",
+          "p": "准备",
+          "t": "组装提示词",
+          "d": "web 工具的 schema 与说明进入请求。",
+          "ms": 1500
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第一次请求",
+          "d": "模型决定先搜索。",
+          "ms": 1500
+        },
+        {
+          "s": "context",
+          "p": "构建",
+          "t": "投影历史",
+          "d": "prepareCall 之后，buildRequest 先记录 request/header 与 request/context，再 deriveMessages()。只有任务文本。",
+          "ms": 1300
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "返回 web_search",
+          "d": "查询词由模型生成。",
+          "ms": 1900
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "assistant/message",
+          "d": "搜索调用落日志。",
+          "ms": 1300
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "web_search 调用",
+          "ms": 1200,
+          "data": {
+            "calls": [
+              {
+                "id": "call_search",
+                "name": "web_search",
+                "arguments": "{\"queries\":[\"DeepSeek Harness 0.2.2 release notes\"]}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "网络策略检查",
+          "d": "web 工具可能额外受网络与 provider 策略约束。",
+          "ms": 1400
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "返回结果列表",
+          "ms": 1700,
+          "d": "结果只是候选；模型还要决定抓哪个页面。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_search",
+            "isError": false,
+            "content": [
+              {
+                "type": "text",
+                "text": "1. github.com/…/releases/tag/v0.2.2\n2. deepseek.com/…/harness"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "欠账 → Step 2",
+          "d": "需要打开页面读全文。",
+          "ms": 1400
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 2：preStep 重新领取",
+          "cycle": "Step 2",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第二次请求",
+          "cycle": "Step 2",
+          "d": "模型选择抓取第一个结果。",
+          "ms": 1400
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 2：重新投影历史",
+          "cycle": "Step 2",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1500,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "返回 web_fetch",
+          "cycle": "Step 2",
+          "d": "抓取参数是一个具体 URL。",
+          "ms": 1900
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "web_fetch 调用",
+          "ms": 1200,
+          "data": {
+            "calls": [
+              {
+                "id": "call_fetch",
+                "name": "web_fetch",
+                "arguments": "{\"url\":\"https://github.com/…/releases/tag/v0.2.2\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "抓取放行",
+          "d": "URL 与网络策略检查。",
+          "ms": 1300
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "页面正文回填",
+          "ms": 1600,
+          "d": "正文可能被截断；模型需要自己判断是否够用。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_fetch",
+            "isError": false,
+            "content": [
+              {
+                "type": "text",
+                "text": "0.2.2-rc.1 … 修复 … 变更 …"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "欠账 → Step 3",
+          "d": "还需要整理与引用。",
+          "ms": 1400
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 3：preStep 重新领取",
+          "cycle": "Step 3",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第三次请求",
+          "cycle": "Step 3",
+          "d": "要求带出处总结。",
+          "ms": 1400
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 3：重新投影历史",
+          "cycle": "Step 3",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1500,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "生成引用回答",
+          "cycle": "Step 3",
+          "d": "没有工具调用。",
+          "ms": 2200
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "无 tool-call",
+          "status": "branch",
+          "d": "分支关闭。",
+          "ms": 1200,
+          "data": {
+            "calls": []
+          }
+        },
+        {
+          "s": "loop",
+          "p": "收束",
+          "t": "关闭 Turn",
+          "d": "写 turn/end。",
+          "ms": 1400
+        },
+        {
+          "s": "event",
+          "p": "持久化",
+          "t": "检索链可复盘",
+          "d": "搜索词、URL 与结果都在日志中。",
+          "ms": 1400
+        },
+        {
+          "s": "output",
+          "p": "展示",
+          "t": "带引用回答上屏",
+          "d": "引用是模型输出的一部分，不是 UI 自动生成的。",
+          "ms": 1300
+        }
+      ],
+      "outcome": {
+        "title": "搜索能力是工具，不是模型内建",
+        "text": "provider 未配置时，正确行为是工具不可用，而不是静默编造结果。"
+      }
+    },
+    {
+      "id": "office",
+      "title": "办公任务",
+      "en": "Office Task",
+      "example": "分析 sales.xlsx，生成一份带图表的周报 PPT。",
+      "tag": "Skill + 文件读取 + 导出",
+      "support": "需组合 Office 技能 + LibreOffice Kit",
+      "supportNote": "源码没有内置 Excel 数据分析工具；需要 office 技能、LibreOffice Kit 与可用的文件/命令工具组合。",
+      "summary": "办公能力由技能与外部工具组合出来；模型读文件、生成文档，再调用渲染/导出能力。",
+      "beats": [
+        {
+          "s": "input",
+          "p": "输入",
+          "t": "提交办公任务",
+          "d": "任务包含输入文件、分析要求与输出格式。",
+          "ms": 1200
+        },
+        {
+          "s": "rpc",
+          "p": "传输",
+          "t": "RPC 帧",
+          "d": "进入 Host。",
+          "ms": 1100
+        },
+        {
+          "s": "session",
+          "p": "准入",
+          "t": "followup",
+          "d": "消息入队。",
+          "ms": 1200
+        },
+        {
+          "s": "inbox",
+          "p": "入队",
+          "t": "唤醒 Agent",
+          "d": "开始 Turn。",
+          "ms": 1200
+        },
+        {
+          "s": "turn",
+          "p": "轮次",
+          "t": "Turn 1 · Step 1",
+          "d": "固定模型。",
+          "ms": 1400
+        },
+        {
+          "s": "registry",
+          "p": "准备",
+          "t": "技能与工具可见性",
+          "d": "office 技能可以提供指导与脚本，但不会凭空变成内置工具。",
+          "ms": 1600
+        },
+        {
+          "s": "prompt",
+          "p": "准备",
+          "t": "组装提示词",
+          "d": "技能说明与工具 schema 一起进入请求。",
+          "ms": 1500
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第一次请求",
+          "d": "模型先了解文件与技能。",
+          "ms": 1500
+        },
+        {
+          "s": "context",
+          "p": "构建",
+          "t": "投影历史",
+          "d": "prepareCall 之后，buildRequest 先记录 request/header 与 request/context，再 deriveMessages()。只有任务文本。",
+          "ms": 1300
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "加载技能并读取工作簿",
+          "d": "可能先调用技能工具，再调用文件工具。",
+          "ms": 2100
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "assistant/message",
+          "d": "调用批次落日志。",
+          "ms": 1300
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "skill + read 调用",
+          "ms": 1300,
+          "data": {
+            "calls": [
+              {
+                "id": "call_skill",
+                "name": "skill",
+                "arguments": "{\"name\":\"office\"}"
+              },
+              {
+                "id": "call_read",
+                "name": "read",
+                "arguments": "{\"path\":\"sales.xlsx\"}"
+              }
+            ],
+            "note": "xlsx 是二进制，实际读取由技能脚本或外部工具完成"
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "执行读取批次",
+          "d": "工具在沙箱内运行；二进制解析依赖可用运行时。",
+          "ms": 1600
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "表格结构回填",
+          "ms": 1600,
+          "d": "模型拿到列名、行数与样例，而不是整个二进制文件。",
+          "data": {
+            "type": "tool/result",
+            "results": [
+              {
+                "callId": "call_skill",
+                "isError": false,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "office skill loaded"
+                  }
+                ]
+              },
+              {
+                "callId": "call_read",
+                "isError": false,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "columns: region, product, revenue, month\nrows: 240"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "欠账 → Step 2",
+          "d": "需要生成报告。",
+          "ms": 1400
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 2：preStep 重新领取",
+          "cycle": "Step 2",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第二次请求",
+          "cycle": "Step 2",
+          "d": "模型规划生成脚本。",
+          "ms": 1400
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 2：重新投影历史",
+          "cycle": "Step 2",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1500,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "生成文档脚本",
+          "cycle": "Step 2",
+          "d": "可能调用 bash / run_code 执行 python-pptx。",
+          "ms": 2100
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "执行生成脚本",
+          "ms": 1300,
+          "data": {
+            "calls": [
+              {
+                "id": "call_bash",
+                "name": "bash",
+                "arguments": "{\"command\":\"python tools/make_deck.py\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "命令审批",
+          "d": "命令通常受更严格策略约束；这里假设已允许。",
+          "ms": 1600
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "生成 report.pptx",
+          "ms": 1700,
+          "d": "结果包含输出路径与可能的警告。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_bash",
+            "isError": false,
+            "content": [
+              {
+                "type": "text",
+                "text": "wrote report.pptx (12 slides)"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "欠账 → Step 3",
+          "d": "需要渲染校验与总结。",
+          "ms": 1400
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 3：preStep 重新领取",
+          "cycle": "Step 3",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第三次请求",
+          "cycle": "Step 3",
+          "d": "模型决定用 LibreOffice 渲染检查。",
+          "ms": 1400
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 3：重新投影历史",
+          "cycle": "Step 3",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1500,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "调用渲染工具",
+          "cycle": "Step 3",
+          "d": "没有内置渲染器；依赖外部 Kit。",
+          "ms": 2000
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "渲染检查",
+          "ms": 1200,
+          "data": {
+            "calls": [
+              {
+                "id": "call_render",
+                "name": "bash",
+                "arguments": "{\"command\":\"soffice --headless --convert-to png report.pptx\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "执行渲染",
+          "d": "环境未安装 Kit 时会得到失败结果，而不是静默跳过。",
+          "ms": 1500
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "渲染成功 / 失败",
+          "ms": 1700,
+          "d": "失败同样进入下一条 tool/result，模型可以选择降级。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_render",
+            "isError": false,
+            "content": [
+              {
+                "type": "text",
+                "text": "12 slides rendered"
+              }
+            ],
+            "note": "是否安装 Kit 取决于部署环境"
+          }
+        },
+        {
+          "s": "loop",
+          "p": "收束",
+          "t": "关闭 Turn",
+          "d": "模型不再请求工具。",
+          "ms": 1400
+        },
+        {
+          "s": "event",
+          "p": "持久化",
+          "t": "文件与命令都可追溯",
+          "d": "输出路径、命令与结果都在日志。",
+          "ms": 1400
+        },
+        {
+          "s": "output",
+          "p": "展示",
+          "t": "交付说明上屏",
+          "d": "用户拿到文件路径与生成说明。",
+          "ms": 1300
+        }
+      ],
+      "outcome": {
+        "title": "办公能力是组合，不是单一插件",
+        "text": "技能提供流程与脚本，文件/命令工具负责执行，LibreOffice Kit 负责渲染。"
+      }
+    },
+    {
+      "id": "subagent",
+      "title": "Subagent 协作",
+      "en": "Subagent",
+      "example": "让一个子 Agent 检查 tests 目录，再把发现汇总给我。",
+      "tag": "父子 Agent · 独立 Session",
+      "support": "完全支持",
+      "summary": "父 Agent 发起 subagent 工具调用；子 Agent 有自己的 Session 与循环，结果作为工具结果回到父 Agent。",
+      "beats": [
+        {
+          "s": "input",
+          "p": "输入",
+          "t": "提交分工任务",
+          "d": "任务要求把一部分工作交给子 Agent。",
+          "ms": 1100
+        },
+        {
+          "s": "rpc",
+          "p": "传输",
+          "t": "RPC 帧",
+          "d": "进入 Host。",
+          "ms": 1100
+        },
+        {
+          "s": "session",
+          "p": "准入",
+          "t": "followup",
+          "d": "消息入队。",
+          "ms": 1200
+        },
+        {
+          "s": "inbox",
+          "p": "入队",
+          "t": "唤醒父 Agent",
+          "d": "开始父 Turn。",
+          "ms": 1200
+        },
+        {
+          "s": "turn",
+          "p": "轮次",
+          "t": "父 Agent · Turn 1",
+          "d": "固定父模型。",
+          "ms": 1400
+        },
+        {
+          "s": "registry",
+          "p": "准备",
+          "t": "subagent 工具可见",
+          "d": "是否可用取决于 profile 与 delegation 配置。",
+          "ms": 1500
+        },
+        {
+          "s": "prompt",
+          "p": "准备",
+          "t": "组装提示词",
+          "d": "subagent 工具说明进入请求。",
+          "ms": 1500
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "父 Agent 第一次请求",
+          "d": "模型决定拆分任务。",
+          "ms": 1500
+        },
+        {
+          "s": "context",
+          "p": "构建",
+          "t": "投影父历史",
+          "d": "prepareCall 之后，buildRequest 先记录 request/header 与 request/context，再 deriveMessages()。只有任务文本。",
+          "ms": 1300
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "返回 subagent 调用",
+          "d": "参数包含 prompt 与可选 preset / cwd。",
+          "ms": 2000
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "父 assistant/message",
+          "d": "调用落父 Session 日志。",
+          "ms": 1300
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "subagent 调用",
+          "ms": 1300,
+          "data": {
+            "calls": [
+              {
+                "id": "call_sub",
+                "name": "subagent",
+                "arguments": "{\"description\":\"检查 tests\",\"prompt\":\"检查 tests 目录的失败用例并汇总\",\"cwd\":\".\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "delegation 策略检查",
+          "d": "深度、模型路由、workspace 访问都可能被限制。",
+          "ms": 1500
+        },
+        {
+          "s": "subagent",
+          "p": "子 Agent",
+          "t": "启动子 Agent",
+          "ms": 2000,
+          "d": "startActivation() 创建子 Session 与子 Agent；父工具调用此时还在等结果。",
+          "data": {
+            "parent": "main",
+            "child": "sub_demo",
+            "status": "started",
+            "delivery": "parent"
+          }
+        },
+        {
+          "s": "subagent",
+          "p": "子 Agent",
+          "t": "子 Agent 独立跑循环",
+          "cycle": "child",
+          "ms": 2300,
+          "d": "子 Agent 自己的 Turn / Step / 工具调用与父 Agent 分离；它不是父循环里的一个函数。",
+          "data": {
+            "child": "sub_demo",
+            "status": "running",
+            "note": "子流程在场景中不逐步展开"
+          }
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "子 Agent 结果回到父",
+          "ms": 1900,
+          "d": "父 Agent 看到的是一条 tool/result，而不是子 Agent 的全部内部事件。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_sub",
+            "isError": false,
+            "content": [
+              {
+                "type": "text",
+                "text": "3 个失败用例：auth.spec.ts:42 / :57 / :88"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "父 Agent 欠账 → Step 2",
+          "ms": 1600,
+          "d": "父循环继续，带着子 Agent 的摘要。",
+          "data": {
+            "step": 1,
+            "toolCalls": 1,
+            "next": "step 2",
+            "turnEnded": false
+          }
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 2：preStep 重新领取",
+          "cycle": "Step 2",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "父 Agent 第二次请求",
+          "cycle": "Step 2",
+          "d": "模型决定如何汇总。",
+          "ms": 1400
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 2：重新投影历史",
+          "cycle": "Step 2",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1600,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "生成汇总",
+          "cycle": "Step 2",
+          "d": "没有工具调用。",
+          "ms": 2100
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "父 assistant/message",
+          "cycle": "Step 2",
+          "ms": 1400,
+          "d": "汇总回复落父 Session。"
+        },
+        {
+          "s": "loop",
+          "p": "收束",
+          "t": "父 Turn 关闭",
+          "d": "父 Agent 没有更多工具请求。",
+          "ms": 1500
+        },
+        {
+          "s": "event",
+          "p": "持久化",
+          "t": "父日志记录委派",
+          "d": "subagent/start、tool/result 与父消息都在父 Session。",
+          "ms": 1600
+        },
+        {
+          "s": "output",
+          "p": "展示",
+          "t": "汇总上屏",
+          "d": "用户只看到父 Agent 的回答。",
+          "ms": 1300
+        }
+      ],
+      "outcome": {
+        "title": "子 Agent 是独立执行体",
+        "text": "父 Agent 通过工具结果感知子 Agent，不共享内存，也不读取子 Session 的内部状态。"
+      }
+    },
+    {
+      "id": "exception",
+      "title": "异常处理",
+      "en": "Failure Paths",
+      "example": "把 build 目录清掉再重新构建。",
+      "tag": "异常分支合集",
+      "support": "完全支持（分支各不相同）",
+      "supportNote": "这不是一次连续的真实执行：请求失败、审批拒绝、工具失败与用户取消是四条独立分支，这里拼成一条教学路线。",
+      "summary": "失败不是一种状态，而是四条不同的收尾路径：重试、拒绝、isError 结果、取消结算。",
+      "beats": [
+        {
+          "s": "input",
+          "p": "输入",
+          "t": "提交清理与构建任务",
+          "d": "任务包含高风险命令，注定了审批门会出现。",
+          "ms": 1100
+        },
+        {
+          "s": "rpc",
+          "p": "传输",
+          "t": "RPC 帧",
+          "d": "进入 Host。",
+          "ms": 1100
+        },
+        {
+          "s": "session",
+          "p": "准入",
+          "t": "followup",
+          "d": "消息入队。",
+          "ms": 1200
+        },
+        {
+          "s": "inbox",
+          "p": "入队",
+          "t": "唤醒 Agent",
+          "d": "开始 Turn。",
+          "ms": 1200
+        },
+        {
+          "s": "turn",
+          "p": "轮次",
+          "t": "Turn 1 · Step 1",
+          "d": "固定模型。",
+          "ms": 1400
+        },
+        {
+          "s": "registry",
+          "p": "准备",
+          "t": "解析工具",
+          "d": "bash 是否可见与是否需要审批由策略决定。",
+          "ms": 1400
+        },
+        {
+          "s": "prompt",
+          "p": "准备",
+          "t": "组装提示词",
+          "d": "工具 schema 进入请求。",
+          "ms": 1500
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第一次请求",
+          "d": "模型规划命令。",
+          "ms": 1500
+        },
+        {
+          "s": "context",
+          "p": "构建",
+          "t": "投影历史",
+          "d": "prepareCall 之后，buildRequest 先记录 request/header 与 request/context，再 deriveMessages()。只有任务文本。",
+          "ms": 1300
+        },
+        {
+          "s": "streaming",
+          "p": "异常",
+          "t": "请求失败：429 / 超时",
+          "status": "error",
+          "ms": 2100,
+          "d": "流以终止 chunk 结束；agent/request-error 瀑布决定重试、降级还是放弃。",
+          "data": {
+            "type": "error",
+            "provider": "deepseek",
+            "failure": {
+              "kind": "rate-limit",
+              "status": 429
+            },
+            "action": "retry",
+            "note": "失败原因为教学示意；重试策略来自 llm-retry 等插件"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "恢复",
+          "t": "重试成功",
+          "ms": 2000,
+          "d": "重试仍属于同一个 Step；成功后继续消费流。",
+          "data": {
+            "attempt": 2,
+            "status": "ok",
+            "note": "退避与次数为教学示意"
+          }
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "assistant/message",
+          "d": "工具调用落日志。",
+          "ms": 1300
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "bash 清理调用",
+          "ms": 1200,
+          "data": {
+            "calls": [
+              {
+                "id": "call_rm",
+                "name": "bash",
+                "arguments": "{\"command\":\"rm -rf build\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "pre-execute：返回 ask",
+          "d": "pipeline 在 execute 之前运行 pre-execute；策略返回 ask，于是调用 approval/request，工具体还没有执行。",
+          "ms": 1300,
+          "data": {
+            "tool": "bash",
+            "decision": "ask",
+            "note": "审批发生在 pipeline 内部，不是独立的前置阶段"
+          }
+        },
+        {
+          "s": "approval",
+          "p": "审批",
+          "t": "用户拒绝",
+          "status": "approval",
+          "ms": 2100,
+          "d": "deny 也是审批 outcome；工具不会执行。",
+          "data": {
+            "requestId": "apr_rm",
+            "tool": "bash",
+            "outcome": "denied"
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "deny 转成结果",
+          "ms": 1500,
+          "d": "拒绝不会让循环崩掉；它变成一条 isError 的工具结果。",
+          "data": {
+            "decision": "deny",
+            "tool": "bash",
+            "result": "isError"
+          }
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "isError 结果回填",
+          "status": "error",
+          "ms": 1700,
+          "d": "模型看到拒绝原因，可以换一种更安全的做法。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_rm",
+            "isError": true,
+            "content": [
+              {
+                "type": "text",
+                "text": "approval denied by user"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "带着拒绝继续",
+          "d": "拒绝结果也是欠账；模型获得下一次机会。",
+          "ms": 1500
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 2：preStep 重新领取",
+          "cycle": "Step 2",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第二次请求",
+          "cycle": "Step 2",
+          "d": "模型调整命令。",
+          "ms": 1400
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 2：重新投影历史",
+          "cycle": "Step 2",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1500,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "流式",
+          "t": "生成更安全的命令",
+          "cycle": "Step 2",
+          "d": "范围缩小到项目内的 build。",
+          "ms": 2000
+        },
+        {
+          "s": "assistant",
+          "p": "结算",
+          "t": "assistant/message",
+          "cycle": "Step 2",
+          "ms": 1300,
+          "d": "新的工具调用落日志。"
+        },
+        {
+          "s": "toolcall",
+          "p": "分支",
+          "t": "bash ./build 调用",
+          "ms": 1200,
+          "data": {
+            "calls": [
+              {
+                "id": "call_rm2",
+                "name": "bash",
+                "arguments": "{\"command\":\"rm -rf ./build\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "pre-execute：返回 ask",
+          "d": "pipeline 在 execute 之前运行 pre-execute；策略返回 ask，于是调用 approval/request，工具体还没有执行。",
+          "ms": 1300,
+          "data": {
+            "tool": "bash",
+            "decision": "ask",
+            "note": "审批发生在 pipeline 内部，不是独立的前置阶段"
+          }
+        },
+        {
+          "s": "approval",
+          "p": "审批",
+          "t": "这次允许",
+          "status": "approval",
+          "ms": 1700,
+          "d": "审批通过后继续执行。",
+          "data": {
+            "requestId": "apr_rm2",
+            "tool": "bash",
+            "outcome": "approved"
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "执行命令",
+          "d": "命令在沙箱内运行。",
+          "ms": 1500
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "命令失败：退出码 1",
+          "status": "error",
+          "ms": 1800,
+          "d": "工具确实跑了，但结果失败；这是 isError/exitCode，而不是请求异常。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_rm2",
+            "isError": false,
+            "exitCode": 1,
+            "content": [
+              {
+                "type": "text",
+                "text": "rm: cannot remove 'build': Directory not empty"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "循环",
+          "t": "继续还是放弃",
+          "d": "失败结果进入下一条 Step。",
+          "ms": 1500
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 3：preStep 重新领取",
+          "cycle": "Step 3",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "请求",
+          "t": "第三次请求",
+          "cycle": "Step 3",
+          "d": "请求发出后，用户按下了停止。",
+          "ms": 1400
+        },
+        {
+          "s": "context",
+          "p": "循环",
+          "t": "Step 3：重新投影历史",
+          "cycle": "Step 3",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1500,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "取消",
+          "t": "用户中断流",
+          "status": "error",
+          "ms": 1800,
+          "d": "取消信号通过 AbortSignal 传入；流终止，但不写一条虚假的成功消息。",
+          "data": {
+            "type": "cancelled",
+            "reason": "user",
+            "note": "取消路径的 UI 表现取决于客户端"
+          }
+        },
+        {
+          "s": "assistant",
+          "p": "取消",
+          "t": "interrupted: true 结算",
+          "status": "error",
+          "ms": 1800,
+          "d": "已经流出的文本仍以 interrupted 消息持久化；下一次请求能看到用户已经看到的内容。",
+          "data": {
+            "type": "assistant/message",
+            "interrupted": true,
+            "message": {
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "构建目录 …（已中断）"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "s": "event",
+          "p": "持久化",
+          "t": "异常也进日志",
+          "d": "失败、拒绝与取消都有对应事件；它们不是控制台里的私有异常。",
+          "ms": 1600
+        },
+        {
+          "s": "output",
+          "p": "展示",
+          "t": "不完整输出 + 中断标记",
+          "d": "UI 必须能表达「这不是完整回答」。",
+          "ms": 1300
+        }
+      ],
+      "outcome": {
+        "title": "四条路径，不要混成一种「失败」",
+        "text": "请求失败走重试策略；审批拒绝转 isError 结果；工具失败是正常结果；用户取消要结算 interrupted。"
+      }
+    },
+    {
+      "id": "loop",
+      "title": "Agent Loop 全景",
+      "en": "Agent Loop Walkthrough",
+      "example": "先读一下 README，再告诉我这个项目怎么启动。",
+      "tag": "一次 Turn · 两次请求",
+      "support": "完全支持",
+      "summary": "专为 Agent Loop 页面定制的短链路：一次工具调用、一次回填、第二次请求收尾。",
+      "beats": [
+        {
+          "s": "input",
+          "p": "输入",
+          "t": "提交两步任务",
+          "d": "先读文件，再回答。",
+          "ms": 1100
+        },
+        {
+          "s": "rpc",
+          "p": "传输",
+          "t": "RPC 帧",
+          "d": "进入 Host。",
+          "ms": 1100
+        },
+        {
+          "s": "session",
+          "p": "准入",
+          "t": "followup",
+          "d": "消息入队。",
+          "ms": 1200
+        },
+        {
+          "s": "inbox",
+          "p": "入队",
+          "t": "唤醒 Agent",
+          "d": "开始 Turn。",
+          "ms": 1200
+        },
+        {
+          "s": "turn",
+          "p": "轮次",
+          "t": "turn/start",
+          "d": "写 turn/start；preStep 领取输入并固定模型；一个 Turn 从这里开始。",
+          "ms": 1600
+        },
+        {
+          "s": "registry",
+          "p": "preStep",
+          "t": "解析可见工具",
+          "d": "本 Step 的 ResolvedToolSet 被冻结。",
+          "ms": 1500
+        },
+        {
+          "s": "prompt",
+          "p": "preStep",
+          "t": "组装提示词",
+          "d": "section、context、工具 schema 合并。",
+          "ms": 1600
+        },
+        {
+          "s": "llmRequest",
+          "p": "Step 1",
+          "t": "第一次模型请求",
+          "d": "prepareCall + request/header。",
+          "ms": 1700
+        },
+        {
+          "s": "context",
+          "p": "构建",
+          "t": "投影历史",
+          "d": "prepareCall 之后，buildRequest 先记录 request/header 与 request/context，再 deriveMessages()。deriveMessages() 返回本轮可见消息。",
+          "ms": 1500
+        },
+        {
+          "s": "streaming",
+          "p": "Step 1",
+          "t": "流式返回 read 调用",
+          "d": "llm/stream 瀑布产出 chunk。",
+          "ms": 2000
+        },
+        {
+          "s": "assistant",
+          "p": "Step 1",
+          "t": "assistant/message",
+          "d": "助手消息落日志。",
+          "ms": 1400
+        },
+        {
+          "s": "toolcall",
+          "p": "Step 1",
+          "t": "检测到 1 个 tool-call",
+          "ms": 1300,
+          "data": {
+            "calls": [
+              {
+                "id": "call_read",
+                "name": "read",
+                "arguments": "{\"path\":\"README.md\"}"
+              }
+            ]
+          }
+        },
+        {
+          "s": "pipeline",
+          "p": "工具",
+          "t": "pre / execute / post",
+          "d": "读取放行，结果返回。",
+          "ms": 1500
+        },
+        {
+          "s": "result",
+          "p": "工具",
+          "t": "tool/result",
+          "ms": 1600,
+          "d": "结果成为下一 Step 的上下文。",
+          "data": {
+            "type": "tool/result",
+            "callId": "call_read",
+            "isError": false,
+            "content": [
+              {
+                "type": "text",
+                "text": "# DeepSeek Harness\npnpm install / pnpm dev"
+              }
+            ]
+          }
+        },
+        {
+          "s": "loop",
+          "p": "判断",
+          "t": "有欠账 → 下一个 Step",
+          "ms": 1900,
+          "d": "step/end 之后检查欠账：工具结果还没被模型消费，Turn 不能结束。",
+          "data": {
+            "step": 1,
+            "toolCalls": 1,
+            "next": "step 2",
+            "turnEnded": false
+          }
+        },
+        {
+          "s": "registry",
+          "p": "循环",
+          "t": "Step 2：preStep 重新领取",
+          "cycle": "Step 2",
+          "d": "循环回到领取阶段：claim 新输入、tools.resolve() 重新解析可见工具、systemPrompt.assemble() 组装提示词；随后才进入 buildRequest。",
+          "ms": 1500,
+          "data": {
+            "scope": "agent:main",
+            "tools": [
+              "read",
+              "grep",
+              "edit",
+              "bash"
+            ],
+            "note": "每步都会重新解析；示例集"
+          }
+        },
+        {
+          "s": "llmRequest",
+          "p": "Step 2",
+          "t": "第二次模型请求",
+          "cycle": "Step 2",
+          "d": "新的请求，新的 tools/system 组装。",
+          "ms": 1600
+        },
+        {
+          "s": "context",
+          "p": "Step 2",
+          "t": "Step 2：重新投影历史",
+          "cycle": "Step 2",
+          "d": "buildRequest 再次 deriveMessages()，把新的 tool/result 与消息投影成冻结历史。",
+          "ms": 1800,
+          "data": {
+            "messages": [
+              "user/message",
+              "assistant/message",
+              "tool/result"
+            ],
+            "note": "模型看到的正是日志能重建的内容"
+          }
+        },
+        {
+          "s": "streaming",
+          "p": "Step 2",
+          "t": "生成最终回答",
+          "cycle": "Step 2",
+          "d": "没有工具调用。",
+          "ms": 2200
+        },
+        {
+          "s": "assistant",
+          "p": "Step 2",
+          "t": "第二条 assistant/message",
+          "cycle": "Step 2",
+          "d": "Step 2 的唯一助手消息。",
+          "ms": 1500
+        },
+        {
+          "s": "toolcall",
+          "p": "Step 2",
+          "t": "没有 tool-call",
+          "status": "branch",
+          "d": "循环准备退出。",
+          "ms": 1300,
+          "data": {
+            "calls": []
+          }
+        },
+        {
+          "s": "loop",
+          "p": "收束",
+          "t": "turn-stopping → turn/end",
+          "ms": 1900,
+          "d": "没有欠账、没有新输入，Turn 结束。",
+          "data": {
+            "step": 2,
+            "toolCalls": 0,
+            "inbox": 0,
+            "next": "turn/end",
+            "turnEnded": true
+          }
+        },
+        {
+          "s": "event",
+          "p": "持久化",
+          "t": "完整 Turn 可重放",
+          "d": "两次 step/start、两条 assistant/message、一条 tool/result。",
+          "ms": 1600
+        },
+        {
+          "s": "output",
+          "p": "展示",
+          "t": "回答上屏",
+          "d": "用户只看到最后一段，但日志保留了整个循环。",
+          "ms": 1300
+        }
+      ],
+      "outcome": {
+        "title": "循环的边界是 Turn，不是一次请求",
+        "text": "一次用户消息可以触发多次模型请求；每次请求都是一个 Step。"
+      }
+    }
+  ]
+}

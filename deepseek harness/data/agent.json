@@ -1,0 +1,36 @@
+{
+  "title": "Agent 核心机制",
+  "subtitle": "Agent 是接口，不是类：core/agent 定义契约与注册表，agent-loop 提供唯一默认实现。",
+  "definition": {
+    "file": "packages/core/agent/src/runtime-types.ts",
+    "line": 191,
+    "text": "Agent = options + session + model + inbox + status + agent-scoped ctx，以及 send / followup / steer / inject / cancel / whenIdle / runMaintenance。"
+  },
+  "lifecycle": [
+    { "id": "a1", "title": "创建或恢复", "detail": "`ctx.agents.create()` 新建 Session 与 Agent；`resume()` 先 `persistence.open(id, 'write')` 读取日志，并修复未闭合轮次。", "ref": "packages/core/agent-loop/src/index.ts:716" },
+    { "id": "a2", "title": "构造历史与进入 Store", "detail": "把构造 seed 追加进 Session，进入 SessionStore 并完成 `session/created`；这一步之后 Session 才能正常 append。", "ref": "packages/core/agent-loop/src/index.ts:110" },
+    { "id": "a3", "title": "setup 与 commit", "detail": "调用方可选 setup 在 Agent 作用域注册工具/persona；commit 失败会回滚已准备资源。", "ref": "packages/core/agent-loop/src/index.ts:110" },
+    { "id": "a4", "title": "进入注册表，等待 agent/created", "detail": "Agent 进入 AgentRegistry 后，先等串行 `agent/created` 监听器，再释放已排队输入——保证观察者不会错过首轮。", "ref": "packages/core/agent/src/runtime-types.ts:290" },
+    { "id": "a5", "title": "运行", "detail": "状态在 idle / running / maintenance 间切换，每次变化发 `agent/status`。running 由驱动器占有，maintenance 也独占。", "ref": "packages/core/agent-loop/src/agent.ts:161" },
+    { "id": "a6", "title": "取消", "detail": "`cancel(cause)` 清空（或保留）inbox 并 abort；取消原因写入 turn/end。已流出的文本以 interrupted 消息结算。", "ref": "packages/core/agent-loop/src/agent.ts:191" },
+    { "id": "a7", "title": "销毁", "detail": "dispose 停止并排空驱动器、撤销作用域、关闭 Session 写路径、detach agent 与 session；发 `agent/disposed` 与 `session/disposed`。", "ref": "packages/core/agent/src/runtime-types.ts:299" }
+  ],
+  "fields": [
+    { "name": "session", "desc": "日志是唯一事实来源；Agent 不持有第二份“消息数组”。" },
+    { "name": "model", "desc": "本轮固定路由；工具后续 Step 沿用同一选择，除非显式 select。" },
+    { "name": "inbox", "desc": "待处理输入的持久投影；next-turn 等新轮次，next-step 插队当前轮次。" },
+    { "name": "status", "desc": "idle / running；maintenance 期间公开状态仍是 idle。" },
+    { "name": "ctx", "desc": "Agent 作用域注册：工具、persona、策略只对这个 Agent 生效，销毁即撤销。" }
+  ],
+  "communication": [
+    { "title": "父 → 子：工具委派", "text": "父 Agent 调 subagent 工具，ctx.subagents 创建子 Session 与子 Agent；提示词与模型选择随委派参数传入。", "ref": "packages/subagent/tool-subagent/src/index.ts:1" },
+    { "title": "子 → 父：结果作为工具结果", "text": "子 Agent 的最终文本回到父 Agent 的 tool/result；父 Agent 不需要共享内存。", "ref": "packages/subagent/subagent/src/index.ts:451" },
+    { "title": "异步通信：send_message / wait_agent", "text": "控制工具可以向子 Agent 的收件箱发消息、等待其输入、或中断自己拥有的后代。", "ref": "packages/subagent/tool-subagent-control/src/index.ts:1" },
+    { "title": "Agent Teams：共享任务板", "text": "根 Session 开启 Team 模式后，team_task_* 在同一棵子 Agent 树上共享任务板；身份与通信仍由普通控制工具负责。", "ref": "packages/team/agent-team/src/types.ts:175" }
+  ],
+  "facts": [
+    { "title": "Session 与 Agent 是一对一", "text": "一个 Agent 驱动一个 Session；子 Agent 有独立 Session。恢复就是重新打开同一个 Session 再建 Agent。" },
+    { "title": "工具是按 Agent 作用域注册的", "text": "ctx.tools.resolve({ agent }) 会沿作用域链找工具集合；同一个进程里两个 Agent 可以有不同工具。" },
+    { "title": "取消是协作式的", "text": "AbortSignal 贯穿模型流与工具；工具体已启动时会先结算再标记 ABORTED，而不是直接丢弃进程。" }
+  ]
+}

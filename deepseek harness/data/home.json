@@ -1,0 +1,39 @@
+{
+  "hero": {
+    "eyebrow": "DEEPSEEK HARNESS · SOURCE EXPLORER",
+    "title": "源码架构可视化实验室",
+    "lead": "以本地源码为准，从「用户按下回车」一路追到「回复出现在屏幕上」。每个节点都能点开看职责、调用方、被调用方与真实代码位置。",
+    "cta": [
+      { "label": "从架构图开始", "route": "architecture" },
+      { "label": "看 Agent Loop", "route": "loop" }
+    ],
+    "meta": ["版本 0.2.2-rc.1", "commit fcc0ad4", "2026-11-04", "零外部请求"]
+  },
+  "lab": {
+    "eyebrow": "SECOND MODE · 3D EXECUTION",
+    "title": "看见 Agent 真正跑起来",
+    "text": "13 页知识库回答「它有什么、怎么设计」；新的 **Agent 动态执行实验室** 回答「执行时内部发生了什么」。19 个真实源码站台、10 个教学场景，可暂停、单步、看输入输出与源码。",
+    "points": ["19 个站台", "10 个场景", "粒子 / 分支 / 循环"],
+    "cta": "进入动态执行实验室",
+    "scenario": "loop"
+  },
+  "questions": [
+    { "q": "它用了什么技术栈？", "short": "Cordis 插件树 + TypeScript 全栈 + React 18 + Typert RPC。", "route": "stack" },
+    { "q": "一次消息到底发生了什么？", "short": "RPC 准入 → inbox → Turn → Step → 模型流 → 工具 → 下一个 Step。", "route": "request" },
+    { "q": "Agent 怎么判断做完了？", "short": "它不判断：没有 tool-call 且没有新输入，循环就结束。", "route": "loop" },
+    { "q": "插件、事件、会话怎么协作？", "short": "注册即副作用；事件分三域；会话是只追加日志。", "route": "plugins" }
+  ],
+  "path": [
+    { "step": 1, "title": "先看全景", "route": "architecture", "desc": "37 个模块、46 条有源码依据的连线。" },
+    { "step": 2, "title": "再看启动", "route": "startup", "desc": "profile 如何叠成插件树。" },
+    { "step": 3, "title": "啃循环", "route": "loop", "desc": "23 步播放，含回边与错误分支。" },
+    { "step": 4, "title": "追一条请求", "route": "request", "desc": "三条并行轨道，别混成一条链。" },
+    { "step": 5, "title": "进场景", "route": "scenarios", "desc": "Coding、办公、搜索、子 Agent…" },
+    { "step": 6, "title": "查源码", "route": "sources", "desc": "路径 + 行号 + 片段，直接回 IDE。" }
+  ],
+  "principles": [
+    { "title": "只写源码里有的", "text": "每个结论都尽量落到文件与行号；没有实现的机制明确标注「源码中不存在」。" },
+    { "title": "区分三条过程", "text": "Agent 执行、Session 持久化、前端展示彼此解耦，不能画成一条同步链。" },
+    { "title": "数据与视图分离", "text": "架构、事件、工具、场景都是 JSON；换一张图不用改组件。" }
+  ]
+}
